@@ -8,7 +8,7 @@ As this repo contains submodule, please clone as follows:
 
 ## Accessing Data
 
-Raw TCR sequencing data can be obtained \<adaptivebiotech.com\> under project ID XXXX. Each sample data can be exported by clicking the checkbox and then export-\> Export. Save data to `./raw_TCR_data/`
+Raw TCR sequencing data can be obtained from <https://clients.adaptivebiotech.com/pub/dewolf-2022-gvhd>. Each sample data can be exported by clicking the checkbox and then export-\> Export. Save data to `./raw_TCR_data/`
 
 ### Patient ID's
 
