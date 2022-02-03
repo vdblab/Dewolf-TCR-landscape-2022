@@ -1,0 +1,1040 @@
+```{r setup-gtex, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, fig.width=10, fig.height=7) 
+library(tidyverse) 
+library(AMR)        # for their PCA plots
+library(patchwork)  # for combining figures
+library(gplots)     # for heatmap.2
+library(genefilter) # for calculating row variances
+library(RColorBrewer) # color palates
+library(Hmisc)     # for pairwise Spearman Correlations
+library(ggtree)    # for trees
+library(phyloseq)
+library(philentropy) # for JSD
+library(Hmisc)  # for rcorr
+library(ape)   # for as.phylo
+
+```
+
+# GTEx Transcription Profiles Across Tissue Types
+
+The Transcripts per Million aggregated data was downloaded from <https://www.gtexportal.org/home/datasets>. The tissue systems were annotated manually. 
+
+One caveat to this is one study has noted pervasive contamination within the GTEx database: <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7176728/>.
+
+
+```{r}
+hclust.single <- function(x) hclust(x, method="single")
+hclust.complete <- function(x) hclust(x, method = "complete")
+hclust.ave <- function(x) hclust(x, method = "average")
+
+annotations <- read.csv(text="tissue,tissue_label,system,col,gtex
+A_blood,PBSCs,Blood,#D13B32,Whole.Blood
+A_marrow,bone marrow,Lymphatic,#D13B32,
+pretx_blood,pre-tx PBMCs,Blood,#D13B32,Whole.Blood
+ascending_colon,ascending colon,Lower GI,#C084B3,Colon...Sigmoid
+colon,colon,Lower GI,#C084B3,Colon...Sigmoid
+right_colon,ascending colon,Lower GI,#C084B3,Colon...Sigmoid
+mid_colon,mid-colon,Lower GI,#C084B3,Colon...Transverse
+descending_colon,descending colon,Lower GI,#C084B3,
+left_colon,descending colon,Lower GI,#C084B3,
+L_colon,descending colon,Lower GI,#C084B3,
+transverse_colon,transverse colon,Lower GI,#C084B3,Colon...Transverse
+rectum,rectum,Lower GI,#C084B3,
+duodenum,duodenum,Upper GI,#67B357,
+ileum,ileum,Lower GI,#67B357,Small.Intestine...Terminal.Ileum
+jejunum,jejunum,Lower GI,#67B357,
+small_intestine,small intestine,Lower GI,#67B357,
+stomach,stomach,Upper GI,#4B86B8,Stomach
+esophagus,esophagus,Upper GI,#4B86B8,Esophagus...Muscularis
+skin,skin,Skin,#E99D59
+skinb,skin,Skin,#E99D59
+heart,heart,Circultory,#7B589E
+kidney,kidney,Renal,#7B589E
+liver,liver,Liver,#3A7E46
+mLN,mLN,Lymphatic,#475CA4
+spleen,spleen,Lymphatic,#475CA4")
+
+tissue_key <- read.csv(text = "Tissue	TissueSystem	TissueTCR	BroadTissueTCR
+Adipose...Subcutaneous	Adipose	Adipose
+Adipose...Visceral..Omentum.	Adipose	
+Adrenal.Gland	Endocrine	
+Artery...Aorta	Circulatory	
+Artery...Coronary	Circulatory	
+Artery...Tibial	Circulatory	
+Bladder	Urinary	
+Brain...Amygdala	Nervous	
+Brain...Anterior.cingulate.cortex..BA24.	Nervous	
+Brain...Caudate..basal.ganglia.	Nervous	
+Brain...Cerebellar.Hemisphere	Nervous	
+Brain...Cerebellum	Nervous	
+Brain...Cortex	Nervous	
+Brain...Frontal.Cortex..BA9.	Nervous	
+Brain...Hippocampus	Nervous	
+Brain...Hypothalamus	Nervous	
+Brain...Nucleus.accumbens..basal.ganglia.	Nervous	
+Brain...Putamen..basal.ganglia.	Nervous	
+Brain...Spinal.cord..cervical.c.1.	Nervous	
+Brain...Substantia.nigra	Nervous	
+Breast...Mammary.Tissue	Breast	
+Cells...Cultured.fibroblasts	Skin	
+Cells...EBV.transformed.lymphocytes	Blood	
+Cervix...Ectocervix	Reproductive	
+Cervix...Endocervix	Reproductive	
+Colon...Sigmoid	Lower GI	mid_colon	colon
+Colon...Transverse	Lower GI	transverse_colon	colon
+Esophagus...Gastroesophageal.Junction	Upper GI	esophagus	esophagus
+Esophagus...Mucosa	Upper GI	esophagus	esophagus
+Esophagus...Muscularis	Upper GI	esophagus	esophagus
+Fallopian.Tube	Reproductive	
+Heart...Atrial.Appendage	Circulatory	heart	heart
+Heart...Left.Ventricle	Circulatory	heart	heart
+Kidney...Cortex	Urinary	kidney	kidney
+Kidney...Medulla	Urinary	
+Liver	Upper GI	liver	liver
+Lung	Respiratory	
+Minor.Salivary.Gland	Upper GI	
+Muscle...Skeletal	Muscle	
+Nerve...Tibial	Nervous	
+Ovary	Reproductive	
+Pancreas	Pancreas	
+Pituitary	Endocrine	
+Prostate	Endocrine	
+Skin...Not.Sun.Exposed..Suprapubic.	Skin	skin	skin
+Skin...Sun.Exposed..Lower.leg.	Skin	skinb	skin
+Small.Intestine...Terminal.Ileum	Lower GI	ileum	ileum
+Spleen	Lymphatic	spleen	spleen
+Stomach	Upper GI	stomach	stomach
+Testis	Reproductive	
+Thyroid	Immune	
+Uterus	Reproductive	
+Vagina	Reproductive	
+Whole.Blood	Blood	A_blood	blood
+	Lower GI	ascending_colon	colon
+	Lymphatic	A_marrow
+	Lower GI	colon	colon
+	Lower GI	descending_colon	colon
+	Lower GI	jejunum	jejunum
+	Upper GI	duodenum	duodenum
+	Lower GI	L_colon	colon
+	Lymphatic	mLN
+	Blood	pretx_blood	blood
+	Lower GI	rectum	colon
+	Lower GI	small_intestine", sep="\t", stringsAsFactors=FALSE)
+
+tissue_key <- tissue_key %>% 
+  mutate(tissue_i = as.numeric(as.factor(TissueSystem))) %>%
+  left_join(., data.frame(
+    col=c(RColorBrewer::brewer.pal(n=9, name = "Set1"), RColorBrewer::brewer.pal(n=8, name = "Set2")),
+    tissue_i=1:17)) %>% select(-tissue_i)
+
+
+specific_tissue_key <- tissue_key %>% filter(Tissue %in% c(
+  "Colon...Sigmoid",
+  "Colon...Transverse", 
+  "Esophagus...Mucosa", 
+  "Esophagus...Muscularis", 
+  "Heart...Left.Ventricle", 
+  "Kidney...Cortex", 
+  "Liver", 
+  "Skin...Not.Sun.Exposed..Suprapubic.", 
+  "Skin...Sun.Exposed..Lower.leg.", 
+  "Small.Intestine...Terminal.Ileum", 
+  "Spleen", 
+  "Stomach", 
+  "Whole.Blood")
+)
+
+data_path <- "GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_median_tpm.gct.gz"
+data_individuals_path <- "GTEx_Analysis_2017-06-05_v8_RNASeQCv1.1.9_gene_tpm.gct.gz"
+metadata_path <- "GTEx_Analysis_v8_Annotations_SampleAttributesDS.txt"
+metadata_metadata_path <- "GTEx_Analysis_v8_Annotations_SampleAttributesDD.xlsx"
+
+```
+
+```{r}
+options(timeout=500) 
+for (p in c(data_path, data_individuals_path, metadata_path, metadata_metadata_path)){
+  if (!file.exists(p)) download.file(destfile = p,  str_glue("https://storage.googleapis.com/gtex_analysis_v8/rna_seq_data/{p}"))
+}
+if(!file.exists("Homo_sapiens.GRCh38.104.protein_coding.gtf")) system("wget http://ftp.ensembl.org/pub/release-104/gtf/homo_sapiens/Homo_sapiens.GRCh38.104.chr.gtf.gz && gunzip -c Homo_sapiens.GRCh38.104.chr.gtf.gz | grep 'gene_biotype \"protein_coding\"' > Homo_sapiens.GRCh38.104.protein_coding.gtf")
+
+```
+
+
+
+```{R}
+# ignoring the version number
+pc_gene_list <- read.table(
+  "Homo_sapiens.GRCh38.104.protein_coding.gtf", header = FALSE, 
+  col.names = c("chr", "source", "type", "start", "end", "i", "dont", "remember", "annotation"), sep="\t") %>%  
+  filter(type=="gene") %>%
+  mutate(GeneName=gsub(".*gene_name (.*?);.*", "\\1.\\2", annotation)) %>% 
+  mutate(Name=gsub(".*gene_id (.*?);.*version (.*?);.*", "\\1", annotation)) %>% 
+  select(chr, start, end, Name, GeneName)
+
+```
+
+## Description of Data
+### Methods
+The following is taken from the methods section of the GTEx website's methods section^[<https://www.gtexportal.org/home/documentationPage>] (accessed 2021-04-02):
+
+> Alignment to the human reference genome GRCh38/hg38 was performed using STAR v2.5.3a, based on the GENCODE v26 annotation. Unaligned reads were kept in the final BAM file. Among multi-mapping reads, one read is flagged as the primary alignment by STAR. The alignment pipeline is available at https://github.com/broadinstitute/gtex-pipeline/tree/master/rnaseq 
+
+> Transcript Model
+>GENCODE 26 (https://www.gencodegenes.org/human/release_26.html ).
+
+>Collapsed Gene Model
+
+>Gene-level expression quantification was based on the GENCODE 26 annotation, collapsed to a single transcript model for each gene using a custom isoform collapsing procedure, comprising the following steps:
+
+>    Exons associated with transcripts annotated as “retained_intron” and “read_through” were excluded.
+>    Exon intervals overlapping within a gene were merged.
+>    The intersections of exon intervals overlapping between genes were excluded.
+>    The remaining exon intervals were mapped to their respective gene identifier and stored in GTF format.
+
+>Code for generating the collapsed model is available at >https://github.com/broadinstitute/gtex-pipeline/tree/master/gene_model .
+
+>Quantification
+
+>Gene-level quantifications: read counts and TPM values were produced with RNA-SeQC v1.1.9 (DeLuca et al., Bioinformatics, 2012 ), using the following read-level filters:
+
+>    Reads were uniquely mapped (corresponding to a mapping quality of 255 for START BAMs).
+>    Reads were aligned in proper pairs.
+>    The read alignment distance was <=6 (i.e., alignments must not contain more than six non-reference bases).
+>    Reads were fully contained within exon boundaries. Reads overlapping introns were not counted.
+
+>These filters were applied using the “-strictMode” flag in RNA-SeQC.
+
+>The TPM values that are downloadable have not been normalized or corrected for any covariates.
+
+>Exon-level quantifications: for exon-level read counts, if a read overlapped multiple exons, then a fractional value equal to the portion of the read contained within that exon was allotted.
+
+>Transcript-level quantifications were calculated using RSEM v1.3.0.
+
+
+## Exploratory Analyses
+```{r}
+# first two lines are version number and file dimensions
+df <- read.csv(data_path, sep="\t", skip = 2, stringsAsFactors = FALSE)
+
+print("Unfiltered TPM Distribution")
+df %>% 
+  pivot_longer( names_to="tissue", values_to="TPM", -c(Name, Description)) %>%
+  pull(TPM) %>% summary() 
+
+print("TPM distribution after removing HBB")
+df %>%  
+  filter(!grepl("^HBB$", Description)) %>% 
+  pivot_longer( names_to="tissue", values_to="TPM", -c(Name, Description)) %>%  pull(TPM) %>% summary()
+
+
+df %>% 
+  mutate(is_mito = grepl("MT-", Description)) %>% 
+  pivot_longer( names_to="tissue", values_to="TPM", -c(Name, Description, is_mito)) %>%  
+  ggplot(., aes(x=is_mito, y=TPM)) +  geom_violin() + scale_y_log10()
+
+print("Top Genes by mean across tissues, non-mitrochondrial")
+df %>%  
+  filter(!grepl("MT-", Description)) %>% 
+  pivot_longer( names_to="tissue", values_to="TPM", -c(Name, Description)) %>% group_by(tissue) %>% filter(TPM==max(TPM)) %>%arrange(desc(TPM)) %>%  head(n=10)
+```
+
+Most expressed gene is hemoglobin gene HBB, at 267405 TPM. Mitochondrial genes were the highest expressed  genes in 48 of the tissues.  Excluding those mitochondrial genes, the top genes are shown in the table above.  MTATP6P1 is discussed briefly below, as it can be influenced by the rRNA depletion methods.
+
+
+
+### Sample Breakdown.
+The summarized data from GTEx v8 describes `r nrow(df)` genes across `r ncol(df)` tissues. 
+
+```{r table2, echo=FALSE, message=FALSE, warnings=FALSE, results='asis',width="50%"}
+tabl <- "
+|   |	N Tissues|	N Donors|	N Samples|
+|----|-----|----|---|
+|Total	|54	|948|	17382 |
+"
+cat(tabl) # output the table in a format good for HTML/PDF/docx conversion
+```
+
+
+The donors were 67.1% male, 84% white, and 68.1% older than 50 years.  The average number of samples per donor is around 19; the majority of brain tissue came from older patients.  More summary information can be found here: <https://www.gtexportal.org/home/tissueSummaryPage>. 
+
+
+
+```{r}
+#mdf <- read.csv(metadata_path, sep="\t")
+
+
+key <-  df[,c("Name", "Description")]
+
+tdf <- as.data.frame(t(df[,!colnames(df) %in% c("Name", "Description")]) )
+colnames(tdf) <- key$Name
+#row.names(tdf) 
+
+
+original_number_of_genes <- ncol(tdf)
+tdf <- tdf[,sapply(tdf, function(v) var(v, na.rm=TRUE)!=0)]
+print(paste("Number of non-varying genes removed:", original_number_of_genes-ncol(tdf)))
+
+
+sample_df_pca <- prcomp(tdf, center = TRUE,scale. = TRUE)
+
+screeplot(sample_df_pca, main="Skree plot of raw data")
+
+
+ggplot_pca(sample_df_pca, groups=rownames(tdf), labels=NULL, arrows=FALSE)
+
+top50_in_testis <- df %>% select(Name, Description, Testis) %>% top_n(50, wt=Testis) %>% arrange(Testis) %>% pull(Name)
+
+ggplot(df %>% filter(Name %in% top50_in_testis) %>%  pivot_longer( names_to="tissue", values_to="TPM", -c(Name, Description)) %>% left_join(., tissue_key, by=c("tissue"="Tissue")), aes(y=Description, x=reorder(tissue, as.numeric(as.factor(TissueSystem))), size=log1p(TPM), color=TissueSystem) ) + geom_point(alpha=.4) + theme(axis.text.x = element_text(angle=45, hjust=1)) + 
+  labs(title ="Top 50 expressed genes in testis by tissue ", x="Tissue", y="Gene") 
+```
+
+
+
+
+
+After excluding the non-varying positions, an initial PCA showed the testis to exhibit very different expression profiles to any other tissue.  Mitochondrial genes were found to be the most highly expressed, and expressed relatively consistently across tissue types (this could be quantified if needed). 
+
+
+```{r top_genes_no_mt}
+ggplot(df %>% filter(Name %in% top50_in_testis) %>%  filter(!grepl("MT-", Description)) %>%  pivot_longer( names_to="tissue", values_to="TPM", -c(Name, Description)) %>% left_join(., tissue_key, by=c("tissue"="Tissue")), aes(y=Description, x=reorder(tissue, as.numeric(as.factor(TissueSystem))), size=log1p(TPM), color=TissueSystem) ) + geom_point(alpha=.4) + theme(axis.text.x = element_text(angle=45, hjust=1))+
+    labs(title="Top 50 expressed genes in testis by tissue, excluding mitochondiral", x="Tissue", y="Gene") 
+
+```    
+
+Apart from the Mitochondrial genes, the genes over-represented in the testes include a number of genes involved in spermatogensis and function including but not limited to the following:
+
+- CRISP2: sperm function regulator <https://pubmed.ncbi.nlm.nih.gov/30759213/>
+- CMTM2: sperm function (in mice) <https://pubmed.ncbi.nlm.nih.gov/30996358/>
+- ODF1: sperm flagelar protein
+- SMCP: sperm mitochondrial protein <https://pubmed.ncbi.nlm.nih.gov/25336347/>
+- PRM1: protamine <https://pubmed.ncbi.nlm.nih.gov/25336347/>
+
+And some with no immediate link:
+
+ - LELP1: cornified envelop protein <https://pubmed.ncbi.nlm.nih.gov/27304082/>
+ 
+This begs the questions about whether this analysis should be stratified by sex (ie, going back to the individual patient's data and filtering accordingly), but for now, the testis will be removed.
+
+```{r pca_no_t_no_mt}
+no_t_tdf  <- tdf[rownames(tdf) != "Testis", ]
+no_t_tdf  <- no_t_tdf[, colnames(no_t_tdf) %in% key[!grepl("MT-", key$Description),"Name"]]
+no_t_tdf <- no_t_tdf[, sapply(no_t_tdf, function(v) var(v, na.rm=TRUE)!=0)]
+print(paste("Number of non-varying genes removed after removing Testis sample and MT- genes:", original_number_of_genes-ncol(no_t_tdf)))
+
+no_t_pca_t <- prcomp(t(no_t_tdf), center = TRUE,scale. = TRUE)
+no_t_t_key <- key %>% filter(Name %in% colnames(no_t_tdf)) 
+
+
+no_t_tissue_key <- tissue_key %>% filter(Tissue != "Testis")
+plot(no_t_pca_t)
+ggplot_pca(no_t_pca_t, groups=as.character(no_t_t_key$Description))
+```
+
+The main gene driving variation on the first two principal components (MTATP6P1, on chr1) was noted in another study that it may be differentially extracted depending on whether the RNA extraction kit used polyA selection or rRNA depletion:
+
+ > We were perplexed by the large expression difference for the pseudogene MTATP6P1 (mitochondrially encoded ATP synthase 6 pseudogene 1) between the two protocols, but found that the expression pattern of MTATP6P1 was nearly the same as its functional counterpart MT-ATP6 (mitochondrially encoded ATP synthase 6) across the different samples (Supplementary Fig. S3). Therefore, we speculated that the Globin-Zero Gold rRNA Removal Kit likely depleted both the MT-ATP6 and MTATP6P1 transcripts, and that is why the polyA+selection method reported high expression of MTATP6P1, while the rRNA depletion approach did not. <https://www.nature.com/articles/s41598-018-23226-4>
+  
+So, MTATP6P1 is discarded.
+  
+ACTB (chr7) appears to be less expressed in heart and skeletal muscle tissue than in other tissues;this seems counter-intuitive due to the role of actin in muscle contraction.
+
+FTL (chr19) ( ferritin light chain)  was a major contributor to the variance explained by the first principal component.
+
+```{r genewise_and_tissuewise_pca}
+no_t_tdf  <- tdf[rownames(tdf) != "Testis", ]
+#ncol(no_t_tdf)
+no_t_tdf  <- no_t_tdf[, colnames(no_t_tdf) %in% key[!grepl("MT-", key$Description),"Name"]]
+#ncol(no_t_tdf)
+no_t_tdf  <- no_t_tdf[, colnames(no_t_tdf) != key[grep("^MTATP6P1$", key$Description),"Name"]]
+#ncol(no_t_tdf)
+no_t_tdf <- no_t_tdf[, sapply(no_t_tdf, function(v) var(v, na.rm=TRUE)!=0)]
+#ncol(no_t_tdf)
+print(paste("Number of non-varying genes removed after removing Testis sample, MT- genes, and MTATP6P1:", original_number_of_genes-ncol(no_t_tdf)))
+#no_t_pca <- prcomp(no_t_tdf, center = TRUE,scale. = TRUE)
+no_t_pca_t <- prcomp(t(no_t_tdf), center = TRUE,scale. = TRUE)
+no_t_t_key <- key %>% filter(Name %in% colnames(no_t_tdf)) 
+
+no_t_tissue_key <- tissue_key %>% filter(Tissue != "Testis")
+#plot(no_t_pca)
+plot(no_t_pca_t, main="Skree plot of gene-wise variances")
+#ggplot_pca(no_t_pca, choices = c(1, 2),   group=no_t_tissue_key$Tissue, ellipse = T, labels=NULL, arrows=True)
+ggplot_pca(no_t_pca_t, groups=as.character(no_t_t_key$Description), arrows=T) + 
+  labs(title = "Gene-wise PCA plot, PCs 1 and 2")
+```
+
+Removing MTATP6P1 still leaves most of the variance explained by the first principal component. `GFAP` is gene associated with the CNS <https://pubmed.ncbi.nlm.nih.gov/624958/>, and could be driving the some of the variation between brain and non-brain tissues. Similarly, DES desmin encodes for a muscle-specific protein that could be driving some of the difference between 
+
+```{r pcas_12_and_23}
+(ggplot_pca(no_t_pca_t, choices = c(3,2), groups=as.character(no_t_t_key$Description), arrows=FALSE) + 
+ 
+ggplot_pca(no_t_pca_t, choices = c(3,2), ellipse =TRUE) )+ 
+  plot_annotation(title = "Gene-wise PCA plot, PCs 3 and 2 ")
+```
+
+
+
+```{r, eval=FALSE}
+
+no_t_pca <- prcomp(no_t_tdf, center = TRUE,scale. = TRUE)
+
+#ggplot_pca(no_t_pca, choices = c(1,2), labels=no_t_tissue_key$TissueSystem, arrows=FALSE)
+ggplot_pca(no_t_pca, choices = c(1,2), labels=no_t_tissue_key$Tissue, arrows=FALSE) + plot_annotation(title = "Samplewise PCA plot, PCs 1 and 2")
+```
+
+
+
+### Identifying anomylous genes
+
+As the PCAs presented up to this point have used centered and scaled values (which is intuitively inappropriate for RNA-seq where differences in expression is paramount), the overall expression profiles were assessed to determine some sensible thresholds.   
+
+```{r, fig.width=12, fig.height=12, overall_profiles}
+set.seed(123)
+select_tissues <- colnames(df)[c(2:51, 53:56)][sample(1:54, size=10)]
+
+(
+  ggplot(df %>% pivot_longer(names_to="tissue", values_to="TPM", -c(Name, Description)) %>% 
+            filter(tissue %in% select_tissues) %>% 
+            filter(TPM > 0), aes(x=TPM)) + 
+     geom_histogram(bins = 100) + 
+     facet_wrap(~tissue, scales="free_x", ncol=1) +
+    ggplot(df %>% pivot_longer(names_to="tissue", values_to="TPM", -c(Name, Description)) %>% 
+              filter(tissue %in% select_tissues) %>% 
+              filter(TPM > 0) %>% filter(TPM < 3), aes(x=TPM)) + 
+       geom_histogram(bins = 100) + 
+       facet_wrap(~tissue, scales="free_x", ncol=1) +
+    ggplot(df %>% pivot_longer(names_to="tissue", values_to="TPM", -c(Name, Description)) %>% 
+              filter(tissue %in% select_tissues) %>% 
+              filter(TPM >= 3) %>% filter(TPM < 1000) , aes(x=TPM)) + 
+       geom_histogram(bins = 100) + 
+       facet_wrap(~tissue, scales="free_x", ncol=1) +
+    ggplot(df %>% pivot_longer(names_to="tissue", values_to="TPM", -c(Name, Description)) %>% 
+              filter(tissue %in% select_tissues) %>% 
+              filter(TPM >= 1000) %>% filter(TPM < 100000) , aes(x=TPM)) + 
+       geom_histogram(bins = 100) + 
+       facet_wrap(~tissue, scales="free_x", ncol=1)
+) + plot_layout(ncol=4) + plot_annotation(title="Expression histograms of select tissues", tag_levels = "A", subtitle="(A) 0 < TPM ; (B) 0 < TPM < 3; (C)  3 < TMP < 1000; (D) 1000 < TPM < 100000") 
+
+```
+
+The following figure shows the overall trends of expression across 10 of the 54 tissue types. This appears to be consistent with a negative binomial distribution typically used to model RNAseq experiments, as they are count based with unequal variances and means.  The majority of the genes are not expressed. 
+
+
+```{r}
+
+
+plot_thresholded_PCA <- function(df_=df, lo=0, pcs=c(1, 2), hi=10000, scale=FALSE, Transp=FALSE, VERBOSE=FALSE, Arrows=FALSE, return_ob=FALSE){
+  # plot 
+  orig <- nrow(df_)
+  df_ <- df_[!grepl("^RPS", df_$Description), ]
+  df_ <- df_[!grepl("MT-", df_$Description), ]
+  df_ <- df_[!grepl("^HBB$", df_$Description), ] 
+  df_ <- df_[!grepl("^MTATP6P1$", df_$Description), ]
+  df_ <- df_[, colnames(df_) != "Testis" ]
+  key_ <-  df_[,c("Name", "Description")]
+  
+  tdf_ <- as.data.frame(t(df_[,!colnames(df_) %in% c("Name", "Description")]) )
+  colnames(tdf_) <- key_$Name
+  
+  df_thresholded <- as.data.frame(sapply(tdf_, function(x) ifelse(x < lo, lo, ifelse(x > hi, hi, x))))
+  df_thresholded_no_invariate <- df_thresholded[, sapply(df_thresholded, function(v) var(v, na.rm=TRUE)!=0)]
+  if (VERBOSE) print(paste(
+    "Total genes: ", orig, "; genes retained after filtering:", 
+    ncol(df_thresholded_no_invariate)))
+  
+  this_genes_key <- key_ %>% filter(Name %in% colnames(df_thresholded_no_invariate)) 
+  this_tissue_key <- tissue_key %>% filter(Tissue %in% colnames(df_))
+  cap <- paste(lo, "> TPM >", hi, ";", ncol(df_thresholded_no_invariate), "genes considered after filtering,", ifelse(scale, " scaled", "non-scaled")) 
+  if(Transp){
+    x <- prcomp(t(df_thresholded_no_invariate), center = TRUE,scale. = scale)
+    p <- ggplot_pca(x, choices = pcs, groups=as.character(this_genes_key$Description), arrows=Arrows) + labs(subtitle=cap)
+  } else{
+    x <- prcomp(df_thresholded_no_invariate, center = TRUE,scale. = scale)
+    p <- ggplot_pca(x, choices = pcs, groups=as.character(this_tissue_key$Tissue), arrows=Arrows)  + labs(subtitle=cap)
+  }
+  if (return_ob){
+    return(list(pcaob=x, plot=p))
+  } else{
+    return(p)
+  }
+}
+
+
+```
+
+
+The two-panel figure below shows that most of the variation in an unscaled PCA of the gene expression profiles is due to a very small number of highly-expressed genes. Removing those genes with a TPM greater than 2500 highlights more of the underlying structure of the samples without unduly weighing those few highly-expressed genes. 
+
+```{r, main_driverse_pca}
+
+(
+  plot_thresholded_PCA(hi=1e10, lo=0) +
+  plot_thresholded_PCA(hi=1000000, lo=2500)
+  ) + plot_annotation(title = "Without scaling, most variation can be explined by a small number of highly-expressed genes") 
+plot_thresholded_PCA(hi=2500, lo=1) + labs(title="Tissue-wise PCA with filtered gene list")
+```
+
+
+
+```{r, eval=FALSE}
+ggplot(df %>%  filter(!grepl("MT-", Description)) %>% filter(!grepl("^MTATP6P1$", Description)) %>%    
+         filter(!grepl("^HBB$", Description)) %>% 
+         pivot_longer( names_to="tissue", values_to="TPM", -c(Name, Description)) %>% filter(TPM >= 2 ) %>% filter (TPM < 100), aes(x=TPM)) + geom_histogram(bins=100)+
+  facet_wrap(~tissue, ncol=3) +
+  labs(title=" ") 
+  
+
+```
+
+<!-- ### Subsetting to the Tissues of interest -->
+
+
+The following plot is the same as that show above, after selecting tissues of interest based on the available samples for the study. 
+```{r, specific_tissues_PCAs}
+specific_df <-  df %>% select(Name, Description, specific_tissue_key$Tissue)
+filtered_results = plot_thresholded_PCA(df=specific_df,  hi=2500, lo=1, return_ob=TRUE)
+filtered_results$plot
+plot_thresholded_PCA(df=specific_df, pcs=c(3, 2),  hi=2500, lo=1)
+
+```
+
+
+###  PCA after  gene variance filtering
+Instead of using PCA to reduce the number of dimensions (genes or gene groups, essentially), an alternative approach is to select a number of genes with the highest variance.  The following plots take an approach where a subset of 50  genes exhibiting the maximum variance across tissues.
+
+
+
+
+```{r top_variance_heatmap}
+
+
+# BiocManager::install("genefilter")
+ 
+hmcol <- colorRampPalette(brewer.pal(9, "GnBu"))(100)
+
+gene_variances <-  genefilter::rowVars(df[,3:ncol(df)])
+df_var <- cbind(df, gene_variances)
+
+tissues <- tissue_key %>% filter(!is.na(Tissue) & Tissue != "") %>% filter(Tissue != "Testis") %>% pull(TissueSystem)
+top_var_df <- df_var %>%
+  filter(!grepl("MT-", Description)) %>%
+  filter(!grepl("^HBB$", Description)) %>%
+  filter(!grepl("^MTATP6P1$", Description)) %>%
+  select(-Testis) %>%
+  top_n(100, wt=gene_variances) %>%
+  column_to_rownames("Description") %>% 
+  select(-gene_variances, -Name)
+
+groups = levels(as.factor(tissues))
+
+cols <- palette(c(RColorBrewer::brewer.pal(12, "Paired"), RColorBrewer::brewer.pal(8, "Dark2")))[as.numeric(as.factor(tissues))]
+
+
+heatmap.2(as.matrix(top_var_df), 
+          trace="none", 
+          ColSideColors=cols, 
+          col=hmcol)
+legend(.5,1.1, unique(groups), col=unique(cols), pch=15, ncol = 3, cex=.8, xpd=TRUE, x.intersp=.3, y.intersp=.5, text.width=.06)
+
+dev.off()
+```
+Ignoring the mitochondrial genes, HBB, and MTATP6P1, the pancreas and whole blood result in the deepest branches in the tissue-wise clustering, which is in agreement with previous PCA plots.
+
+
+The following plot shows the relationships after imposing a limit on the maximum expression across genes. 
+
+```{r capped_expression_heatmap}
+
+gene_variances <-  rowVars(df[,3:ncol(df)])
+hi=2500
+lo=1
+tmp_df <- df
+tmp_df <- as.data.frame(sapply(tmp_df[, 3:ncol(tmp_df)], function(x) ifelse(x < lo, lo, ifelse(x > hi, hi, x))))
+tmp_df <- cbind(df[, c("Name", "Description")], tmp_df)
+gene_variances <-  genefilter::rowVars(tmp_df[,3:ncol(tmp_df)])
+df_var_capped <- cbind(tmp_df, gene_variances)
+
+
+#tissues <- tissue_key %>% filter(Tissue != "Testis") %>% pull(TissueSystem)
+top_var_df_capped <- df_var_capped %>%
+  filter(!grepl("MT-", Description)) %>%
+  filter(!grepl("^HBB$", Description)) %>%
+  filter(!grepl("^MTATP6P1$", Description)) %>%
+  select(-Testis) %>% 
+  top_n(50, wt=gene_variances) %>%
+  column_to_rownames("Description") %>% 
+  select(-gene_variances, -Name)
+
+
+coldf <-  data.frame(cor_cols = colnames(top_var_df_capped)) %>% left_join(., tissue_key, by=c("cor_cols"="Tissue")) 
+
+heatmap.2(as.matrix(top_var_df_capped), 
+          trace="none", key=TRUE, srtCol=45,
+          ColSideColors=coldf$col, offsetRow=-0,offsetCol=-.5,
+          col=hmcol)#, margins = c(1, 1))
+legend(.5,1.1, unique(coldf$TissueSystem), col=unique(coldf$col), pch=15, ncol = 3, cex=.8, xpd=TRUE, x.intersp=.3, y.intersp=.5, text.width=.06)
+ 
+dev.off()
+```
+
+## Correlations
+### Spearman Correlation
+
+
+
+```{r spearman_heatmap}
+make_tissue_heatmap <- function(mat, subset=FALSE, pngpath=NA, title=""){
+  
+  my_palette <- colorRampPalette(c("black", "green"))(n = 40)
+  col_breaks <-seq(0,1,(1-0)/(40))^.7
+  
+
+  if(subset){
+    mat <- mat[colnames(mat) %in%specific_tissue_key$Tissue,
+                        colnames(mat) %in% specific_tissue_key$Tissue]
+  }
+  coldf <-  data.frame(cor_cols = colnames(mat)) %>% left_join(., tissue_key, by=c("cor_cols"="Tissue")) 
+  if (!is.na(pngpath)){
+    png(filename = pngpath, width=8, height=8, units = "in", res = 300)
+  }
+  dist.identity <- function(x) as.dist(x)
+  heatmap.2(mat,
+            main = title,
+            notecol = "gray40",
+            density.info="none",  # turns off density plot inside color legend
+            notecex=0.6,
+            trace="none",         # turns off trace lines inside the heat map
+            col=my_palette,       # use on color palette defined earlier 
+            distfun=dist.identity,
+            hclustfun = hclust.single,
+            breaks=col_breaks,    # enable color transition at specified limits
+            key=TRUE, srtCol=45,
+            margins=c(10, 10),
+            RowSideColors=coldf$col, offsetRow=-0,offsetCol=-.5)
+  legend(.8,1.1, unique(coldf$TissueSystem), col=unique(coldf$col), pch=15, ncol = 3, cex=.8, xpd=TRUE, x.intersp=.3, y.intersp=.5, text.width=.06)
+  if (!is.na(pngpath)){
+    dev.off()
+  }
+}
+
+df_spear <- df %>% 
+  filter(!grepl("MT-", Description)) %>%
+  filter(!grepl("^HBB$", Description)) %>%
+  filter(!grepl("^MTATP6P1$", Description)) %>%
+  select(-Testis,  -Description) %>%
+  filter(gsub("(.*)?\\..*", "\\1", Name) %in% pc_gene_list$Name) %>% 
+  pivot_longer(names_to="tis", values_to="val", -Name) %>% 
+  filter(val!=0) %>% 
+  pivot_wider(names_from="tis", values_from="val") %>%
+  select(-Name) %>% 
+  as.matrix()
+# this is removing non-expressed genes
+#df_spear_no_na <- df_spear[rowSums(is.na(df_spear)) == 0, ] 
+# this is removing genes non-expressed in more than half of the samples
+df_spear_no_na <- df_spear[rowSums(is.na(df_spear)) <= (.5*ncol(df_spear)), ] 
+
+cormatrix = rcorr(df_spear_no_na, type='spearman')[[1]]
+cormatrix_subset <- cormatrix[colnames(cormatrix) %in% specific_tissue_key$Tissue,
+                        colnames(cormatrix) %in% specific_tissue_key$Tissue]
+
+
+make_tissue_heatmap(mat=cormatrix, subset=FALSE, pngpath=NA, title="Spearman Correlations")
+make_tissue_heatmap(mat=cormatrix, subset=TRUE, pngpath=NA, title="Spearman Correlations\nsubset to tissues of interest")
+
+df_spear_top_varying <- df %>% 
+  filter(!grepl("MT-", Description)) %>%
+  filter(!grepl("^HBB$", Description)) %>%
+  filter(!grepl("^MTATP6P1$", Description)) %>%
+  filter(Description %in% rownames(top_var_df)) %>%
+  select(-Testis,  -Description) %>%
+  pivot_longer(names_to="tis", values_to="val", -Name) %>% 
+  filter(val!=0) %>% 
+  pivot_wider(names_from="tis", values_from="val") %>%
+  select(-Name) %>% 
+  as.matrix()
+
+cormatrix_top_varying = rcorr(df_spear_top_varying, type='spearman')[[1]]
+
+make_tissue_heatmap(mat=cormatrix_top_varying, subset=FALSE, pngpath=NA, title="Spearman Correlations")
+
+make_tissue_heatmap(mat=cormatrix_top_varying, subset=TRUE, pngpath=NA, title="Spearman Correlations\nfiltered to top 100 genes by variance")
+```
+
+```{r}
+df_for_jsd<- df %>% 
+  filter(!grepl("MT-", Description)) %>%
+  filter(!grepl("^HBB$", Description)) %>%
+  filter(!grepl("^MTATP6P1$", Description)) %>%
+  select(-Description) %>%
+  pivot_longer(names_to="tis", values_to="val", -Name) %>% 
+  filter(!is.na(val)) %>% 
+  pivot_wider(names_from="tis", values_from="val", values_fill = 0) %>%
+  select(-Name) %>% 
+  as.matrix()
+
+df_jsd_no_na <- df_for_jsd[rowSums(is.na(df_for_jsd)) == 0 , ] 
+jsd_cormatrix <- JSD(t(df_jsd_no_na), est.prob = "empirical")
+rownames(jsd_cormatrix) <- colnames(jsd_cormatrix) <- colnames(df_jsd_no_na)
+
+
+make_tissue_heatmap(mat=jsd_cormatrix, title="JSD")
+make_tissue_heatmap(mat=jsd_cormatrix, subset = TRUE, title="JSD")
+
+df_for_jsd_top_varying <- df %>% 
+  filter(!grepl("MT-", Description)) %>%
+  filter(!grepl("^HBB$", Description)) %>%
+  filter(!grepl("^MTATP6P1$", Description)) %>%
+  filter(Description %in% rownames(top_var_df)) %>%
+  select(-Description) %>%
+  pivot_longer(names_to="tis", values_to="val", -Name) %>% 
+  filter(!is.na(val)) %>% 
+  pivot_wider(names_from="tis", values_from="val", values_fill = 0) %>%
+  select(-Name) %>% 
+  as.matrix()
+df_jsd_no_na_top_varying <- df_for_jsd_top_varying[rowSums(is.na(df_for_jsd_top_varying)) == 0 , ] 
+
+jsd_cormatrix_top_varying <- JSD(t(df_jsd_no_na_top_varying), est.prob = "empirical")
+
+rownames(jsd_cormatrix_top_varying) <- colnames(jsd_cormatrix_top_varying) <- colnames(df_jsd_no_na_top_varying)
+
+make_tissue_heatmap(mat=jsd_cormatrix_top_varying, subset = TRUE, title="JSD\n100 top varying genes")
+
+
+```
+
+
+
+## Filtering Scheme
+### Filtering according to PMID: 25954002
+One paper (https://www.ncbi.nlm.nih.gov/labs/pmc/articles/PMC4547472/) describes an alternative filtering approach:
+
+ (1) Removed non-protein coding genes
+ (2) Removed genes with low expression (RPKM<10)  and  low  variation  (Fold  Change  <  2  and  Delta  <  10)  across  samples
+ (3) Applied ceiling to extremely high RPKM values (RPKM ≥10,000), 
+ (4) Rank-normalized expression values.
+
+```{R}
+metadata_raw <-  read.csv(metadata_path, sep="\t", skip = 0, stringsAsFactors = FALSE) %>% 
+  mutate(Tissue=gsub("[^[:alnum:]]", ".", SMTSD)) %>% 
+  mutate(patid = gsub("(.*?)-(.*?)-.*", "\\1-\\2", SAMPID)) 
+
+#  there are non-RNAseq samples in the metadata that are not in the data dump.  Here, I read in the headers, and filter out metadata where the sample id is missing, to confirm that all the samples missing were non-rnaseq samples
+# df_ind_cols <- colnames(data.table::fread( data_individuals_path,  sep="\t",  skip = 2, nrows = 1))
+# system(str_glue("gunzip --keep {data_individuals_path}"))
+# system(str_glue("head -n3 {gsub('.gz', '', data_individuals_path)} | tail -n1 > tmp_header.tsv"))
+# df_ind_cols <- unlist(read.table("tmp_header.tsv")[1, ])
+# table(metadata_raw$SAMPID %in% df_ind_cols)
+# metadata_raw[!metadata_raw$SAMPID %in% df_ind_cols] %>% View()
+# table(metadata_raw[!metadata_raw$SAMPID %in% df_ind_cols, "SMAFRZE"] )
+# table(metadata_raw$SMAFRZE )
+
+ggplot(metadata_raw %>% left_join(tissue_key, by=c("Tissue"="Tissue")) %>% sample_frac(.4),
+       aes(y=reorder(Tissue, SMRIN), x=SMRIN, color=SMATSSCR, size=SMATSSCR)) + 
+  geom_boxplot(aes(fill=col),color="black", outlier.color = NA, size=.5) +
+  #geom_point(alpha=.3, size=2, position = position_nudge(y=.3)) + 
+  geom_jitter(alpha=.3, size=2, width = .01, height = 0) + 
+  scale_x_continuous(limits=c(4, 10)) +
+  scale_color_viridis_c() +
+    scale_fill_manual(
+      values = tissue_key$col,
+      limits = tissue_key$col,
+      labels = tissue_key$TissueSystem, guide="none") 
+
+## NOTE: this loses kidey becasue there are no high quality RNA samples without autolysis  (SMATSSCR == 0 )
+metadata <- metadata_raw  %>% 
+  filter(SMRIN > 7 | SMTS=="Kidney")  %>% 
+  filter(SMATSSCR == 0 | (is.na(SMATSSCR) & SMTSD == "Whole Blood") |  SMTS =="Kidney") %>% 
+  filter(SMRDLGTH ==76) %>% 
+  filter(SMAFRZE == "RNASEQ") %>% 
+  right_join(specific_tissue_key) %>% 
+  group_by(patid) %>%
+  filter(n() >= 5)  %>% 
+  ungroup()
+
+table(metadata$patid)
+
+
+# get all samples  for eligible patients
+tmpsampids <- metadata_raw %>% filter(patid %in% metadata$patid) %>% pull(SAMPID) %>% unique()
+#df_ind <- data.table::fread( data_individuals_path,  sep="\t",  skip = 2, select=c("Name", "Description", tmpsampids))#unique(metadata$SAMPID) ))
+df_ind <- data.table::fread( data_individuals_path,  sep="\t",  skip = 2, select=c("Name", "Description", unique(metadata$SAMPID) ))
+df <- read.csv(data_path, sep="\t", skip = 2, stringsAsFactors = FALSE)
+
+
+# 
+
+df_ind_filt <- df_ind %>% 
+  filter(!grepl("MT-", Description)) %>%
+  filter(!grepl("^HBB$", Description)) %>%
+  filter(!grepl("^MTATP6P1$", Description)) %>%
+  filter(gsub("(.*)?\\..*", "\\1", Name) %in% pc_gene_list$Name) %>% 
+  pivot_longer(names_to="SAMPID", values_to="val", -c(Name, Description)) %>% 
+  left_join(., metadata %>% select(SAMPID, Tissue, patid)) %>%
+  select(-SAMPID, -Description)
+
+df_filt <- df %>% 
+  filter(!grepl("MT-", Description)) %>%
+  filter(!grepl("^HBB$", Description)) %>%
+  filter(!grepl("^MTATP6P1$", Description)) %>%
+  filter(gsub("(.*)?\\..*", "\\1", Name) %in% pc_gene_list$Name) %>% 
+  pivot_longer(names_to="Tissue", values_to="val", -c(Name, Description)) %>% 
+  select(-Description) %>% 
+  mutate(patid="All")
+
+gtex_filt <- rbind(df_filt, df_filt %>% filter(Tissue %in% specific_tissue_key$Tissue) %>% mutate(patid="Tissues_in_TCR"),  df_ind_filt)
+
+
+gtex_patients <- unique(gtex_filt$patid)
+names(gtex_patients) <- gtex_patients
+gtex_filt_ist <- lapply(gtex_patients, function(x){
+  gtex_filt %>% filter(patid == x) %>% 
+  filter(val!=0) %>% 
+  pivot_wider(names_from="Tissue", values_from="val") %>%
+  select(-Name, -patid) %>% 
+  as.matrix()
+}
+)
+
+
+filter_corr_and_dend <- function(x, verb=FALSE, corrtype="spearman"){
+  if (verb) print(dim(x))
+  # limit to greater than 10 TPM
+  x[x < 10] <- NA
+  x[x > 10000] <- 10000
+  if (verb) print(dim(x))
+  # remove genes with NA in more than half of samples
+  tmp <- x[rowSums(is.na(x)) <= (.5*ncol(x)), ]
+  if (verb) print(dim(tmp))
+  # see https://f1000research.com/articles/5-1438/v2
+  # remove lo variaion
+  # sd.v <- apply(tmp,1,function(x) sd(x, na.rm=TRUE))
+  # tmp<-tmp[sd.v > .25, ]
+  # remove low fold change
+  delta <- apply(tmp,1,function(x) {max(x, na.rm=TRUE) - min(x, na.rm=TRUE) })
+  fc <- apply(tmp,1,function(x) {max(x, na.rm=TRUE)/min(x, na.rm=TRUE)})
+  sd.v <- apply(tmp,1,function(x) sd(x, na.rm=TRUE))
+  tmp <- tmp[delta > 10 | fc > 2, ]
+  if (verb) print(dim(tmp))
+  if (corrtype == "spearman"){
+    corr_ <- rcorr(tmp, type='spearman')[[1]]
+    hclust_col_dists <- hclust(as.dist(1-corr_), method = "single") 
+  } else if(corrtype == "JSD") {
+    df_jsd_no_na <- tmp[rowSums(is.na(tmp)) == 0 , ] 
+     corr_ <- JSD(t(df_jsd_no_na), est.prob = "empirical")
+    rownames(corr_) <- colnames(corr_) <- colnames(df_jsd_no_na)
+    hclust_col_dists <- hclust(as.dist(corr_), method = "single") 
+  } else{
+    stop(str_glue("Unsupported metric: {corrtype}"))
+  }
+  dend2 <- hclust_col_dists %>% as.dendrogram
+  labels_colors(dend2) <- data.frame(Tissue = labels(dend2)) %>%
+    left_join(., tissue_key) %>% pull(col)
+  list(dend2, corr_)
+}
+
+spear_individuals_dist_list <- lapply(gtex_filt_ist, function(x){
+  filter_corr_and_dend(x, verb=FALSE, corrtype = "spearman")
+})
+jsd_individuals_dist_list <- lapply(gtex_filt_ist, function(x){
+  filter_corr_and_dend(x, verb=FALSE, corrtype = "JSD")
+})
+
+
+plist = list(jsd=list(), spearman=list())
+plistheat = list(jsd=list(), spearman=list())
+    
+make_ticks_df <- function(dendr, dofilter=FALSE, tick_pos= seq(0, 1, .25)){
+  maxheight = sort(stats::cophenetic(dendr), decreasing = TRUE)[1]
+  ticks=data.frame(xorig=tick_pos, x=tick_pos - (1-maxheight),
+                   lab=rev(tick_pos),  yend=rep(.1, length(tick_pos)))
+  if (dofilter){
+    #ticks %>% filter(x > min(as.phylo(dendr)$edge.length*2))
+    ticks %>% filter(lab <= (maxheight + .1))
+  } else{
+    ticks
+  }
+}
+
+
+corrtypes <- c("spearman", "jsd")
+for (corrtype in corrtypes){
+  if(corrtype == "spearman"){
+    dist_list  <- spear_individuals_dist_list
+    color_min <- min(sapply(dist_list, function(x) {min(x[[2]])}))
+    color_max <- max(sapply(dist_list, function(x) {max(x[[2]])}))
+  } else {
+    dist_list <- jsd_individuals_dist_list
+    color_min <- min(sapply(dist_list, function(x) {min(x[[2]])}))
+    color_max <- max(sapply(dist_list, function(x) {max(x[[2]])}))
+  }
+  for (i in 1:length(dist_list) ){
+    tmp <- ape::as.phylo(dist_list[[i]][[1]])
+    
+    tmp$edge.length <- tmp$edge.length*2
+    ticks <- make_ticks_df(dendr = dist_list[[i]][[1]],dofilter =  FALSE)
+    
+    # see  https://stackoverflow.com/questions/58492013/possible-to-force-non-occurring-elements-to-show-in-ggplot-legend
+    # for why we use "limits" not "breaks" in the manual color scale
+    (p <- ggtree(tmp)  %<+% specific_tissue_key + xlim(min(ticks$x), .9) +
+        geom_tiplab(aes(color=TissueSystem), 
+                    offset = 0.01,#(1-max(tmp$edge.length)) + .01, 
+                    align = T, linetype = NA) +
+        geom_tippoint() +
+        #geom_vline(xintercept = min(ticks$x))+
+        labs(title=gtex_patients[i]) + 
+        scale_linetype(guide="none") + 
+        scale_color_manual(
+          values = specific_tissue_key$col,
+          limits = specific_tissue_key$TissueSystem,
+          labels = specific_tissue_key$TissueSystem) +
+        geom_segment(y=0, yend=0, x=min(ticks$x), xend=max(ticks$x)) + 
+        annotate(geom="text",        x=ticks$x, y=-.2, label=ticks$lab )   + 
+        geom_segment(data=ticks, aes(y=-yend, yend=0, x=x, xend=x ))
+    )
+    pmat<- ggplot(dist_list[[i]][[2]] %>%
+                    as.data.frame() %>% 
+                    rownames_to_column("x") %>% 
+                    pivot_longer(names_to="y", values_to = "val", -x), aes(x, y, fill=val)) + 
+      geom_tile() + 
+      coord_fixed(ratio=1) + 
+      geom_text(aes(label=round(val, 2)), color="grey50", size=4)+
+      scale_fill_viridis_c(option = "A", breaks=seq(0, 1, .2), limits=c(color_min, color_max)) +
+      guides(fill = guide_colourbar(direction = "horizontal")) + 
+      scale_y_discrete(position = "right", expand = c(0,0)) +
+      scale_x_discrete( expand = c(0,0)) +
+      labs(subtitle=corrtype) +
+      theme(axis.text.x = element_text(angle=45, hjust=1, size=9))
+    plist[[corrtype]][[i]] <- p
+    plistheat[[corrtype]][[i]] <- p +   pmat
+  }
+  names(plist[[corrtype]]) <- names(dist_list)
+  names(plistheat[[corrtype]]) <- names(dist_list)
+  
+}
+
+plist[[i+1]] <- patchwork::guide_area() 
+plistheat[[i+1]] <- patchwork::guide_area() 
+figs_dir <- file.path(paste0(Sys.Date(), "-figures"))
+dir.create(figs_dir)
+for (corrtype in corrtypes){
+  
+  ggsave(
+    wrap_plots(plistheat[[corrtype]], ncol = 4) + plot_layout(guides = "collect") ,
+    width=40, height=15, file=file.path(figs_dir, str_glue("GTEx_patients_heat_{corrtype}.pdf"))
+  )
+  ggsave(
+    wrap_plots(plist[[corrtype]], ncol = 4) + plot_layout(guides = "collect") ,
+    width=20, height=10, file=file.path(figs_dir, str_glue("GTEx_patients_{corrtype}.pdf"))
+  )  
+
+  for (specific in names(plist[[corrtype]])[1:2]){
+    ggsave(
+      plist[[corrtype]][[specific]],
+      width=7, height=12, 
+      file=file.path(figs_dir, str_glue("GTEx_{specific}_{corrtype}.pdf"))
+    )  
+    ggsave(
+      plistheat[[corrtype]][[specific]],
+      width=14, height=7, 
+      file=file.path(figs_dir, str_glue("GTEx_{specific}_heat_{corrtype}.pdf"))
+    )
+  }
+}
+ggsave(
+  plist[["jsd"]][["Tissues_in_TCR"]],
+  width=7, height=8, 
+  file=file.path(figs_dir, str_glue("GTEx_Tissues_in_TCR_JSD.pdf"))
+)  
+
+```
+
+
+```{r}
+objects_for_saving <- c(
+  "annotations", "corrtypes", "make_ticks_df",
+  "figs_dir", "filter_corr_and_dend", "gtex_filt", 
+  "hclust.ave", "plist", 
+  "hclust.complete", "hclust.single", "jsd_individuals_dist_list", "spear_individuals_dist_list",
+  "metadata",   "pc_gene_list",
+  "specific_tissue_key",  "tissue_key")
+
+save(list = objects_for_saving, file = "gtex_objects.RData")
+```
+ 
+ 
+ 
+
+```{r}
+gtex_agg_individuals <- df_ind %>%
+  filter(!grepl("MT-", Description)) %>%
+  filter(!grepl("^HBB$", Description)) %>%
+  filter(!grepl("^MTATP6P1$", Description)) %>%
+  filter(gsub("(.*)?\\..*", "\\1", Name) %in% pc_gene_list$Name) %>%
+  pivot_longer(names_to="SAMPID", values_to="val", -c(Name, Description)) %>%
+  left_join(., metadata %>% select(SAMPID, Tissue, patid)) %>%
+  select(-SAMPID, -Description) %>%
+  mutate(Tissue=paste(patid, "-", Tissue)) %>%
+  select(-patid) %>%
+  pivot_wider(names_from="Tissue", values_from="val") %>%
+  select(-Name) %>%
+  as.matrix()
+
+
+jsd_agg_dist_corr <- filter_corr_and_dend(gtex_agg_individuals, verb=FALSE, corrtype = "JSD")
+spear_agg_dist_corr <- filter_corr_and_dend(gtex_agg_individuals, verb=FALSE, corrtype = "spearman")
+
+for (metri in c("jsd", "spearman")){
+  tick_pos <- seq(0, 1, .1)
+  if (metri == "jsd"){
+    this_ob <- jsd_agg_dist_corr
+    tmpheight <- sort(stats::cophenetic(this_ob[[1]]), decreasing = TRUE)[1] 
+    ticks=data.frame(xorig=tick_pos, x=tick_pos - (1-tmpheight),
+                     lab=rev(tick_pos),  yend=rep(.2, length(tick_pos)))  
+    ticks <- ticks %>% filter(xorig >= min(1-this_ob[[2]]))
+  } else {
+    this_ob <- spear_agg_dist_corr
+    tmpheight <- sort(stats::cophenetic(this_ob[[1]]), decreasing = TRUE)[1] 
+    ticks=data.frame(xorig=tick_pos, x=tick_pos - (1-tmpheight),
+                     lab=rev(tick_pos),  yend=rep(.2, length(tick_pos)))  
+    ticks <- ticks %>% filter(xorig >= min(this_ob[[2]]))
+  }
+  tmp <- ape::as.phylo(this_ob[[1]])
+  tmp$edge.length <- tmp$edge.length*2
+  # need to do this in cases lacking single root
+  
+  
+  tmp_anno <- data.frame(sample_name=rownames(this_ob[[2]])) %>% 
+    mutate(
+      patient = gsub("(.*?) - .*", "\\1", sample_name),
+      tiss = gsub("(.*?) - (.*)", "\\2", sample_name),
+    )
+  # see  https://stackoverflow.com/questions/58492013/possible-to-force-non-occurring-elements-to-show-in-ggplot-legend
+  # for why we use "limits" not "breaks" in the manual color scale
+  (p <- ggtree(tmp)  %<+% tmp_anno  + xlim(min(ticks$x), max(ticks$x)*3) + 
+      geom_tiplab(offset = 0.05,#(1-max(tmp$edge.length)) + .01, 
+                  align = T, linetype = NA, size=3, 
+      ) +
+      geom_tippoint(position =position_nudge(x = 0.025), aes(color=patient, shape=tiss), size=3) +
+      labs(title="GTEx",
+           subtitle=str_glue("7 patients, distances based on {metri}")) + 
+      scale_linetype(guide="none") + 
+      scale_shape_manual(values=1:13)+
+      scale_color_brewer(palette = "Paired") + 
+      geom_segment(y=0, yend=0, x=min(ticks$x), xend=max(ticks$x)) + 
+  #    geom_vline(xintercept = max(tmp$edge.length)) +
+      theme(legend.position = c(.2, .6))+
+      annotate(geom="text",        x=ticks$x, y=-.5, label=ticks$lab )   + 
+      geom_segment(data=ticks, aes(y=-yend, yend=0, x=x, xend=x )) 
+  )
+  
+  
+  ggsave(
+    p,
+    width=8, height=18, file=file.path(figs_dir, str_glue("GTEx_samples_alltogether_{metri}.pdf"))
+  )
+}
+```
+
+
+
+

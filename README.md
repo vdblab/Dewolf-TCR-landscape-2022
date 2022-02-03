@@ -40,6 +40,5 @@ See soccin's repository for a description of this analysis. That repo is include
 
 ## GTEx comparison
 
-See nickp60's repository for a detailed description of processing the GTEx analysis and comparisons to the TCR profiles.
-
+The comparison between the TCR profiles and the GTEx transcription data are in `GTEx/`.  The documents there describe downloading, preprocessing the data, and generating the figures.
 
