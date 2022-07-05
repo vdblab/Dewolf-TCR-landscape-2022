@@ -1,3 +1,6 @@
 [submodule "GVHD-autopsy"]
 	path = GVHD-autopsy
 	url = https://github.com/soccin/GVHD-autopsy
+[submodule "GTEx"]
+	path = GTEx
+	url = https://github.com/nickp60/Dewolf-GTEx-TCR
