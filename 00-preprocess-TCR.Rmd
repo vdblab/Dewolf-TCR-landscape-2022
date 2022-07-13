@@ -1,0 +1,88 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+# Parsing TCR data downloaded from Adaptive Biotech
+
+Download the data as follows:
+- navigate to <https://clients.adaptivebiotech.com/pub/dewolf-2022-gvhd>
+- click explore this project
+- log in (making an account if needed)
+- click "Open in Analyses"
+- click "Analyses on the nav pane
+- select all
+- click export -> export Sample (NOT  V2!)
+- wait patiently
+- move downloaded zip to this repo, unpack, and set the `tcr_data_dir` variable below to that folder
+
+
+```{R}
+tcr_data_dir <- "sampleExport.2022-06-22_19-39-10/"
+```
+
+The resulting file `TCR/tcr_unified.csv` is used for later analyses including the GLIPH2 analysis.
+
+```{r tcr-raw-data-parsing}
+library(tidyverse)
+knitr::opts_chunk$set(echo = TRUE)
+
+dir.create("data/TCR", showWarnings = FALSE)
+
+tcr_raw_output <- file.path("data/TCR", "tcr_unified.csv")
+
+if (!file.exists(tcr_raw_output)){
+  raw_files <- dir(tcr_data_dir, full.names = TRUE)
+  if (length(raw_files) == 0){
+    stop(paste0("No files found within ", tcr_data_dir))
+  }
+  tcr_raw <- map(raw_files, .f=function(x){
+    # x = "sampleExport.2022-06-01_05-18-41//Balb-c_1_blood.tsv"
+    read.csv(x, sep = "\t") %>% mutate(sample_name=gsub("\\.tsv", "", basename(x)))
+  }) %>% bind_rows() %>% 
+    mutate(
+      #sample_name = gsub("T_cells", "Tcells", sample_name), 
+      org = case_when(
+        grepl("^Pt", sample_name) ~ "Human",
+        grepl("^Balb-c", sample_name) ~ "Mouse",
+        grepl("^Recipient_", sample_name) ~ "Mouse",
+        grepl("^Donor", sample_name) ~ "Mouse",
+        TRUE ~ "FixMe"),
+      samp_type = case_when(
+        grepl("^Pt", sample_name) ~ "Patient",
+        grepl("^Balb-c", sample_name) ~ "Healthy",
+        grepl("^Recipient_", sample_name) ~ "Recipient",
+        grepl("^Donor", sample_name) ~ "Donor",
+        TRUE ~ "FixMe"),
+      indv_type = case_when(
+        grepl("^Pt", sample_name) ~ "Recipient",
+        grepl("^Balb-c", sample_name) ~ "Recipient",
+        grepl("^Recipient_", sample_name) ~ "Recipient",
+        grepl("^Donor", sample_name) ~ "Donor",
+        TRUE ~ "FixMe"),
+      gvhd = case_when(
+        grepl("^Pt[A-G]", sample_name) ~ "GvHD",
+        grepl("^Recipient_", sample_name) ~ "GvHD",
+        grepl("^Balb", sample_name) ~ "noGvHD",
+        grepl("^Pt[H-J]", sample_name) ~ "noGvHD"),
+      indv_id = case_when(
+        samp_type == "Healthy"     ~ gsub(".*?_(\\d*?)_.*", "\\1", sample_name ),
+        samp_type == "Patient"   ~ gsub("Pt(.+?)_.*", "\\1", sample_name),
+        samp_type == "Donor"     ~ gsub(".*?_(\\d*?)_.*", "\\1", sample_name),
+        samp_type == "Recipient" ~ gsub("Recipient_tx(\\d*?)_(\\d+)_.*", "\\2", sample_name),
+        TRUE                     ~ "FixMe" 
+      ),
+      tissue = case_when(
+        samp_type == "Healthy"   ~ gsub(".*_\\d_(.*)$", "\\1", sample_name),
+        samp_type == "Patient"   ~ gsub("Pt._(.*)$", "\\1", gsub("_TCRB", "",   sample_name)),
+        samp_type == "Donor"     ~ "Tcells",
+        samp_type == "Recipient" ~ gsub(".*_D\\d+_(.*)$", "\\1", sample_name),
+        TRUE                     ~ "FixMe" 
+      ),
+      exp_rep =  ifelse(samp_type  == "Recipient", gsub("Recipient_tx(\\d*?)_(\\d+)_.*", "\\1", sample_name), NA),
+      collection_day = ifelse(samp_type == "Recipient", gsub("Recipient_tx.*D(\\d*?)_.*", "\\1", sample_name), NA)
+    )
+  
+  write.csv(tcr_raw, file = tcr_raw_output, row.names = FALSE)
+}
+```

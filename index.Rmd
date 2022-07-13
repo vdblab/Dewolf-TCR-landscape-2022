@@ -1,0 +1,27 @@
+---
+title: "GTEx/TCR comparisons for Dewolf, _et al_ 2022"
+date: "`r Sys.Date()`"
+output:
+  bookdown::gitbook: 
+    css: pagewidth.css
+    fig_width: 10
+    fig_height: 6
+editor_options: 
+  chunk_output_type: console
+documentclass: book
+site: bookdown::bookdown_site
+---
+# Introduction
+
+## Installation
+
+For reproducibility, `renv` was used to lock packages used.  After cloning the repo, restore from the lock file using `renv::restore()` to hopefully operate under the same environment.
+
+
+## Contents
+- `00-preprocess-TCR` describes how to download data from Adaptive and merges the raw files
+- `01-prepare-GTEx` downloads data from GTEx, generates some summary plots, and saves objects relevant for later figures
+- `02-prepare-TCR` generates the objects from the GTEx data and makes TCR tree figures
+- `03-figures` generates heatmaps, trees, and the GTEx/TCR comparison figures
+
+
