@@ -1,31 +1,31 @@
-tissue,tissue_label,system,col,gtex,plotgroup,new_col,shape
-blood,PBSCs,Blood,#D13B32,Whole.Blood,PBSCs,#cc3333,1
-autopsy_blood,PBSCs,Blood,#D13B32,Whole.Blood,PBSCs,#cc3333,1
-autopsy_marrow,Bone Marrow,Blood,#D13B32,,Bone Marrow,#cc3333,2
-Tcells,T-cells,Blood,#D13B32,Whole.Blood,T-cells,#A60000,3
-A_blood,PBSCs,Blood,#D13B32,Whole.Blood,PBSCs,#cc3333,1
-A_marrow,Bone Marrow,Lymphatic,#D13B32,,Bone Marrow,#cc3333,2
-pretx_blood,pre-tx PBMCs,Blood,#D13B32,Whole.Blood,pre-tx PBMCs,#cc3333,1
-ascending_colon,Ascending Colon,Lower GI,#C084B3,,Large Intestine,#cc99cc,4
-colon,Colon,Lower GI,#C084B3,,Large Intestine,#cc99cc,4
-right_colon,Ascending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,#cc99cc,4
-mid_colon,Mid Colon,Lower GI,#C084B3,Colon...Transverse,Large Intestine,#cc99cc,5
-descending_colon,Descending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,#cc99cc,6
-left_colon,Descending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,#cc99cc,6
-L_colon,Descending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,#cc99cc,6
-transverse_colon,Transverse Colon,Lower GI,#C084B3,Colon...Transverse,Large Intestine,#cc99cc,5
-rectum,Rectum,Lower GI,#C084B3,,Large Intestine,#cc99cc,7
-duodenum,Duodenum,Upper GI,#67B357,,Small Intestine,#666699,8
-ileum,Ileum,Lower GI,#67B357,Small.Intestine...Terminal.Ileum,Small Intestine,#666699,9
-jejunum,Jejunum,Lower GI,#67B357,,Small Intestine,#666699,10
-small_intestine,Small Intestine,Lower GI,#67B357,,Small Intestine,#666699,11
-stomach,Stomach,Upper GI,#4B86B8,Stomach,Upper GI,#6699cc,12
-esophagus,Esophagus,Upper GI,#4B86B8,Esophagus...Muscularis,Upper GI,#6699cc,13
-skin,Skin,Skin,#E99D59,,Skin,#009933,14
-skinb,Skin,Skin,#E99D59,,Skin,#009933,14
-heart,Heart,Circulatory,#7B589E,,Heart,#99cc66,15
-kidney,Kidney,Renal,#7B589E,,Kidney,#99cc66,16
-liver,Liver,Liver,#3A7E46,,Liver,#663333,17
-mLN,mLN,Lymphatic,#475CA4,,mLN,#ff9933,18
-spleen,Spleen,Lymphatic,#475CA4,,Spleen,#ff9933,19
-terminalileum,Ileum,Lower GI,#67B357,Small.Intestine...Terminal.Ileum,Small Intestine,#666699,9
+tissue,tissue_label,system,col,gtex,plotgroup,new_col,shape,anatomic_order
+blood,PBSCs,Blood,#D13B32,Whole.Blood,PBSCs,#cc3333,1,26
+autopsy_blood,PBSCs,Blood,#D13B32,Whole.Blood,PBSCs,#cc3333,1,27
+autopsy_marrow,Bone Marrow,Blood,#D13B32,,Bone Marrow,#cc3333,2,24
+Tcells,T-cells,Blood,#D13B32,Whole.Blood,T-cells,#A60000,3,30
+A_blood,PBSCs,Blood,#D13B32,Whole.Blood,PBSCs,#cc3333,1,28
+A_marrow,Bone Marrow,Lymphatic,#D13B32,,Bone Marrow,#cc3333,2,25
+pretx_blood,pre-tx PBMCs,Blood,#D13B32,Whole.Blood,pre-tx PBMCs,#cc3333,1,29
+ascending_colon,Ascending Colon,Lower GI,#C084B3,,Large Intestine,#cc99cc,4,8
+colon,Colon,Lower GI,#C084B3,,Large Intestine,#cc99cc,4,15
+right_colon,Ascending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,#cc99cc,4,9
+mid_colon,Mid Colon,Lower GI,#C084B3,Colon...Transverse,Large Intestine,#cc99cc,5,10
+descending_colon,Descending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,#cc99cc,6,12
+left_colon,Descending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,#cc99cc,6,13
+L_colon,Descending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,#cc99cc,6,14
+transverse_colon,Transverse Colon,Lower GI,#C084B3,Colon...Transverse,Large Intestine,#cc99cc,5,11
+rectum,Rectum,Lower GI,#C084B3,,Large Intestine,#cc99cc,7,16
+duodenum,Duodenum,Upper GI,#67B357,,Small Intestine,#666699,8,3
+ileum,Ileum,Lower GI,#67B357,Small.Intestine...Terminal.Ileum,Small Intestine,#666699,9,5
+jejunum,Jejunum,Lower GI,#67B357,,Small Intestine,#666699,10,4
+small_intestine,Small Intestine,Lower GI,#67B357,,Small Intestine,#666699,11,7
+stomach,Stomach,Upper GI,#4B86B8,Stomach,Upper GI,#6699cc,12,2
+esophagus,Esophagus,Upper GI,#4B86B8,Esophagus...Muscularis,Upper GI,#6699cc,13,1
+skin,Skin,Skin,#E99D59,,Skin,#009933,14,18
+skinb,Skin,Skin,#E99D59,,Skin,#009933,14,19
+heart,Heart,Circulatory,#7B589E,,Heart,#99cc66,15,22
+kidney,Kidney,Renal,#7B589E,,Kidney,#99cc66,16,23
+liver,Liver,Liver,#3A7E46,,Liver,#663333,17,20
+mLN,mLN,Lymphatic,#475CA4,,mLN,#ff9933,18,17
+spleen,Spleen,Lymphatic,#475CA4,,Spleen,#ff9933,19,21
+terminalileum,Ileum,Lower GI,#67B357,Small.Intestine...Terminal.Ileum,Small Intestine,#666699,9,6
