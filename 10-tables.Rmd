@@ -72,6 +72,9 @@ slopes <- tcr_raw %>%
     len = n(), 
     clonality = 1- entropy/(log2(len))) %>% 
   left_join(slopes))
+
+# TODO double check out vs adaptive's entropy/clonality calculations 
+# TODO: report slope abs()
 write.csv(tab_sample_summary, row.names = FALSE, file = file.path(tab_dir, "st4.csv"))
 
 

@@ -9,60 +9,8 @@ load("tcr_objects.Rdata")
 ```
 
 # Figure 1
-```{R}
-# subset to only within-individual comparisons
-comparison <- tcr_corrs %>% 
-  full_join(tcr_sample_metadata, by=c("sample1"="sample_name")) %>% 
-  full_join(tcr_sample_metadata, by=c("sample2"="sample_name")) %>% 
-    filter(indv_label.x == indv_label.y)
-
-g <- ggplot(comparison %>% 
-              filter(org.x == "Human") %>%
-              filter(gvhd.x == "GvHD") %>% 
-              filter(sample1 != sample2), aes(JSD, morisita))
-
-g + facet_grid(. ~ indv_label.x) + 
-  geom_point(aes(color = indv_label.x)) + 
-  scale_color_brewer(palette="Set2", guide="none") +
-  geom_smooth(size = .5, linetype = 1, method = "lm", fullrange = F, se = FALSE, color = "black") + 
-  stat_regline_equation(label.y = 1, aes(label = ..rr.label..)) +
-  theme(axis.text=element_text(size=15, color = "black")) + 
-  coord_fixed() +
-  theme_classic()
 
 
-g + geom_point(aes(color = indv_label.x), size = 4, shape = 19, alpha = .5) + 
-  geom_smooth(size = 1, linetype = 1, method = "lm", se = FALSE) + 
-  stat_regline_equation(label.y = 1, aes(label = ..rr.label..)) +
-  theme_classic()
-```
-
-## Venn 
-
-```{R}
-
-
-(V = venn::venn(clones_per_pt[paste("Patient", LETTERS[1:7])], ilab = TRUE, zcolor = "style", opacity = .2, ggplot = TRUE))
-
-
-
-ggsave(plot=V ,height=6,width=6,dpi=200, 
-       filename="fig4_venn_plot_7.pdf", 
-       useDingbats=FALSE)
-(Vaa = venn::venn(aa_per_pt[paste("Patient", LETTERS[1:7])], ilab = TRUE, zcolor = "style", opacity = .2, ggplot = TRUE))
-
-
-
-ggsave(plot=Vaa ,height=6,width=6,
-       filename="fig4_venn_plot_7_aa.pdf", 
-       useDingbats=FALSE)
-
-
-
-#write.csv(paired_patients, "overlapping_clones_com.csv", row.names = F)
-
-
-```
 
 ## Human Clone Tissue Summary
 
@@ -71,6 +19,7 @@ tissue_annotations = read.csv("data/updated_colors_dendrograms.csv")
 diversity <- read.csv("tables/st4.csv") %>% 
   left_join(tcr_sample_metadata) %>% 
   left_join(tissue_annotations, by="tissue")
+
 human_patient_colors <- c("mediumblue", "navy", "red", "yellow", "green4", "lightskyblue", "saddlebrown", "gray75", "gray45", "gray 85")
 names(human_patient_colors) <- paste("Patient", LETTERS[1:10])
 
@@ -82,12 +31,12 @@ jitter <- position_jitter(width = 0.0, height = 0.1)
 jitter2 <- position_jitter(width = 0.15, height = 0.01)
 
 
-div_base <- ggplot(diversity %>% filter(org == "Human"), aes(y=reorder(tissue, desc(anatomic_order))))
+div_base <- ggplot(diversity %>% filter(org == "Human"), aes(y=reorder(tissue_label, desc(anatomic_order))))
 
-(fig1a <- ggplot(data.frame(nclones=sapply(clones_per_pt, n_distinct)) %>% rownames_to_column("indv_label") %>% 
+(fig1b <- ggplot(data.frame(nclones=sapply(clones_per_pt, n_distinct)) %>% rownames_to_column("indv_label") %>% 
                    filter(grepl("Patient", indv_label )),
                  aes(y=indv_label,x=nclones, fill=indv_label)) +
-    geom_bar(stat="identity", orientation = "y", alpha=.9) +
+    geom_bar(stat="identity", orientation = "y", alpha=.9, width = .6) +
     scale_x_log10(
       expand=c(0,0),
       breaks = c(1 %o% 10^(-6:6)),
@@ -96,9 +45,10 @@ div_base <- ggplot(diversity %>% filter(org == "Human"), aes(y=reorder(tissue, d
     scale_y_discrete(limits=rev, name="") +
     theme_classic() + 
     scale_fill_manual(values = human_patient_colors, breaks = names(human_patient_colors), guide="none"))
-ggsave(plot=fig1a ,height=5,width=6, filename="fig1a.pdf")
 
-(fig1b <- div_base +
+ggsave(plot=fig1b ,height=5,width=6, filename="fig1b.pdf")
+
+(fig1c <- div_base +
     geom_point(aes(x=len, fill = indv_label), size = 4, shape=21, alpha = .9, position = jitter) +
     theme_classic()  +
     scale_x_log10(
@@ -107,48 +57,68 @@ ggsave(plot=fig1a ,height=5,width=6, filename="fig1a.pdf")
     ) +
     theme(legend.position = "right") +
     labs(x="unique clones", y="") +
-    scale_y_discrete(breaks=tissue_annotations$tissue, labels=tissue_annotations$tissue_label) +
+    #scale_y_discrete(breaks=tissue_annotations$tissue, labels=tissue_annotations$tissue_label) +
     theme(axis.text.y = element_text(size = 10, face = "bold")) + 
     scale_fill_manual(values = human_patient_colors, breaks = names(human_patient_colors)) +
     theme(axis.text.x = element_text(size = 8, hjust = 0, face = "bold")))
 
 
-ggsave(plot=fig1b ,height=5,width=6, filename="fig1b.pdf")
+ggsave(plot=fig1c ,height=5,width=6, filename="fig1c.pdf")
 
 
 
-(fig1c = div_base +
+
+(fig1d = div_base +
   geom_point( aes(x=max_productive_frequency, fill = indv_label), size=4, shape=21, alpha = .9, position = jitter) +
   theme_classic() + 
     labs(x="clone frequency (%)", y="") +
  theme(legend.position = "right") + 
-  scale_y_discrete(breaks=tissue_annotations$tissue, labels=tissue_annotations$tissue_label) +
+#  scale_y_discrete(breaks=tissue_annotations$tissue, labels=tissue_annotations$tissue_label) +
   theme(axis.text.y = element_text(size = 10, face = "bold")) + 
   scale_fill_manual(values = human_patient_colors, breaks = names(human_patient_colors)) +
   theme(axis.text.x = element_text(size = 8, angle =0, hjust = 0, face = "bold")))
-
-ggsave(plot=fig1c ,height=5,width=6,dpi=200, 
-       filename="fig1c.pdf", 
-       useDingbats=FALSE)
-
-#this is the plot for making the the clonality distribution for figure 1 
-
-
-(fig1d = div_base +
-  geom_point( aes(x=clonality, fill = indv_label), size=4, shape=21, alpha = .9, position = jitter) +
-#  geom_dotplot(binaxis = "y", stackdir = "up", binpositions="all", aes(fill = subject), dotsize = .28, alpha = .9, position = jitter, binwidth = .2) +
-  theme_classic()  +
-  labs(y="clonality", x="") +
-  theme(legend.position = "right") + 
-  scale_y_discrete(breaks=tissue_annotations$tissue, labels=tissue_annotations$tissue_label) +
-  theme(axis.text.y = element_text(size = 10, face = "bold")) +  
-  scale_fill_manual(values = human_patient_colors, breaks = names(human_patient_colors)) +
-  theme(axis.text.x = element_text(size = 8, angle = 0, hjust = 0, face = "bold")))
 
 ggsave(plot=fig1d ,height=5,width=6,dpi=200, 
        filename="fig1d.pdf", 
        useDingbats=FALSE)
 
+#this is the plot for making the the clonality distribution for figure 1 
+
+
+(fig1e = div_base +
+  geom_point( aes(x=clonality, fill = indv_label), size=4, shape=21, alpha = .9, position = jitter) +
+  theme_classic()  +
+  labs(y="clonality", x="") +
+  theme(legend.position = "right") + 
+#  scale_y_discrete(breaks=tissue_annotations$tissue, labels=tissue_annotations$tissue_label) +
+  theme(axis.text.y = element_text(size = 10, face = "bold")) +  
+  scale_fill_manual(values = human_patient_colors, breaks = names(human_patient_colors)) +
+  theme(axis.text.x = element_text(size = 8, angle = 0, hjust = 0, face = "bold")))
+
+ggsave(plot=fig1e ,height=5,width=6,dpi=200, 
+       filename="fig1e.pdf", 
+       useDingbats=FALSE)
+
+ggsave(patchwork::plot_spacer()  + fig1b + fig1c + fig1d + fig1e + plot_layout(widths = c(1, .7, 1,1,1), nrow=1, guides="collect") + plot_annotation(tag_levels = "A"), width = 24, height=5, filename = "fig1.pdf")
+```
+
+
+
+## Mouse Figure 1 additions
+
+```{r}
+div_base_mouse <- ggplot(diversity %>% filter(org != "Human"), aes(y=reorder(tissue_label, desc(anatomic_order))))
+
+
+
+(mouse_fig1e = div_base_mouse +
+  geom_point( aes(x=clonality, fill = indv_label), size=4, shape=21, alpha = .9, position = jitter) +
+  theme_classic()  +
+  labs(y="clonality", x="") +
+  theme(legend.position = "right") + 
+#  scale_y_discrete(breaks=tissue_annotations$tissue, labels=tissue_annotations$tissue_label) +
+  theme(axis.text.y = element_text(size = 10, face = "bold")) +  
+  theme(axis.text.x = element_text(size = 8, angle = 0, hjust = 0, face = "bold")))
 
 ```
 

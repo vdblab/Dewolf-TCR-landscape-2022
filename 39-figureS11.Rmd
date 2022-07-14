@@ -1,0 +1,429 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, fig.width=10, fig.height=7) 
+library(tidyverse) 
+library(patchwork)  # for combining figures
+library(RColorBrewer) # color palates
+library(ggtree)    # for trees
+library(phyloseq)
+library(dendextend) # for tanglegrams
+library(ggrepel)
+library(ggpubr)
+library(rstatix)
+
+
+theme_set(theme_classic())
+load("tcr_objects.Rdata")
+```
+
+## Validating Trees
+
+## Quantifying within vs between system distances
+
+These figures were requested by a helpful reviewer who wished to see the between -vs within system distances quantified. For reference, the following figure shows the distances between tissues by the median GTEx summarized data:
+
+```{r}
+comp_df <- jsd_individuals_dist_list[["Tissues_in_TCR"]][[2]] %>% as_tibble(rownames = "rawA") %>%
+  pivot_longer(cols = -rawA, names_to = "rawB") %>% 
+  mutate(A=pmin(rawA, rawB), B=pmax(rawA, rawB)) %>%
+  select(A, B, value) %>% distinct() %>% 
+  filter(A != B ) %>%
+  left_join(specific_tissue_key, by=c("A"="Tissue")) %>%
+  left_join(specific_tissue_key, by=c("B"="Tissue")) %>%
+  mutate(grp = ifelse(TissueSystem.x==TissueSystem.y, "Within", "Between"))
+
+ggplot(comp_df, aes(x=TissueSystem.y, color=grp, group=interaction(TissueSystem.y, grp), y=value)) + 
+  geom_boxplot(outlier.colour = NA) + geom_point(position = position_jitterdodge(jitter.height = 0, jitter.width = .1 )) +
+  labs(x="Tissue System", y="JSD", title="GTEx median gene expression JSD between vs within Anatomic Systems")
+
+```
+
+Now, for the TCR data.  First, the per-patient boxplots.
+
+```{r}
+boxdir <- file.path(figs_dir, "boxplot_comparisons")
+
+dir.create(boxdir, showWarnings = FALSE)
+### Per patient
+for (pat in unique(tcr_sample_metadata$indv_label)){#c("Pt1", "Pt2", "Pt3", "Pt5", "Pt6", "Pt7",  "Pt9")){
+  print(str_glue("Processing {pat}"))
+  # pat="Patient A"
+  if (startsWith(pat, "Donor")) next
+  pt_comp_df <- tcr_corrs_anno %>% 
+    filter(indv_label.x == "Patient A" & indv_label.y == "Patient A" ) %>%
+    rename(A=tissue.x, B=tissue.y, value=JSD) %>% 
+    #mutate(A=pmin(tissue.x, tissue.y), B=pmax(tissue.x, tissue.y), value=JSD) %>%
+    select(A, B, value) %>% distinct() %>% 
+    filter(A != B) %>% 
+    left_join(tissue_key %>% select(TissueTCR, TissueSystem), by=c("A"="TissueTCR")) %>%
+    left_join(tissue_key %>% select(TissueTCR, TissueSystem), by=c("B"="TissueTCR")) %>% 
+    mutate(grp = ifelse(TissueSystem.x==TissueSystem.y, "Within", "Between"))
+  
+p_ <- ggplot(pt_comp_df, aes(x=TissueSystem.y, color=grp, group=interaction(TissueSystem.y, grp), y=value)) + 
+  geom_boxplot(outlier.colour = NA) + 
+  geom_point(position = position_jitterdodge(jitter.height = 0, jitter.width = .1 ), alpha=.5)  +
+
+ggplot(pt_comp_df %>% group_by(TissueSystem.y) %>% filter(n_distinct(grp) > 1), aes(x=TissueSystem.y, color=grp, group=interaction(TissueSystem.y, grp), y=value)) +
+  geom_boxplot(outlier.colour = NA, alpha=.4) + 
+  geom_point( alpha=.5, position = position_jitterdodge(jitter.height = 0, jitter.width = .1 )) + 
+  stat_compare_means() + 
+  plot_layout(nrow = 2)
+ggsave(p_, filename = file.path(boxdir, str_glue("{pat}_comparisons.png")), width = 9, height = 8,dpi = 200)
+}
+```
+
+Then the same was calculated across all samples:
+
+```{r}
+
+
+## Aggregated
+
+
+pt_comp_df_all <- tcr_corrs_anno %>% 
+  filter(indv_label.x == indv_label.y) %>% 
+  mutate(A=pmin(tissue.x, tissue.y), B=pmax(tissue.x, tissue.y), value=JSD, pt=indv_label.x, org=org.x, stype=gvhd.x) %>%
+  select(A, B, value, pt, org, stype) %>% distinct() %>% 
+  filter(A != B) %>% 
+  left_join(newannotations, by=c("A"="tissue")) %>%
+  left_join(newannotations, by=c("B"="tissue")) %>%
+  mutate(grp = ifelse(plotgroup.x==plotgroup.y, "Within", "Between")) 
+
+# 
+# tissues_for_comparisons <- pt_comp_df_all %>% group_by(plotgroup.x, org) %>% filter(n_distinct(grp) > 1) %>% pull(plotgroup.x) %>% unique()
+# 
+# 
+# p_compare_within_between_A <- ggplot(pt_comp_df_all %>% filter(plotgroup.x %in% tissues_for_comparisons), aes(x=plotgroup.x, color=grp, group=interaction(plotgroup.x, grp), y=value)) + geom_boxplot(outlier.colour = NA) + geom_point(position = position_jitterdodge(jitter.height = 0, jitter.width = .1 )) + stat_compare_means() + labs(x="System", y="JSD", color="") + facet_grid(~org, scales = "free", space = "free_x")
+# p_compare_within_between_B <- ggplot(pt_comp_df_all %>% filter(!plotgroup.x %in% tissues_for_comparisons), aes(x=plotgroup.x, color=grp, group=interaction(plotgroup.x, grp), y=value)) + geom_boxplot(outlier.colour = NA) + geom_point(position = position_jitterdodge(jitter.height = 0, jitter.width = .1 )) + scale_color_discrete(guide="none") + labs(x="System", y="JSD", color="") +  facet_grid(~org, scales = "free", space = "free_x")
+# 
+# p_compare_within_between_A + p_compare_within_between_B + plot_layout(width=c(.5, .5), guides = "collect")
+
+# or 
+
+# find all the tissues with within-group comparisons
+stat.test <- pt_comp_df_all %>%
+  filter(org != "Mouse") %>% 
+  group_by(plotgroup.x, stype) %>% 
+  filter(n_distinct(grp) > 1) %>%
+  rstatix::kruskal_test(value ~ grp) %>%
+  adjust_pvalue(method = "BH") %>%
+  add_significance("p.adj",
+                   cutpoints = c(0, 1e-04, 0.001, 0.01, 0.05, 1),
+                   symbols = c("****", "***", "**", "*", "ns")
+  ) %>%
+  mutate(group1="Between",  group2="Within") %>%
+  add_xy_position(x = "grp", dodge = 0.8)
+
+(p_between_within <- ggplot(pt_comp_df_all, aes(x=grp, color=grp, group=grp, y=value)) + 
+  geom_boxplot(outlier.colour = NA) +
+  geom_point(position = position_jitterdodge(jitter.height = 0, jitter.width = .1 )) + 
+  labs(x="System", y="JSD", color="Comparisons") + 
+  facet_grid(stype~plotgroup.x, scales = "free", space = "free_x") +
+  scale_color_manual(values = c("forestgreen", "firebrick4"), breaks = c("Between", "Within"), labels=c("Between systems", "Within systems")) + 
+  theme(legend.position = "bottom") + 
+ scale_x_discrete(position = "top") +
+stat_pvalue_manual(
+  stat.test, label = "{p.adj.signif}", tip.length = 0
+  ) + theme(
+    axis.ticks.x=element_blank(), axis.text.x = element_blank(),
+    ) +
+  gridExtra::tableGrob(newannotations %>% select(plotgroup,  tissue) %>% distinct() %>% arrange(desc(plotgroup)), 
+                       theme = gridExtra::ttheme_minimal( base_size=7),
+                       rows=NULL) + 
+  plot_layout(widths = c(8, 2)))
+
+ggsave(p_between_within, filename = file.path(figs_dir, "mouse_human_between_within.pdf"), width = 16, height = 8)
+
+```
+
+
+Next, we shuffled the classes for the systems with multiple tissues represented in the data (limiting to human samples for simplicity).  The probability weight of the sampling was set to mimic the comparisons at hand
+```{r}
+(weights <- pt_comp_df_all %>%
+  filter(org == "Human") %>%
+  group_by(plotgroup.x, org) %>%
+  filter(n_distinct(grp) > 1) %>%
+  mutate(plotgroup_n = n()) %>%
+  group_by(plotgroup.x, org, grp) %>% 
+  dplyr::summarize(pn =plotgroup_n[1], n=n(), weight=n()/pn) 
+)
+between_weight <- weights %>% filter(grp=="Between") %>% pull(weight) %>% mean()
+```
+
+
+The sampling was performed 100 times, and plotted below.  
+
+> To assess the stability of the comparisons within systems
+
+
+```{r}
+tissues_for_comparisons <- pt_comp_df_all %>%
+  filter(org == "Human") %>%
+  group_by(plotgroup.x, org) %>% filter(n_distinct(grp) > 1) %>% pull(plotgroup.x) %>% unique()
+
+reps = 1000
+
+pt_comp_df_all_shuff <- map(1:reps, .f=function(x){
+  set.seed(x)
+  pt_comp_df_all %>% 
+    filter(org == "Human" & stype == "GvHD") %>%
+    filter(plotgroup.x %in% tissues_for_comparisons) %>% 
+    group_by(plotgroup.x, org)  %>% 
+    mutate(shuffle=x, fauxgrp=sample(c("Within", "Between"), replace = TRUE, size = n(), prob = c(1-between_weight, between_weight)))
+}) %>% bind_rows()
+
+# only plot the first 6 cause 100 is a bit excessive
+p_inv_shuff <-ggplot(pt_comp_df_all_shuff %>% filter(shuffle <7), aes(x=plotgroup.x, color=fauxgrp, group=interaction(plotgroup.x, fauxgrp), y=value)) + geom_boxplot(outlier.colour = NA) + geom_point(position = position_jitterdodge(jitter.height = 0, jitter.width = .1 )) + stat_compare_means() + facet_wrap(~shuffle, ncol = 2) + theme(axis.text.x = element_text(angle=90, hjust=1)) + labs(caption="Each facet is a replicate of randomly assigning the 'Within'/'Between' grouping to comparisons relating to a anatomic system. \nFirst 6 replicates shown for clarity." ) 
+ggsave(p_inv_shuff, filename = file.path(figs_dir, "shuffles_between_within_first_six.pdf"), width = 16, height = 10)
+
+
+
+shuff_summary <- pt_comp_df_all_shuff %>% 
+  group_by(plotgroup.x, shuffle) %>% 
+  rstatix::kruskal_test(value ~ fauxgrp) %>%
+  adjust_pvalue(method = "BH")
+
+
+
+perm_test <- shuff_summary %>% 
+  left_join(stat.test %>% filter(stype!="noGvHD") %>% select(plotgroup.x, p.adj) %>% rename(true_p.adj=p.adj), by="plotgroup.x") %>% 
+  group_by(plotgroup.x, true_p.adj) %>% 
+  summarize(n=n(), n_less_than_true=sum(p <= true_p.adj)) %>%
+  mutate(permuted_p_text = str_glue("{n_less_than_true} / {n}"))
+
+(p_shuff_summary <-   ggplot(shuff_summary, aes(y=plotgroup.x, group=plotgroup.x, x=p)) + 
+    geom_violin(alpha=.2) +
+    geom_jitter(width = 0, height=.1, alpha=.2, color="black") + 
+    geom_point(data=stat.test %>% filter(stype!="noGvHD"), aes(x=p.adj, y=plotgroup.x, color=plotgroup.x), shape=8, size=3, stroke=2) + 
+    scale_color_brewer(palette = "Dark2", guide="none") +
+    geom_text(data=perm_test, aes(x=ifelse(true_p.adj > .1, true_p.adj, .1), y=plotgroup.x, color=plotgroup.x, label=permuted_p_text), nudge_y = -.25)  +
+    labs(x="P-value", y="System",  title="System Permutations", caption=str_wrap("Asterisks show adjusted p-value of true system labels; black points points and violin outline show non-adjusted p-values of permutated system labels. Colored text shows number of tests equal to or less than the adjusted p-value for 1000 permutations.", width = 70)))
+
+ggplot(shuff_summary, aes(y=plotgroup.x, group=plotgroup.x, x=p, fil=plotgroup.x)) + 
+  geom_jitter(width = 0, height=.1, alpha=.2, color="black") + 
+  geom_point(data=stat.test %>% filter(stype!="noGvHD"), aes(x=p.adj, y=plotgroup.x, color=plotgroup.x), shape=8, size=3, stroke=2) + scale_color_brewer(palette = "Dark2", guide="none") +
+  labs(x="Adjusted P-value", y="System",  title="Shuffled-label tissue comparisons ")
+
+ggsave(p_shuff_summary, filename = file.path(figs_dir, "shuffles_between_within_summary.pdf"), width = 5, height=5)
+
+```
+
+
+Lastly, we compared the broad categories of intestinal vs non-intestinal, rather than by tissue system:
+
+```{R}
+sets_of_comparisons <- list(
+  "intestinal" = c("Large Intestine", "Small Intestine"),
+  "GI" = c("Large Intestine","Small Intestine", "mLN", "Upper GI")
+)
+
+
+for (si in 1:length(sets_of_comparisons)){
+  
+  #comaprison set
+  s = sets_of_comparisons[[si]]
+  # name of comparison set
+  sname = names(sets_of_comparisons)[[si]]
+  
+  intestinal_comparison_data <-  pt_comp_df_all %>% 
+    filter(stype=="GvHD") %>% 
+    mutate(intestinal = ifelse(plotgroup.x %in% s & plotgroup.y %in% s, "Within", "Between"))
+  
+  stat.test.intestinal <- intestinal_comparison_data %>%
+    group_by(org, ) %>% 
+    rstatix::wilcox_test(value ~ intestinal) %>%
+    adjust_pvalue(method = "BH") %>% 
+    add_xy_position(x = "intestinal", dodge = 0.8)
+  
+  p_between_within_intestine <- ggplot(intestinal_comparison_data, aes(x=intestinal, color=intestinal, group=intestinal, y=value)) + 
+    geom_boxplot(outlier.colour = NA) +
+    geom_point(position = position_jitterdodge(jitter.height = 0, jitter.width = .1 )) + 
+    labs(x="System", y="JSD", title = str_glue("JSD within {sname} tissues")) + 
+    facet_grid(org~., scales = "free", space = "free_x") +
+    scale_color_manual(values = c("purple", "gold"), breaks = c( "Between", "Within"), labels=c(str_glue("Between {sname} tissues"), str_glue("Within {sname} tissues")), guide="none") + 
+    theme(legend.position = "bottom") + 
+    stat_pvalue_manual(stat.test.intestinal, label = "Wilcox adj. p {p}", tip.length = 0) + scale_y_continuous(limits=c(0, 1.1), expand=c(0, 0))
+  
+  #   stat_compare_means(comparisons = list(c( "non-intestinal", "intestinal")), label = "Wilcox adj. p {p.adj}", tip.length = 0, method = "wilcox.test") 
+  
+  
+  nonintestinal_weight <- intestinal_comparison_data %>%
+    group_by(org) %>%
+    mutate(plotgroup_n = n()) %>%
+    group_by(org, intestinal) %>% 
+    dplyr::summarize(pn =plotgroup_n[1], n=n(), weight=n()/pn) %>% 
+    filter(intestinal=="Between") %>% pull(weight) %>% mean()
+  
+  pt_comp_df_all_shuff_intestinal <- map(1:1000, .f=function(x){
+    set.seed(x)
+    intestinal_comparison_data %>% 
+      group_by(org)  %>% 
+      mutate(shuffle=x, fauxgrp=sample(c( "Between", "Within"), replace = TRUE, size = n(), prob = c(1-nonintestinal_weight, nonintestinal_weight)))
+  }) %>% bind_rows()
+  
+  pt_comp_df_all_shuff_intestinal_summary <- pt_comp_df_all_shuff_intestinal %>% 
+    group_by(org, shuffle) %>% 
+    rstatix::wilcox_test(value ~ fauxgrp) %>%
+    adjust_pvalue(method = "BH")
+  
+  this_perm_test <- pt_comp_df_all_shuff_intestinal_summary %>% 
+    left_join(stat.test.intestinal  %>% select(org, p.adj) %>% rename(true_p.adj=p.adj)) %>% 
+    group_by(org, true_p.adj) %>% 
+    summarize(n=n(), n_less_than_true=sum(p <= true_p.adj)) %>%
+    mutate(permuted_p_text = str_glue("{n_less_than_true} / {n}"))
+  
+  p_shuff_intestinal_summary <-   ggplot(pt_comp_df_all_shuff_intestinal_summary, aes(y=org, group=org, x=p)) + 
+    geom_boxplot(outlier.colour = NA, alpha=.2) +
+    geom_jitter(width = 0, height=.1, alpha=.2, color="black") + 
+    scale_y_discrete(limits = rev(c( "Human", "Mouse"))) +
+    geom_point(data=stat.test.intestinal , aes(x=p.adj, y=rev(org), color=org), shape=8, size=3, stroke=2) + scale_color_brewer(palette = "Set2", guide="none") +
+    #geom_text(data=this_perm_test, aes(x=ifelse(true_p.adj > .1, true_p.adj, .1), y=org, color=org, label=permuted_p_text), nudge_y = -.25)  +
+    geom_text(data=this_perm_test, aes(x= true_p.adj, y=rev(org), color=org, label=permuted_p_text), nudge_y = -.25, nudge_x=.001)  +
+    labs(x="Adjusted P-value", y="Organism", title="Significance when shuffled", subtitle=paste0(sname, " vs non-", sname) ) +
+    scale_x_log10()
+  
+  
+  
+  ggsave(p_between_within_intestine + p_shuff_intestinal_summary + plot_layout(ncol=1, heights = c(.8, .3)) , filename = file.path(figs_dir, str_glue("mouse_human_between_within_{sname}.pdf")), width = 8, height = 8)
+  
+}
+```
+
+## Raw data comparison plots
+```{r}
+# note the lack of the `distinct()` call here; we need all the (redundant) comparisons for this figure
+set.seed(123)
+for(i in  unique(tcr_corrs_anno$indv_label.x)){
+  tmp_p <- ggplot(tcr_corrs_anno %>% 
+           filter(indv_label.x == indv_label.y) %>% filter(indv_label.x==i)  %>%  left_join(newannotations, by=c("tissue.x"="tissue")) %>%
+           left_join(newannotations, by=c("tissue.y"="tissue")) , aes(x=tissue.x, y=JSD, shape=tissue.y, color=tissue.y)) + 
+    geom_jitter(width = .2, height = 0, size=3)  + 
+    scale_color_manual(values=newannotations$new_col, breaks=newannotations$tissue) +
+    scale_shape_manual(values=newannotations$shape, breaks=newannotations$tissue) +
+    labs(x="Tissue", shape="Tissue", subtitle=i, color="Tissue") +
+    theme_classic()   + theme(axis.text.x = element_text(angle=45, hjust=1)) + 
+    scale_y_continuous(limits=c(0, 1))
+    ggsave(plot = tmp_p, filename = file.path(figs_dir, str_glue("TCR_raw_comparisons_{i}.pdf")), width = 9, height = 6)
+}
+
+
+
+```
+## Heatmaps
+
+
+## Summarizing Mouse TCR data
+
+```{r}
+tcr_corrs_anno_mouse_sumamry <- tcr_corrs_anno %>%
+  filter(org.x=="Mouse") %>% filter(org.y=="Mouse") %>% 
+  filter(indv_label.x==indv_label.y) %>% 
+  select(-sample1, -sample2, -spearman, -org.x, -org.y, -indv_label.x, -indv_label.y, -samp_type.x, -samp_type.y, -exp_rep.x, -exp_rep.y, -indv_tissue_label.x, -indv_tissue_label.y, -indv_id.x, -indv_id.y  ) %>%
+  group_by(across(c(-JSD))) %>% 
+  dplyr::summarize(
+    JSD_mean = mean(JSD),
+    JSD_median = median(JSD),
+    JSD_vat = var(JSD),
+  ) %>%
+  select(tissue.x, tissue.y, everything()) %>% 
+  ungroup() 
+
+
+# TODO:  put in some plots here:  is the variance across tissue pairs comparable?
+# 
+
+
+mouse_summary_plist <- list()
+for (gr in c("GvHD", "noGvHD")){
+  for (cday in c(7, 14)){
+    
+    this_corr_data <-  tcr_corrs_anno_mouse_sumamry %>% 
+      filter(gvhd.x == gr) %>% 
+      filter(gvhd.y == gr) 
+    # No days for healthy mice, take all of them
+    if (gr == "GvHD"){
+      this_corr_data <-  this_corr_data %>% 
+        filter(collection_day.x  == cday) %>% 
+        filter(collection_day.y  == cday) 
+    }
+    tcr_agg_mice <- this_corr_data %>%   
+      rename(sample1=tissue.x, sample2=tissue.y) %>% 
+      select(sample1, sample2, JSD_mean) %>% distinct() %>% 
+      
+      pivot_wider(names_from="sample2", values_from=JSD_mean) %>%
+      column_to_rownames("sample1") %>%
+      as.matrix()
+    
+    dend_<- hclust(as.dist(tcr_agg_mice), method = "single") %>% as.dendrogram()
+    samples_ordered <- hclust(as.dist(tcr_agg_mice), method = "single")$labels[c( hclust(as.dist(tcr_agg_mice), method = "single")$order)]
+    
+    tcr_agg_mice_ordered <- tcr_agg_mice[samples_ordered, samples_ordered]
+    # get the clean, ordered sampleids
+    samples_ordered_df <- left_join(data.frame(tissue=samples_ordered), newannotations, by="tissue")
+    if (!all(samples_ordered == samples_ordered_df$sample_name)) {stop("Error assigning clean name to ordered tissues")}
+    samples_ordered_clean <- samples_ordered_df %>% pull(tissue)
+    
+    dendextend::labels_colors(dend_) <- data.frame(Tissue = labels(dend_)) %>%
+      left_join(., tissue_key) %>% pull(col)
+    
+    
+    
+    tmp <- ape::as.phylo(dend_)
+    tmp$edge.length <- tmp$edge.length*2
+    tmpheight <- sort(stats::cophenetic(dend_), decreasing = TRUE)[1] 
+    
+    # 
+    tick_pos <- seq(0, 1, .1)
+    ticks=data.frame(xorig=tick_pos, x=tick_pos - (1-tmpheight),
+                     lab=rev(tick_pos),  yend=rep(.3, length(tick_pos))) 
+    
+    
+    p_tcr_all <- ggtree(tmp)  %<+% newannotations + xlim(-.45, 1.25) +
+      geom_tiplab(aes(color=new_col, label=tissue_label), 
+                  offset = 0.01,#(1-max(tmp$edge.length)) + .01, 
+                  align = FALSE, linetype = NA) +
+      geom_tippoint() +
+      scale_linetype(guide="none") +
+      scale_color_identity() +
+      geom_segment(y=0, yend=0, x=min(ticks$x), xend=max(ticks$x)) + 
+      annotate(geom="text",        x=ticks$x, y=-1, label=ticks$lab )   + 
+      geom_segment(data=ticks, aes(y=-yend, yend=0, x=x, xend=x )) +
+      theme(legend.position = c(.2, .95)) 
+    mouse_summary_plist[[gr]] <- p_tcr_all
+    ggsave(p_tcr_all, filename = file.path(figs_dir, str_glue("aggregated_mouse_tcr_{gr}_day{cday}.pdf")), width=6, height=8,device = "pdf")
+    
+    tcr_agg_mice_ordered[upper.tri(tcr_agg_mice_ordered)] <- NA
+    diag(tcr_agg_mice_ordered) <- NA
+    p_tcr_all_heat <- t(tcr_agg_mice_ordered) %>% as.data.frame() %>% rownames_to_column("sample1") %>% pivot_longer(-sample1, names_to = "sample2") %>% 
+      rename(thisfill=value) %>%
+      filter(!is.na(thisfill)) %>%
+      filter(sample1 != sample2) %>% 
+      mutate(
+ #       sample1=factor(sample1, levels = samples_ordered_clean, ordered = TRUE),
+#        sample2=rev(factor(sample2, levels = samples_ordered_clean, ordered = TRUE)),
+        lab = round(thisfill, 2)
+      ) %>% ggplot( aes(x=sample1, y=sample2, fill=thisfill)) + 
+      geom_tile() + 
+      coord_fixed(ratio=1,  ) + 
+      geom_text(aes(label=lab), color="grey50", size=1)+
+      scale_fill_viridis_c(option = "A") +
+      guides(fill = guide_colourbar(direction = "horizontal")) + 
+      scale_y_discrete(position = "left", expand = c(0,0), limits=rev(samples_ordered_clean)) +
+#      scale_y_discrete(position = "right", expand = c(0,0), breaks=samples_ordered_clean) +
+      scale_x_discrete( expand = c(0,0), limits=samples_ordered_clean) +
+      labs(x="", y="", fill="Mean JSD") +
+      theme(
+        axis.text.x = element_text(angle=45, hjust=1, size=9),
+        legend.position = c(.7, .7),
+        )
+    
+    ggsave(p_tcr_all_heat,
+           filename = file.path(figs_dir, str_glue("aggregated_mouse_tcr_{gr}_day{cday}_heatmap.pdf")), width=6, height=8,device = "pdf")
+    ggsave(p_tcr_all_heat + scale_fill_gradient2(midpoint = .5, limits=c(0, 1)),
+           filename = file.path(figs_dir, str_glue("aggregated_mouse_tcr_{gr}_day{cday}_heatmap_altcolor.pdf")), width=6, height=8,device = "pdf")
+    
+    
+    
+  }
+}
+```
+

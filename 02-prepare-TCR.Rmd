@@ -273,8 +273,7 @@ if(!file.exists(tcr_objects_path)){
   # 
   
   
-  
-  save(list = c( "tcr_sample_metadata", "tcr_corrs", "shared_clones", "clones_per_pt", "aa_per_pt"), file = tcr_objects_path  )
+  save(list = c( "tcr_sample_metadata", "tcr_corrs", "shared_clones", "clones_per_pt", "aa_per_pt", "tcr_raw"), file = tcr_objects_path  )
   
 } else{
   load(tcr_objects_path)
