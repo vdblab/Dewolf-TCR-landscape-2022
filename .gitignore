@@ -5,3 +5,5 @@
 *~
 test_cluster_allpts_withcomparators.csv
 *.DS_Store
+*.Rproj
+*.Rdata

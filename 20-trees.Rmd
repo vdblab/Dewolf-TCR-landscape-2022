@@ -10,6 +10,11 @@ library(patchwork)  # for combining figures
 library(gplots)     # for heatmap.2
 library(ggtree)    # for trees
 library(ape)   # for as.phylo
+load("tcr_objects.Rdata")
+load("GTEx/gtex_objects.Rdata")
+figs_dir <- "figures"
+dir.create(figs_dir, showWarnings = FALSE)
+
 ```
 
 

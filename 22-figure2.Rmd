@@ -93,8 +93,6 @@ tcr_corrs_anno <- tcr_corrs %>%
 
 
 newannotations <- read.csv("data/updated_colors_dendrograms.csv") 
-figs_dir <- "figures"
-dir.create(figs_dir, showWarnings = FALSE)
 
 jsdplist = list()
 plot_patient_tcr_tree <- function(df = tcr_pairs, patient="Pt3", metri="JSD", linkage="single"){
