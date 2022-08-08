@@ -1,0 +1,85 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+```{r setup-TCR, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, fig.width=10, fig.height=7) 
+library(tidyverse) 
+library(patchwork)  # for combining figures
+library(gplots)     # for heatmap.2
+library(ggtree)    # for trees
+library(ape)   # for as.phylo
+```
+
+# Summary Tables
+```{r}
+tcr_objects_path <- "tcr_objects.Rdata"
+load(tcr_objects_path)
+tab_dir <- "tables"
+dir.create(tab_dir, showWarnings = FALSE)
+
+getslope <- function(vals){
+  vals = vals[vals$Included == "Yes",]
+  slope = coef(lm(log(vals$n)~log(vals$productive_frequency)))[[2]]
+  sample_name = unique(vals$sample_name)
+  return(cbind.data.frame(sample_name = sample_name, slope = slope))
+}
+
+slope_clean_low_frequency_clone<-function(vals)
+{
+  vals$Included = c("Yes")
+  vals = vals[order(vals$n),]
+  
+  vals_1clone = vals[vals$n == 1,]
+  ind = nrow(vals_1clone)
+  
+  if (nrow(vals_1clone) <= 1){
+    return(vals)
+  } else {
+    bottom1 = vals_1clone$productive_frequency[1]
+    bottom2 = vals_1clone$productive_frequency[2]
+    
+    if (abs(log(bottom1)-log(bottom2)) < 1.5) {
+      cutoff_point = vals_1clone$productive_frequency[3]
+      vals$Included[vals$productive_frequency > cutoff_point] = "No"
+      vals$Included[3:ind] = "No"
+      return(vals)
+    } else {
+      cutoff_point = vals_1clone$productive_frequency[2]
+      vals$Included[vals$productive_frequency > cutoff_point] = "No"
+      vals$Included[2:ind] = "No"
+      return(vals)
+    }
+  }
+} 
+slopes <- tcr_raw %>% 
+  filter(frame_type == 'In') %>%
+  group_by(sample_name) %>%
+  count(productive_frequency) %>% 
+  #filter(n > sort(n)[2])
+  group_split(.) %>% 
+  map(~slope_clean_low_frequency_clone(.)) %>%
+  map(~getslope(.)) %>% 
+  do.call(rbind.data.frame,.)
+
+
+(tab_sample_summary <- tcr_raw %>% 
+    filter(frame_type == "In") %>% 
+  group_by(sample_name, productive_templates, productive_rearrangements, sample_amount_ng, max_productive_frequency) %>% 
+  summarize(
+    entropy = -sum(log2(productive_frequency)*productive_frequency),
+    len = n(), 
+    clonality = 1- entropy/(log2(len))) %>% 
+  left_join(slopes) %>%
+  mutate (slope = abs(slope))
+)
+# TODO double check out vs adaptive's entropy/clonality calculations 
+
+write.csv(tab_sample_summary, row.names = FALSE, file = file.path(tab_dir, "st4.csv"))
+
+
+```
+
+
+

@@ -1,0 +1,39 @@
+
+## Venn 
+
+```{R}
+load("tcr_objects.Rdata")
+
+(V = venn::venn(clones_per_pt[paste("Patient", LETTERS[1:7])], ilab = TRUE, zcolor = "style", opacity = .2, ggplot = TRUE))
+
+
+
+ggsave(plot=V ,height=6,width=6,dpi=200, 
+       filename="fig4_venn_plot_7.pdf", 
+       useDingbats=FALSE)
+(Vaa = venn::venn(aa_per_pt[paste("Patient", LETTERS[1:7])], ilab = TRUE, zcolor = "style", opacity = .2, ggplot = TRUE))
+
+
+
+ggsave(plot=Vaa ,height=6,width=6,
+       filename="fig4_venn_plot_7_aa.pdf", 
+       useDingbats=FALSE)
+
+
+
+#write.csv(paired_patients, "overlapping_clones_com.csv", row.names = F)
+
+
+```
+
+
+
+```{R}
+
+(Vmouse = venn::venn(clones_per_pt[c("")], ilab = TRUE, zcolor = "style", opacity = .2, ggplot = TRUE))
+
+
+```
+
+
+## Incorporate GLIPH figures here

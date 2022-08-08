@@ -1,0 +1,427 @@
+```{r include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, fig.width=10, fig.height=7) 
+library(tidyverse) 
+library(patchwork)  # for combining figures
+library(gplots)     # for heatmap.2
+library(ggtree)    # for trees
+library(ape)   # for as.phylo
+load("tcr_objects.Rdata")
+load("GTEx/gtex_objects.RData")
+```
+
+# Figure 2
+
+## 2b
+```{R}
+
+Scatter <- tcr_raw %>%
+    filter(frame_type == "In") %>% 
+  left_join(tcr_sample_metadata %>% select(sample_name, indv_label)) %>%
+  filter(indv_label == "Patient D") %>%
+  select(rearrangement, tissue, productive_frequency) %>%
+  mutate(
+    productive_frequency = ifelse(productive_frequency == 0, .00001, productive_frequency),
+    tissue = paste0(tissue, "_pseudo")) %>%
+  pivot_wider(names_from=tissue, values_from =  productive_frequency, values_fill = .00001 )
+
+
+
+(scatterplot_ascending_descending =
+  ggplot(Scatter, aes(x=ascending_colon_pseudo,y=descending_colon_pseudo, 
+                      color = ifelse(0.00001 == ascending_colon_pseudo | 0.00001==descending_colon_pseudo, "grey20", "navy"),
+                      alpha = ifelse(0.00001 == ascending_colon_pseudo | 0.00001==descending_colon_pseudo, .3, .1),
+  )) +
+  geom_point(shape = 16, size = 2, alpha = .1) +
+   guides(alpha="none", color="none") + 
+  scale_y_log10(labels=scales::trans_format('log10',scales::math_format(10^.x)), limits = c(0.000009,1)) +
+  scale_x_log10(labels=scales::trans_format('log10',scales::math_format(10^.x)), limits = c(0.000009,1)) +
+  scale_color_identity() + 
+  coord_fixed() + theme_classic() 
+) 
+  
+ggsave(file = "scatterplot_ascending_descending.pdf", plot = scatterplot_ascending_descending, device = "pdf", height = 2, width = 2, units = "in")
+
+ 
+(scatterplot_ascending_skin =
+  ggplot(Scatter, aes(x=skin_pseudo,y=descending_colon_pseudo, 
+                      color = ifelse(0.00001 == skin_pseudo | 0.00001==descending_colon_pseudo, "grey20", "navy"),
+                      alpha = ifelse(0.00001 == skin_pseudo | 0.00001==descending_colon_pseudo, .3, .1),
+  )) +
+  geom_point(shape = 16, size = 2, alpha = .1) +
+   guides(alpha="none", color="none") + 
+  scale_y_log10(labels=scales::trans_format('log10',scales::math_format(10^.x)), limits = c(0.000009,1)) +
+  scale_x_log10(labels=scales::trans_format('log10',scales::math_format(10^.x)), limits = c(0.000009,1)) +
+  scale_color_identity() + 
+  coord_fixed() + theme_classic() 
+)
+    
+    
+(scatterplot_ascending_duodenum =
+  ggplot(Scatter, aes(x=duodenum_pseudo,y=descending_colon_pseudo, 
+                      color = ifelse(0.00001 == skin_pseudo | 0.00001==descending_colon_pseudo, "grey20", "navy"),
+                      alpha = ifelse(0.00001 == skin_pseudo | 0.00001==descending_colon_pseudo, .3, .1),
+  )) +
+  geom_point(shape = 16, size = 2, alpha = .1) +
+   guides(alpha="none", color="none") + 
+  scale_y_log10(labels=scales::trans_format('log10',scales::math_format(10^.x)), limits = c(0.000009,1)) +
+  scale_x_log10(labels=scales::trans_format('log10',scales::math_format(10^.x)), limits = c(0.000009,1)) +
+  scale_color_identity() + 
+  coord_fixed() + theme_classic() 
+)
+
+
+
+      
+ggsave(file = "scatterplot_ascending_skin.pdf", plot = scatterplot_ascending_skin, device = "pdf", height = 2, width = 2, units = "in")
+ggsave(file = "scatterplot_ascending_duodenum.pdf", plot = scatterplot_ascending_duodenum, device = "pdf", height = 2, width = 2, units = "in")
+
+scatterplot_ascending_descending + scatterplot_ascending_skin + scatterplot_ascending_duodenum
+
+```
+
+
+
+
+```{r}
+# load("tcr_objects.Rdata")
+# load("tcr_graphic_objects.RData")
+
+tcr_corrs_anno <- tcr_corrs %>% 
+#  select(-sample1_tissue, -sample2_tissue, -sample1_clean, -sample2_clean) %>% 
+  left_join(tcr_sample_metadata, by=c("sample1" = "sample_name")) %>% 
+  left_join(tcr_sample_metadata, by=c("sample2" = "sample_name")) 
+
+
+newannotations <- read.csv("data/updated_colors_dendrograms.csv") 
+
+jsdplist = list()
+plot_patient_tcr_tree <- function(df = tcr_pairs, patient="Pt3", metri="JSD", linkage="single"){
+  # subsets the comparisons of interest  
+  tcr_pairs_matrix <- df %>%
+    select(tissue.x, tissue.y, all_of(metri)) %>% 
+    pivot_wider(names_from = tissue.y, values_from=all_of(metri), values_fill=0) %>%
+    arrange(factor(tissue.x, colnames(.)[colnames(.) != "tissue.x"])) %>%
+    column_to_rownames("tissue.x")  %>% 
+    as.matrix()
+  # convert spearman correlations to "distances" if needed
+  if(metri == "JSD"){
+    hclust_ob <- hclust(as.dist(tcr_pairs_matrix), method = linkage ) %>% as.dendrogram()
+    tick_min <- min(1-tcr_pairs_matrix)
+  } else{
+    hclust_ob <- hclust(1-as.dist(tcr_pairs_matrix), method = linkage)  %>% as.dendrogram()
+    tick_min <- min(tcr_pairs_matrix)
+  }
+  # convert to phylo
+  hclust_ob_as_phylo <- ape::as.phylo(hclust_ob)
+  # See https://www.mail-archive.com/r-sig-phylo@r-project.org/msg02016.html for
+  # why we have to multiply by 2 to get interperable heights
+  hclust_ob_as_phylo$edge.length <- hclust_ob_as_phylo$edge.length*2
+
+  ticks <- make_ticks_df(dendr=hclust_ob  %>% as.dendrogram)
+  return(
+    ggtree(hclust_ob_as_phylo)  %<+% newannotations + xlim(min(ticks$x), 2.2)+#xlim(min(ticks$x), .9)+
+      geom_tiplab(aes(color=new_col, label=tissue_label), 
+                  offset = .14, size=2,
+                  align = T, linetype = NA, fontface="bold") +
+      geom_tippoint() +
+      labs(title=patient) + 
+      scale_linetype(guide="none") + 
+      scale_color_identity()  +
+        geom_segment(y=0, yend=0, x=min(ticks$x), xend=max(ticks$x)) + 
+        annotate(geom="text",        x=ticks$x, y=-.2, label=ticks$lab, size=2)   + 
+        geom_segment(data=ticks, aes(y=-yend, yend=0, x=x, xend=x ))
+  )
+}
+
+for (pat in unique(tcr_sample_metadata$indv_label)){
+  # pat="Patient A"; metri="JSD"; li="single"
+  if (startsWith(pat, "Donor")) next
+  jsdplist[[pat]] = list(complete=NA, single=NA)
+  this_data <- tcr_corrs_anno %>% 
+    filter(indv_label.x == pat) %>%
+    filter(indv_label.x == indv_label.y)
+  for (metri in c("JSD")){
+    for (li in c("single")){
+      # Remove the following dodgy samples
+      if(pat== "Patient D"){
+        this_data <- this_data %>% 
+          filter(tissue.x != "autopsy_marrow") %>%
+          filter(tissue.y != "autopsy_marrow")
+      }
+      
+      p_ <- plot_patient_tcr_tree(df = this_data, 
+                                  patient = pat,
+                                  linkage=li,
+                                  metri=metri) 
+      jsdplist[[pat]][[li]] = p_
+      ggsave(plot = p_ , filename = file.path(figs_dir, str_glue("TCR_{pat}_{li}_{metri}_tree.pdf")), height=8.5,  width=4.6, )
+    }
+  }
+}
+
+# stolen from https://stackoverflow.com/a/41882883/4561056
+flattenlist <- function(x){  
+  morelists <- sapply(x, function(xprime) class(xprime)[1]=="list")
+  out <- c(x[!morelists], unlist(x[morelists], recursive=FALSE))
+  if(sum(morelists)){ 
+    Recall(out)
+  }else{
+    return(out)
+  }
+}
+
+ggsave(plot = wrap_plots(flattenlist(lapply(jsdplist, function(x){x[["single"]]})), ncol = 2), filename = file.path(figs_dir, str_glue("TCR_all_pat_trees.pdf")), height = 40, width = 15)
+ggsave(plot = wrap_plots(
+  list(jsdplist[["Patient A"]][["single"]], 
+       jsdplist[["Patient B"]][["single"]],
+       jsdplist[["Patient C"]][["single"]],
+       jsdplist[["Patient D"]][["single"]],
+       jsdplist[["Patient E"]][["single"]],
+       jsdplist[["Patient F"]][["single"]],
+       jsdplist[["Patient G"]][["single"]]), nrow = 1), filename = file.path(figs_dir, str_glue("TCR_pat_trees_together.pdf")), height = 5, width = 11)
+ggsave(plot = wrap_plots(
+  list(jsdplist[["Patient J"]][["single"]], 
+       jsdplist[["Patient I"]][["single"]],
+       jsdplist[["Patient H"]][["single"]]), nrow = 1), filename = file.path(figs_dir, str_glue("TCR_comparator_trees_together.pdf")), height = 5, width = 5.5)
+
+
+```
+
+
+
+
+
+
+```{r gtex-tcr-scatterplot}
+
+gtex <- jsd_individuals_dist_list[["All"]][[2]] %>% as.data.frame() %>% rownames_to_column("from") %>% pivot_longer(names_to = "to", cols=-from, values_to = "gtex") %>% 
+  mutate(key = paste0(pmin(from, to), pmax(from, to), sep = "")) %>% 
+  distinct(key, .keep_all = TRUE) %>% select(-key) %>% 
+  inner_join(., tissue_key %>% select(Tissue, TissueTCR), by=c("from"="Tissue")) %>% filter(TissueTCR != "")  %>% 
+  select(-from) %>% rename(from="TissueTCR") %>% 
+  inner_join(., tissue_key %>% select(Tissue, TissueTCR), by=c("to"="Tissue")) %>% filter(TissueTCR != "")  %>% 
+  select(-to) %>% rename(to="TissueTCR")
+#   X1 X2 key
+
+
+
+
+tcr <- tcr_corrs_anno %>% 
+  filter(org.x == "Human" &org.y == "Human") %>%
+  filter(indv_label.x == indv_label.y) %>% 
+  rename(from=tissue.x, to=tissue.y, tcr=JSD, patient=indv_label.x) %>% 
+  filter(from != to) %>% 
+  select(from, to, tcr, patient) 
+
+ggsave(
+inner_join(gtex, tcr) %>%
+  ggplot(aes(color=paste(from, to, sep="-"), y=tcr,x=gtex, label=paste(from, to, sep="-"), shape=patient)) +
+  geom_point(size=3) + geom_text_repel(size=2) + 
+  scale_color_discrete(guide="none") + 
+  scale_shape_manual(values=c(1:100)) + 
+  theme(legend.position = "bottom") + 
+  labs(x="JSD according to GTEx median summary", y="JSD according to TCR profiles", shape="patient") + theme_classic() ,
+filename = file.path(figs_dir, "GTEx-vs-TCR-summary.pdf"),
+width=12, height=12) 
+  
+
+```
+
+
+## 2C: Quantifying Anatomic distances with GTEx
+
+
+```{r}
+cluster_order <- data.frame(
+  Tissue=labels(jsd_individuals_dist_list[["Tissues_in_TCR"]][[1]])
+) %>% full_join(specific_tissue_key)
+cluster_order_uniq <- unique(cluster_order$TissueTCR)
+
+corr_df_raw <- tcr %>% 
+  filter(patient=="Patient D") %>% 
+  filter(to %in% cluster_order$TissueTCR & from %in% cluster_order$TissueTCR) %>% 
+  left_join(specific_tissue_key %>% select(BroadTissueTCR, TissueTCR) %>% rename(To=BroadTissueTCR), by=c(to="TissueTCR")) %>% 
+  left_join(specific_tissue_key %>% select(BroadTissueTCR, TissueTCR) %>% rename(From=BroadTissueTCR), by=c(from="TissueTCR")) %>%
+  left_join(specific_tissue_key %>% select(Tissue, BroadTissueTCR) %>% rename(ToB=Tissue), by=c(To="BroadTissueTCR")) %>% 
+  left_join(specific_tissue_key %>% select(Tissue, BroadTissueTCR) %>% rename(FromB=Tissue), by=c(From="BroadTissueTCR")) %>%
+  # filter(ToB %in% cluster_order$Tissue) %>% 
+  # filter(FromB %in% cluster_order$Tissue) %>% 
+#  group_by(to, from) %>%
+ # distinct(from, to, .keep_all = TRUE) %>%
+  group_by(ToB, FromB) %>%
+  dplyr::summarize(tcr=median(tcr)) %>% 
+  pivot_wider(names_from="ToB", values_from="tcr") %>% 
+  column_to_rownames("FromB") %>% 
+ as.matrix() 
+
+corr_df_raw <- corr_df_raw[, rownames(corr_df_raw)]
+#corr_df[upper.tri(corr_df)] <- NA
+cluster_order <- cluster_order %>% filter(Tissue %in%rownames(corr_df_raw) )
+corr_df <- corr_df_raw[cluster_order$Tissue, cluster_order$Tissue]
+
+
+# pull in the specific tissues GTEx jsd distances
+gtex_mat <- jsd_individuals_dist_list[[2]][[2]] 
+tissues_in_PtD_tcr <- c("Colon...Sigmoid", "Colon...Transverse", 
+                        "Esophagus...Mucosa", 
+                        "Heart...Left.Ventricle", "Kidney...Cortex", 
+                        "Liver", "Skin...Sun.Exposed..Lower.leg.", 
+                        "Small.Intestine...Terminal.Ileum", 
+                        "Spleen", "Stomach", "Whole.Blood") 
+gtex_mat <-gtex_mat[tissues_in_PtD_tcr, tissues_in_PtD_tcr]
+hclust_col_dists <- hclust(as.dist(gtex_mat), method = "single") 
+dend2 <- hclust_col_dists %>% as.dendrogram
+labels_colors(dend2) <- data.frame(Tissue = labels(dend2)) %>%
+  left_join(., tissue_key) %>% pull(col)
+tmp <- ape::as.phylo(dend2)
+
+tmp$edge.length <- tmp$edge.length*2
+ticks <- make_ticks_df(dendr = dend2,dofilter =  TRUE, tick_pos = seq(0, 1, .05)) %>%
+  filter(lab < .2)
+
+this_anno <- left_join(newannotations, specific_tissue_key %>% select(-col), c("tissue" ="TissueTCR")) %>% select(Tissue, everything())
+(p_gtex_spec_tissue <- ggtree(tmp)  %<+% this_anno +
+    xlim(min(ticks$x), .4) +
+    geom_tiplab(aes(color=col, label=label), 
+                offset = 0.01, 
+                align = T, linetype = NA, fontface="bold") +
+    geom_tippoint() +
+    labs() + 
+    scale_linetype(guide="none") + 
+    scale_color_identity() +
+    geom_segment(y=0, yend=0, x=min(ticks$x), xend=max(ticks$x)) + 
+    annotate(geom="text",        x=ticks$x, y=-.3, label=ticks$lab )   + 
+    geom_segment(data=ticks, aes(y=-yend, yend=0, x=x, xend=x )) +
+    theme(legend.position = c(.1, .8))
+)
+
+
+# modified from ggtree to add cell labels 
+mygheatmap <- function(p, data, offset=0, width=1, low="green", high="red", color="white",
+                     colnames=TRUE, colnames_position="bottom", colnames_angle=0, colnames_level=NULL,label_cells=FALSE,
+                     colnames_offset_x = 0, colnames_offset_y = 0, font.size=4, family="", hjust=0.5, legend_title = "value") {
+
+    variable <- value <- lab <- y <- NULL
+
+    ## if (is.null(width)) {
+    ##     width <- (p$data$x %>% range %>% diff)/30
+    ## }
+
+    ## convert width to width of each cell
+    width <- width * (p$data$x %>% range(na.rm=TRUE) %>% diff) / ncol(data)
+
+    isTip <- x <- y <- variable <- value <- from <- to <- NULL
+
+    ## handle the display of heatmap on collapsed nodes
+    ## https://github.com/GuangchuangYu/ggtree/issues/242
+    ## extract data on leaves (& on collapsed internal nodes) 
+    ## (the latter is extracted only when the input data has data on collapsed
+    ## internal nodes)
+    df <- p$data
+    nodeCo <- intersect(df %>% filter(is.na(x)) %>% 
+                         select(.data$parent, .data$node) %>% unlist(), 
+                     df %>% filter(!is.na(x)) %>% 
+                         select(.data$parent, .data$node) %>% unlist())
+    labCo <- df %>% filter(.data$node %in% nodeCo) %>% 
+        select(.data$label) %>% unlist()
+    selCo <- intersect(labCo, rownames(data))
+    isSel <- df$label %in% selCo
+    
+    df <- df[df$isTip | isSel, ]
+    start <- max(df$x, na.rm=TRUE) + offset
+
+    dd <- as.data.frame(data)
+    ## dd$lab <- rownames(dd)
+    i <- order(df$y)
+
+    ## handle collapsed tree
+    ## https://github.com/GuangchuangYu/ggtree/issues/137
+    i <- i[!is.na(df$y[i])]
+
+    lab <- df$label[i]
+    ## dd <- dd[lab, , drop=FALSE]
+    ## https://github.com/GuangchuangYu/ggtree/issues/182
+    dd <- dd[match(lab, rownames(dd)), , drop = FALSE]
+
+
+    dd$y <- sort(df$y)
+    dd$lab <- lab
+    ## dd <- melt(dd, id=c("lab", "y"))
+    dd <- gather(dd, variable, value, -c(lab, y))
+
+    i <- which(dd$value == "")
+    if (length(i) > 0) {
+        dd$value[i] <- NA
+    }
+    if (is.null(colnames_level)) {
+        dd$variable <- factor(dd$variable, levels=colnames(data))
+    } else {
+        dd$variable <- factor(dd$variable, levels=colnames_level)
+    }
+    V2 <- start + as.numeric(dd$variable) * width
+    mapping <- data.frame(from=dd$variable, to=V2)
+    mapping <- unique(mapping)
+
+    dd$x <- V2
+    dd$width <- width
+    dd[[".panel"]] <- factor("Tree")
+    if (is.null(color)) {
+        p2 <- p + geom_tile(data=dd, aes(x, y, fill=value, ), width=width, inherit.aes=FALSE)
+    } else {
+        p2 <- p + geom_tile(data=dd, aes(x, y, fill=value), width=width, color=color, inherit.aes=FALSE)
+    }
+    if (label_cells){
+      p2 <- p2 + geom_text(data=dd, aes(x, y, label=round(value, 2)), color="grey90", size=2)
+    }
+    if (is(dd$value,"numeric")) {
+        p2 <- p2 + scale_fill_gradient(low=low, high=high, na.value=NA, name = legend_title) # "white")
+    } else {
+        p2 <- p2 + scale_fill_discrete(na.value=NA, name = legend_title) #"white")
+    }
+
+    if (colnames) {
+        if (colnames_position == "bottom") {
+            y <- 0
+        } else {
+            y <- max(p$data$y) + 1
+        }
+        mapping$y <- y
+        mapping[[".panel"]] <- factor("Tree")
+        p2 <- p2 + geom_text(data=mapping, aes(x=to, y = y, label=from), size=font.size, family=family, inherit.aes = FALSE,
+                             angle=colnames_angle, nudge_x=colnames_offset_x, nudge_y = colnames_offset_y, hjust=hjust)
+    }
+
+    p2 <- p2 + theme(legend.position="right")
+    ## p2 <- p2 + guides(fill = guide_legend(override.aes = list(colour = NULL)))
+
+    if (!colnames) {
+        ## https://github.com/GuangchuangYu/ggtree/issues/204
+        p2 <- p2 + scale_y_continuous(expand = c(0,0))
+    }
+
+    attr(p2, "mapping") <- mapping
+    return(p2)
+}
+
+corr_df_no_tri <- corr_df
+corr_df_no_tri[upper.tri(corr_df_no_tri)] <- NA
+(p_tree_and_heatmap <- mygheatmap(p_gtex_spec_tissue, 
+         corr_df_no_tri , offset=.3, width=4, label_cells = TRUE,
+        colnames=TRUE, legend_title="JSD",colnames_angle=45, hjust=0,
+        colnames_offset_y = -.35,
+        colnames_position = "top") +
+    scale_x_ggtree() + 
+    scale_y_continuous(expand=c(0, 0.4)) + scale_fill_viridis_c(na.value = "white", limits=c(0,1)) +
+  labs(fill="JSD") + theme(axis.text = element_text(size=3)) + ylim(c(-1, 16)) + xlim(-.09, 1.04) )
+  
+
+ggsave(p_gtex_spec_tissue, filename = file.path(figs_dir, "GTEx_PtD_tissues.pdf"), height=5, width=4)
+ggsave(p_tree_and_heatmap, filename = file.path(figs_dir, "GTEx_PtD_tissues_with_heatmap.pdf"), height=5, width=9)
+
+```
+
+
+## 2D
+
+```{r}
+

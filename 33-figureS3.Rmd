@@ -1,0 +1,37 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+## S3
+
+```{R}
+load("./tcr_objects.Rdata")
+# subset to only within-individual comparisons
+comparison <- tcr_corrs %>% 
+  full_join(tcr_sample_metadata, by=c("sample1"="sample_name")) %>% 
+  full_join(tcr_sample_metadata, by=c("sample2"="sample_name")) %>% 
+    filter(indv_label.x == indv_label.y)
+
+g <- ggplot(comparison %>% 
+              filter(org.x == "Human") %>%
+              filter(gvhd.x == "GvHD") %>% 
+              filter(sample1 != sample2), aes(JSD, morisita))
+
+g + facet_grid(. ~ indv_label.x) + 
+  geom_point(aes(color = indv_label.x)) + 
+  scale_color_brewer(palette="Set2", guide="none") +
+  geom_smooth(size = .5, linetype = 1, method = "lm", fullrange = F, se = FALSE, color = "black") + 
+  stat_regline_equation(label.y = 1, aes(label = ..rr.label..)) +
+  theme(axis.text=element_text(size=15, color = "black")) + 
+  coord_fixed() +
+  theme_classic()
+
+# TODO ggsave this
+g + geom_point(aes(color = indv_label.x), size = 4, shape = 19, alpha = .5) + 
+  geom_smooth(size = 1, linetype = 1, method = "lm", se = FALSE) + 
+  stat_regline_equation(label.y = 1, aes(label = ..rr.label..)) +
+  theme_classic()
+```
+
