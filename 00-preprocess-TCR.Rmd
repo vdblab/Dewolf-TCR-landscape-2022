@@ -49,40 +49,43 @@ if (!file.exists(tcr_raw_output)){
         grepl("^Donor", sample_name) ~ "Mouse",
         TRUE ~ "FixMe"),
       samp_type = case_when(
+        grepl("[Dd]onor", sample_name) ~ "Donor",
         grepl("^Pt", sample_name) ~ "Patient",
         grepl("^Balb-c", sample_name) ~ "Healthy",
         grepl("^Recipient_", sample_name) ~ "Recipient",
-        grepl("^Donor", sample_name) ~ "Donor",
         TRUE ~ "FixMe"),
       indv_type = case_when(
+        grepl("[Dd]onor", sample_name) ~ "Donor",
         grepl("^Pt", sample_name) ~ "Recipient",
         grepl("^Balb-c", sample_name) ~ "Recipient",
         grepl("^Recipient_", sample_name) ~ "Recipient",
-        grepl("^Donor", sample_name) ~ "Donor",
         TRUE ~ "FixMe"),
       gvhd = case_when(
+        grepl("[Dd]onor", sample_name) ~ "noGvHD",
         grepl("^Pt[A-G]", sample_name) ~ "GvHD",
         grepl("^Recipient_", sample_name) ~ "GvHD",
         grepl("^Balb", sample_name) ~ "noGvHD",
-        grepl("^Pt[H-J]", sample_name) ~ "noGvHD"),
+        grepl("^Pt[H-J]", sample_name) ~ "noGvHD",
+      ),
       indv_id = case_when(
         samp_type == "Healthy"     ~ gsub(".*?_(\\d*?)_.*", "\\1", sample_name ),
-        samp_type == "Patient"   ~ gsub("Pt(.+?)_.*", "\\1", sample_name),
+        samp_type == "Patient" |  grepl("^Pt", sample_name)   ~ gsub("Pt(.+?)_.*", "\\1", sample_name),
         samp_type == "Donor"     ~ gsub(".*?_(\\d*?)_.*", "\\1", sample_name),
         samp_type == "Recipient" ~ gsub("Recipient_tx(\\d*?)_(\\d+)_.*", "\\2", sample_name),
         TRUE                     ~ "FixMe" 
       ),
       tissue = case_when(
+        samp_type == "Donor" & org == "Mouse"     ~ "Tcells",
+        samp_type == "Donor" & org == "Human"     ~ "Graft/Blood",
         samp_type == "Healthy"   ~ gsub(".*_\\d_(.*)$", "\\1", sample_name),
         samp_type == "Patient"   ~ gsub("Pt._(.*)$", "\\1", gsub("_TCRB", "",   sample_name)),
-        samp_type == "Donor"     ~ "Tcells",
         samp_type == "Recipient" ~ gsub(".*_D\\d+_(.*)$", "\\1", sample_name),
         TRUE                     ~ "FixMe" 
       ),
       exp_rep =  ifelse(samp_type  == "Recipient", gsub("Recipient_tx(\\d*?)_(\\d+)_.*", "\\1", sample_name), NA),
       collection_day = ifelse(samp_type == "Recipient", gsub("Recipient_tx.*D(\\d*?)_.*", "\\1", sample_name), NA)
     )
-  
+  # View(tcr_raw %>% select(sample_name, org, samp_type, gvhd, indv_id, tissue, exp_rep, collection_day) %>% distinct())
   write.csv(tcr_raw, file = tcr_raw_output, row.names = FALSE)
 }
 ```

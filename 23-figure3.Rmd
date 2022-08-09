@@ -1,2 +1,93 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+# Aluvial Plots
 
-TODO: add in aluvial plots here
+```{R}
+library(RColorBrewer)
+library(ggplot2) 
+library(tidyverse) 
+library(ggalluvial)
+load("tcr_objects.Rdata")
+
+make_alluvial_dataset <- function(tcr_raw, tcr_sample_metadata, ref_org="Human", ref_pt="Patient B", ref_tissue="duodenum", topn=10){
+  samples_of_interest <- tcr_sample_metadata %>%
+    filter(
+      org==ref_org,
+      indv_label == ref_pt
+    ) %>% pull(sample_name)
+  
+  top_clones <- tcr_raw %>% 
+    filter(sample_name %in% samples_of_interest) %>%
+    group_by(sample_name) %>%
+    slice_max(n = num, order_by=productive_frequency, with_ties = TRUE) %>%
+    arrange(desc(productive_frequency)) %>% 
+    mutate(tissue_clone_rank=row_number()) %>% 
+    select(sample_name, rearrangement, tissue_clone_rank)
+  
+  top_n_data <- filter(tcr_raw) %>% 
+    filter(rearrangement %in% top_clones$rearrangement) 
+
+  top_n_data_wide <- top_n_data %>% 
+    pivot_wider(id_cols = rearrangement, names_from=tissue, values_from=productive_frequency, values_fill = 0) %>% 
+    column_to_rownames("rearrangement")
+  
+  
+  
+  top_10_ascending = top_n_data_wide %>%
+    arrange(desc(get(ref_tissue))) %>% 
+    data.frame() %>%
+    mutate(key=row_number())
+  
+  #now that we have the dataframe with just the clones we want and their frequencies in all the tissues, we will re-format the data for alluvium
+  # top_10_ascending = data.frame(top_10_ascending)
+  # top_10_ascending$key = 1:nrow(top_10_ascending) #this adds a "key" or "NT ID" to each row 
+  # top_10_ascending$key #this is the number of rows
+  
+  plot_data <- top_10_ascending %>% 
+    pivot_longer(cols = -key, names_to = "tissue_type", values_to="tissues") %>%
+    mutate(frequency_nudged = tissues + rnorm(n=n(),  mean = 10E-7, sd = 10E-9)) %>% 
+    data.frame()
+  
+  p_ <- ggplot(plot_data,
+                aes(x = tissue_type, stratum = frequency_nudged, y=frequency_nudged, alluvium = key,
+                    fill = ifelse(key==1, "mediumpurple", "gray75"))) +
+      labs(x="", y="", fill = "Nucleotide ID", title="") +
+      geom_flow(stat = "alluvium", curve_type = "sigmoid", color = "gray45", size = .3) +
+      geom_stratum(alpha = 1) + 
+      # this needs to be set based on some other column so we don't have to make it new for each plot
+      # scale_x_discrete(limits = c("duodenum", "ileum", "liver", "skin", "spleen", "autopsy_marrow", "pretx_blood"), 
+      #                  labels=c("duodenum", "ileum", "liver", "skin", "spleen", "_marrow", "pre_blood"), 
+      #                  expand = c(.05, .05)) +
+      scale_fill_identity() +
+      theme_classic() +
+      theme(
+        axis.text.y = element_text(size = 15, color = "black"),
+        legend.position = "right",
+        axis.text.x = element_text(size = 15, angle = -30, color = "black", hjust = 0)
+      ) +
+      scale_y_continuous(expand = c(0,0)) 
+  
+
+  return(list(top_n_data=top_n_data,
+              top_clones=top_clones,
+              top_n_data_wide=top_n_data_wide,
+              plot_data=plot_data,
+              p_=p_))
+}
+
+
+
+
+thisdata <- make_alluvial_dataset(tcr_raw, tcr_sample_metadata, ref_org="Human", ref_pt="Patient B", topn=10)
+
+
+ggsave(plot=thisdata$p_ ,height=5,width=10,dpi=200, 
+       filename="Pt2_top10_duodenum.pdf", 
+       useDingbats=FALSE)
+
+```
+
+
