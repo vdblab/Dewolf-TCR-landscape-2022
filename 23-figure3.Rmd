@@ -27,10 +27,11 @@ make_alluvial_dataset <- function(tcr_raw, tcr_sample_metadata, ref_org="Human",
     mutate(tissue_clone_rank=row_number()) %>% 
     select(sample_name, rearrangement, tissue_clone_rank)
   
-  top_n_data <- filter(tcr_raw) %>% 
+  top_n_data <- tcr_raw %>% 
     filter(rearrangement %in% top_clones$rearrangement) 
 
   top_n_data_wide <- top_n_data %>% 
+    select(rearrangement, tissue, productive_frequency) %>%
     pivot_wider(id_cols = rearrangement, names_from=tissue, values_from=productive_frequency, values_fill = 0) %>% 
     column_to_rownames("rearrangement")
   
@@ -52,8 +53,8 @@ make_alluvial_dataset <- function(tcr_raw, tcr_sample_metadata, ref_org="Human",
     data.frame()
   
   p_ <- ggplot(plot_data,
-                aes(x = tissue_type, stratum = frequency_nudged, y=frequency_nudged, alluvium = key,
-                    fill = ifelse(key==1, "mediumpurple", "gray75"))) +
+                aes(x = reorder(tissue_type, anatomic_order), stratum = frequency_nudged, y=frequency_nudged, alluvium = key,
+                    fill = ifelse(key%in%1:10, "mediumpurple", "gray75"))) +
       labs(x="", y="", fill = "Nucleotide ID", title="") +
       geom_flow(stat = "alluvium", curve_type = "sigmoid", color = "gray45", size = .3) +
       geom_stratum(alpha = 1) + 
@@ -78,16 +79,26 @@ make_alluvial_dataset <- function(tcr_raw, tcr_sample_metadata, ref_org="Human",
               p_=p_))
 }
 
+thisdata <- make_alluvial_dataset(tcr_raw, tcr_sample_metadata)
+thisdata$p_
 
-
-
-thisdata <- make_alluvial_dataset(tcr_raw, tcr_sample_metadata, ref_org="Human", ref_pt="Patient B", topn=10)
+plots_to_make <- list(
+  "Patient A"=c(org="Human", topn=10, ref_tissue="esophagus"),
+  "Recipient 7, rep2, day 14"=c(org="Mouse", ref_tissue="skin", topn=10)
+)
+  
+for (i in seq_along(plots_to_make)){
+  thing = plots_to_make[[i]]
+  
+thisdata <- make_alluvial_dataset(tcr_raw, tcr_sample_metadata, ref_org=thing["org"],
+                                  ref_tissue = thing["ref_tissue"], 
+                                  ref_pt=names(plots_to_make)[1], topn=thing["topn"])
 
 
 ggsave(plot=thisdata$p_ ,height=5,width=10,dpi=200, 
-       filename="Pt2_top10_duodenum.pdf", 
+       filename=paste0("alluvial_", names(plots_to_make)[1], ".pdf"), 
        useDingbats=FALSE)
-
+}
 ```
 
 
