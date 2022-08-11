@@ -1,31 +1,32 @@
-tissue,tissue_label,system,col,gtex,plotgroup,new_col,shape,tissue_label_fig1
-blood,PBSCs,Blood,#D13B32,Whole.Blood,PBSCs,#cc3333,1,pre-transplant (host) PBMCs
-autopsy_blood,PBSCs,Blood,#D13B32,Whole.Blood,PBSCs,#cc3333,1,PBMCs
-autopsy_marrow,Bone Marrow,Blood,#D13B32,,Bone Marrow,#cc3333,2,bone marrow
-Tcells,T-cells,Blood,#D13B32,Whole.Blood,T-cells,#A60000,3,T cells
-A_blood,PBSCs,Blood,#D13B32,Whole.Blood,PBSCs,#cc3333,1,PBMCs
-A_marrow,Bone Marrow,Lymphatic,#D13B32,,Bone Marrow,#cc3333,2,bone marrow
-pretx_blood,pre-tx PBMCs,Blood,#D13B32,Whole.Blood,pre-tx PBMCs,#cc3333,1,pre-transplant (host) PBMCs
-ascending_colon,Ascending Colon,Lower GI,#C084B3,,Large Intestine,#cc99cc,4,ascending colon
-colon,Colon,Lower GI,#C084B3,,Large Intestine,#cc99cc,4,ascending colon
-right_colon,Ascending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,#cc99cc,4,ascending colon
-mid_colon,Mid Colon,Lower GI,#C084B3,Colon...Transverse,Large Intestine,#cc99cc,5,transverse colon
-descending_colon,Descending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,#cc99cc,6,descending colon
-left_colon,Descending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,#cc99cc,6,descending colon
-L_colon,Descending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,#cc99cc,6,descending colon
-transverse_colon,Transverse Colon,Lower GI,#C084B3,Colon...Transverse,Large Intestine,#cc99cc,5,transverse colon
-rectum,Rectum,Lower GI,#C084B3,,Large Intestine,#cc99cc,7,rectum
-duodenum,Duodenum,Upper GI,#67B357,,Small Intestine,#666699,8,duodenum
-ileum,Ileum,Lower GI,#67B357,Small.Intestine...Terminal.Ileum,Small Intestine,#666699,9,ileum
-jejunum,Jejunum,Lower GI,#67B357,,Small Intestine,#666699,10,jejunum
-small_intestine,Small Intestine,Lower GI,#67B357,,Small Intestine,#666699,11,duodenum
-stomach,Stomach,Upper GI,#4B86B8,Stomach,Upper GI,#6699cc,12,stomach
-esophagus,Esophagus,Upper GI,#4B86B8,Esophagus...Muscularis,Upper GI,#6699cc,13,esophagus
-skin,Skin,Skin,#E99D59,,Skin,#009933,14,skin
-skinb,Skin,Skin,#E99D59,,Skin,#009933,14,skin
-heart,Heart,Circulatory,#7B589E,,Heart,#99cc66,15,heart
-kidney,Kidney,Renal,#7B589E,,Kidney,#99cc66,16,kidney
-liver,Liver,Liver,#3A7E46,,Liver,#663333,17,liver
-mLN,mLN,Lymphatic,#475CA4,,mLN,#ff9933,18,mLN
-spleen,Spleen,Lymphatic,#475CA4,,Spleen,#ff9933,19,spleen
-terminalileum,Ileum,Lower GI,#67B357,Small.Intestine...Terminal.Ileum,Small Intestine,#666699,9,ileum
+tissue,tissue_label,system,col,gtex,plotgroup,new_col,shape,tissue_label_fig1,anatomic_order
+blood,PBSCs,Blood,#D13B32,Whole.Blood,PBSCs,#cc3333,1,pre-transplant (host) PBMCs,26
+autopsy_blood,PBSCs,Blood,#D13B32,Whole.Blood,PBSCs,#cc3333,1,PBMCs,27
+autopsy_marrow,Bone Marrow,Blood,#D13B32,,Bone Marrow,#cc3333,2,bone marrow,24
+Tcells,T-cells,Blood,#D13B32,Whole.Blood,T-cells,#A60000,3,T cells,30
+A_blood,PBSCs,Blood,#D13B32,Whole.Blood,PBSCs,#cc3333,1,PBMCs,28
+A_marrow,Bone Marrow,Lymphatic,#D13B32,,Bone Marrow,#cc3333,2,bone marrow,25
+pretx_blood,pre-tx PBMCs,Blood,#D13B32,Whole.Blood,pre-tx PBMCs,#cc3333,1,pre-transplant (host) PBMCs,29
+ascending_colon,Ascending Colon,Lower GI,#C084B3,,Large Intestine,#cc99cc,4,ascending colon,8
+colon,Colon,Lower GI,#C084B3,,Large Intestine,#cc99cc,4,ascending colon,15
+right_colon,Ascending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,#cc99cc,4,ascending colon,9
+mid_colon,Mid Colon,Lower GI,#C084B3,Colon...Transverse,Large Intestine,#cc99cc,5,transverse colon,10
+descending_colon,Descending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,#cc99cc,6,descending colon,12
+left_colon,Descending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,#cc99cc,6,descending colon,13
+L_colon,Descending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,#cc99cc,6,descending colon,14
+transverse_colon,Transverse Colon,Lower GI,#C084B3,Colon...Transverse,Large Intestine,#cc99cc,5,transverse colon,11
+rectum,Rectum,Lower GI,#C084B3,,Large Intestine,#cc99cc,7,rectum,16
+duodenum,Duodenum,Upper GI,#67B357,,Small Intestine,#666699,8,duodenum,3
+ileum,Ileum,Lower GI,#67B357,Small.Intestine...Terminal.Ileum,Small Intestine,#666699,9,ileum,5
+jejunum,Jejunum,Lower GI,#67B357,,Small Intestine,#666699,10,jejunum,4
+small_intestine,Small Intestine,Lower GI,#67B357,,Small Intestine,#666699,11,duodenum,7
+stomach,Stomach,Upper GI,#4B86B8,Stomach,Upper GI,#6699cc,12,stomach,2
+esophagus,Esophagus,Upper GI,#4B86B8,Esophagus...Muscularis,Upper GI,#6699cc,13,esophagus,1
+skin,Skin,Skin,#E99D59,,Skin,#009933,14,skin,18
+skinb,Skin,Skin,#E99D59,,Skin,#009933,14,skin,19
+heart,Heart,Circulatory,#7B589E,,Heart,#99cc66,15,heart,22
+kidney,Kidney,Renal,#7B589E,,Kidney,#99cc66,16,kidney,23
+liver,Liver,Liver,#3A7E46,,Liver,#663333,17,liver,20
+mLN,mLN,Lymphatic,#475CA4,,mLN,#ff9933,18,mLN,17
+spleen,Spleen,Lymphatic,#475CA4,,Spleen,#ff9933,19,spleen,21
+terminalileum,Ileum,Lower GI,#67B357,Small.Intestine...Terminal.Ileum,Small Intestine,#666699,9,ileum,6
+donor,donor,donor,#FFC0CB,,donor,#FFC0CB,20,donor,31

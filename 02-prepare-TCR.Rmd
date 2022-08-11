@@ -11,6 +11,7 @@ library(gplots)     # for heatmap.2
 library(ggtree)    # for trees
 library(doParallel)
 library(ape)   # for as.phylo
+library(abdiv)
 ```
 
 # Processing the raw TCR data
@@ -107,8 +108,10 @@ if(!file.exists(tcr_objects_path)){
   
   sample_combinations <- cbind(sample_combinations, par_morisita,par_clone_overlap, par_aa_overlap )
   
-  
-  # the `colnames<-`(rownames(tcr_raw_w_jsd))  fixes the messed up column punctuation
+  sample_n_clones <- tcr_raw_filt %>% 
+    group_by(sample_name) %>%
+    summarize(n_unique_tcrs=n())
+    # the `colnames<-`(rownames(tcr_raw_w_jsd))  fixes the messed up column punctuation
   tcr_corrs <- pivot_longer(
     data.frame(tcr_raw_w_jsd) %>% 
       `colnames<-`(rownames(dt_tcr_w)) %>% 
@@ -121,10 +124,20 @@ if(!file.exists(tcr_objects_path)){
           `colnames<-`(rownames(dt_tcr_w_aa)) %>% 
           `rownames<-`(rownames(dt_tcr_w_aa)) %>% 
           rownames_to_column("sample1"), cols=-sample1 , names_to = "sample2", values_to = "JSD_aa" ), by=c("sample1", "sample2")) %>% 
-    full_join(sample_combinations,  by=c("sample1", "sample2"))
+    full_join(sample_combinations,  by=c("sample1", "sample2")) %>% 
+    left_join(sample_n_clones, by=c("sample1"="sample_name" )) %>% 
+    left_join(sample_n_clones, by=c("sample2"="sample_name" )) 
     
+  ggplot(tcr_corrs %>% filter(grepl("^PtA", sample1) , grepl("^PtA", sample2)) %>% 
+           filter(n_unique_tcrs.x > 10, n_unique_tcrs.y>10), aes(x=n_unique_tcrs.x,y=n_unique_tcrs.y, color=JSD)) + geom_jitter(alpha=.2) + theme_classic()  +scale_x_log10( ) + scale_y_log10() 
+  #+ scale_color_gradient2(mid = "white", low = "blue", high = "red" )
   
-  
+    ggplot(tcr_corrs %>% filter(grepl("^PtA", sample1) , grepl("^PtA", sample2)) %>% 
+           filter(n_unique_tcrs.x > 10, n_unique_tcrs.y>10), aes(x=n_unique_tcrs.x,y=JSD)) + geom_jitter(alpha=.2) + theme_classic()  +scale_x_log10( ) + scale_y_log10() 
+  ggplot(tcr_corrs %>% filter(grepl("^PtA", sample1) , grepl("^PtA", sample2)) %>% 
+           mutate(mean_clones = mean(c(n_unique_tcrs.x, n_unique_tcrs.y))) %>%
+           filter(n_unique_tcrs.x > 10, n_unique_tcrs.y>10), aes(x=JSD,y=mean_clones, color=JSD)) + geom_jitter(alpha=.2) + theme_classic()  +scale_x_log10( ) + scale_y_log10() + geom_smooth()
+
   
   # verify against original calculations if desired  
   if (FALSE){
