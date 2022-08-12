@@ -23,14 +23,20 @@ The following chunk serves two purposes: reading in the TCR data, and calculatin
 tcr_objects_path <- "tcr_objects.Rdata"
 if(!file.exists(tcr_objects_path)){
   tcr_raw_output <- file.path("data/TCR", "tcr_unified.csv")
-  tcr_raw <- read.csv(tcr_raw_output)
+  tcr_raw <- data.table::fread(tcr_raw_output) %>% 
+    filter(frame_type == "In") %>%
+    mutate( indv_label = paste(samp_type, indv_id),
+            indv_label = ifelse(!is.na(exp_rep), paste0(indv_label, ", rep", exp_rep), indv_label ),
+            indv_label = ifelse(!is.na(collection_day), paste0(indv_label, ", day ", collection_day), indv_label ),
+            indv_tissue_label = paste(samp_type, indv_id, "-", gsub("_", " ", tissue))
+    ) %>% 
+    as_tibble()
+
   these_samples <-  unique(tcr_raw$sample_name)
   #tcr_raw <- tcr_raw %>% filter(sample_name %in%  these_samples[1:50])
   tcr_raw_filt <-  tcr_raw %>% 
-    filter(frame_type == "In") %>% 
-    select(sample_name, rearrangement, amino_acid, productive_frequency) %>%
-    filter(!is.na(productive_frequency))
-  nrow(tcr_raw_filt)
+    select(sample_name, rearrangement, amino_acid, productive_frequency) 
+  
   dt_tcr_w <- tcr_raw_filt %>% 
     data.table::as.data.table() %>% 
     data.table::dcast(sample_name~rearrangement, fill = 0, value.var="productive_frequency" ) %>%
@@ -187,15 +193,10 @@ if(!file.exists(tcr_objects_path)){
   # jsd_tcr_agg_individuals<- jsd_tcr_agg_individuals[, rownames(jsd_tcr_agg_individuals)]
   # spear_tcr_agg_individuals<- spear_tcr_agg_individuals[, rownames(spear_tcr_agg_individuals)]
   # 
+
   tcr_sample_metadata <- tcr_raw %>% 
-    select(sample_name, org,  samp_type, collection_day,  sample_amount_ng, indv_type, exp_rep, gvhd, indv_id, tissue) %>% 
-    distinct()  %>%
-    mutate( indv_label = paste(samp_type, indv_id),
-            indv_label = ifelse(!is.na(exp_rep), paste0(indv_label, ", rep", exp_rep), indv_label ),
-            indv_label = ifelse(!is.na(collection_day), paste0(indv_label, ", day ", collection_day), indv_label ),
-            indv_tissue_label = paste(samp_type, indv_id, "-", gsub("_", " ", tissue))
-            
-    ) 
+    select(sample_name, org,  samp_type, collection_day,  sample_amount_ng, indv_type, exp_rep, gvhd, indv_id, indv_label, tissue) %>% 
+    distinct()
   # sample_patient_combos <-  sample_combinations %>% select(1:2) %>% 
   #   left_join(tcr_sample_metadata, by=c("sample1"="sample_name") ) %>%
   #   left_join(tcr_sample_metadata, by=c("sample2"="sample_name") ) %>%
@@ -291,7 +292,6 @@ if(!file.exists(tcr_objects_path)){
   #         PtG = clone_freq_by_pt$rearrangement[clone_freq_by_pt$patient_name == "Patient G" & clone_freq_by_pt$sum_productive_frequency > 0]
   # )
   # 
-  
   
   save(list = c( "tcr_sample_metadata", "dt_tcr_w_bysample", "tcr_corrs", "shared_clones", "clones_per_pt", "aa_per_pt", "tcr_raw"), file = tcr_objects_path  )
   

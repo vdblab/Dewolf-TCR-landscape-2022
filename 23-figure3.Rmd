@@ -12,13 +12,17 @@ library(tidyverse)
 library(ggalluvial)
 load("tcr_objects.Rdata")
 
-make_alluvial_dataset <- function(tcr_raw, tcr_sample_metadata, ref_org="Human", ref_pt="Patient B", ref_tissue="duodenum", topn=10){
-  samples_of_interest <- tcr_sample_metadata %>%
+figures_path <- file.path("figures", "alluvials")
+dir.create(figures_path, showWarnings = FALSE)
+
+make_alluvial_dataset <- function(tcr_raw, tcr_sample_metadata, tissue_metadata, ref_org="Human", ref_pt="Patient B", ref_tissue="duodenum", topn=10, ref_color="mediumpurple"){
+  metadata_of_interest <- tcr_sample_metadata %>%
     filter(
       org==ref_org,
       indv_label == ref_pt
-    ) %>% pull(sample_name)
-  
+    )
+  if (!ref_tissue %in% metadata_of_interest$tissue){stop(paste("Tissue", ref_tissue, "not sampled in", ref_pt))}
+  samples_of_interest <- metadata_of_interest  %>% pull(sample_name)
   top_clones <- tcr_raw %>% 
     filter(sample_name %in% samples_of_interest) %>%
     group_by(sample_name) %>%
@@ -28,10 +32,14 @@ make_alluvial_dataset <- function(tcr_raw, tcr_sample_metadata, ref_org="Human",
     select(sample_name, rearrangement, tissue_clone_rank)
   
   top_n_data <- tcr_raw %>% 
+    filter(indv_label == ref_pt) %>% 
     filter(rearrangement %in% top_clones$rearrangement) 
 
   top_n_data_wide <- top_n_data %>% 
     select(rearrangement, tissue, productive_frequency) %>%
+    # dplyr::group_by(rearrangement, tissue) %>%
+    # dplyr::summarise(n = dplyr::n(), .groups = "drop") %>%
+    # dplyr::filter(n > 1L) 
     pivot_wider(id_cols = rearrangement, names_from=tissue, values_from=productive_frequency, values_fill = 0) %>% 
     column_to_rownames("rearrangement")
   
@@ -48,20 +56,18 @@ make_alluvial_dataset <- function(tcr_raw, tcr_sample_metadata, ref_org="Human",
   # top_10_ascending$key #this is the number of rows
   
   plot_data <- top_10_ascending %>% 
-    pivot_longer(cols = -key, names_to = "tissue_type", values_to="tissues") %>%
-    mutate(frequency_nudged = tissues + rnorm(n=n(),  mean = 10E-7, sd = 10E-9)) %>% 
-    data.frame()
+    pivot_longer(cols = -key, names_to = "tissue", values_to="freq") %>%
+    mutate(frequency_nudged = freq + rnorm(n=n(),  mean = 10E-7, sd = 10E-9)) %>% 
+    data.frame() %>% 
+    left_join(tissue_metadata)
   
   p_ <- ggplot(plot_data,
-                aes(x = reorder(tissue_type, anatomic_order), stratum = frequency_nudged, y=frequency_nudged, alluvium = key,
-                    fill = ifelse(key%in%1:10, "mediumpurple", "gray75"))) +
+                aes(x = reorder(tissue_label, anatomic_order), stratum = frequency_nudged, y=frequency_nudged, alluvium = key,
+                    fill = ifelse(key%in%1:10, ref_color, "gray75"))) +
       labs(x="", y="", fill = "Nucleotide ID", title="") +
       geom_flow(stat = "alluvium", curve_type = "sigmoid", color = "gray45", size = .3) +
-      geom_stratum(alpha = 1) + 
-      # this needs to be set based on some other column so we don't have to make it new for each plot
-      # scale_x_discrete(limits = c("duodenum", "ileum", "liver", "skin", "spleen", "autopsy_marrow", "pretx_blood"), 
-      #                  labels=c("duodenum", "ileum", "liver", "skin", "spleen", "_marrow", "pre_blood"), 
-      #                  expand = c(.05, .05)) +
+      geom_stratum(alpha = 1) +
+  # consider , color=NA) + 
       scale_fill_identity() +
       theme_classic() +
       theme(
@@ -78,14 +84,16 @@ make_alluvial_dataset <- function(tcr_raw, tcr_sample_metadata, ref_org="Human",
               plot_data=plot_data,
               p_=p_))
 }
-
-thisdata <- make_alluvial_dataset(tcr_raw, tcr_sample_metadata)
+newannotations <- read.csv("data/updated_colors_dendrograms.csv") 
+thisdata <- make_alluvial_dataset(tcr_raw, tcr_sample_metadata, tissue_metadata = newannotations)
 thisdata$p_
+thisdata <- make_alluvial_dataset(tcr_raw, ref_org = "Human", ref_pt = "Patient A", ref_tissue = "spleen", tcr_sample_metadata = tcr_sample_metadata, tissue_metadata = newannotations, topn = 5)
 
 plots_to_make <- list(
-  "Patient A"=c(org="Human", topn=10, ref_tissue="esophagus"),
-  "Recipient 7, rep2, day 14"=c(org="Mouse", ref_tissue="skin", topn=10)
+  "Patient A"=c(org="Human", topn=10, ref_tissue="esophagus", ref_color="mediumpurple"),
+  "Recipient 7, rep2, day 14"=c(org="Mouse", ref_tissue="skin", topn=10, ref_color="forestgreen")
 )
+
   
 for (i in seq_along(plots_to_make)){
   thing = plots_to_make[[i]]
@@ -96,7 +104,7 @@ thisdata <- make_alluvial_dataset(tcr_raw, tcr_sample_metadata, ref_org=thing["o
 
 
 ggsave(plot=thisdata$p_ ,height=5,width=10,dpi=200, 
-       filename=paste0("alluvial_", names(plots_to_make)[1], ".pdf"), 
+       filename=file.path(figures_path, paste0("alluvial_", names(plots_to_make)[1], ".pdf")), 
        useDingbats=FALSE)
 }
 ```
