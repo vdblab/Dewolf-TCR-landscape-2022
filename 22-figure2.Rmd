@@ -13,6 +13,9 @@ load("GTEx/gtex_objects.RData")
 
 ## 2b
 ```{R}
+fig2_figs_path <- file.path("figures", "fig2")
+dir.create(fig2_figs_path, showWarnings = FALSE)
+
 
 Scatter <- tcr_raw %>%
     filter(frame_type == "In") %>% 
@@ -39,7 +42,7 @@ Scatter <- tcr_raw %>%
   coord_fixed() + theme_classic() 
 ) 
   
-ggsave(file = "scatterplot_ascending_descending.pdf", plot = scatterplot_ascending_descending, device = "pdf", height = 2, width = 2, units = "in")
+ggsave(file = file.path(fig2_figs_path, "scatterplot_ascending_descending.pdf"), plot = scatterplot_ascending_descending, device = "pdf", height = 2, width = 2, units = "in")
 
  
 (scatterplot_ascending_skin =
@@ -72,8 +75,8 @@ ggsave(file = "scatterplot_ascending_descending.pdf", plot = scatterplot_ascendi
 
 
       
-ggsave(file = "scatterplot_ascending_skin.pdf", plot = scatterplot_ascending_skin, device = "pdf", height = 2, width = 2, units = "in")
-ggsave(file = "scatterplot_ascending_duodenum.pdf", plot = scatterplot_ascending_duodenum, device = "pdf", height = 2, width = 2, units = "in")
+ggsave(file = file.path(fig2_figs_path, "scatterplot_ascending_skin.pdf"), plot = scatterplot_ascending_skin, device = "pdf", height = 2, width = 2, units = "in")
+ggsave(file = file.path(fig2_figs_path, "scatterplot_ascending_duodenum.pdf"), plot = scatterplot_ascending_duodenum, device = "pdf", height = 2, width = 2, units = "in")
 
 scatterplot_ascending_descending + scatterplot_ascending_skin + scatterplot_ascending_duodenum
 
@@ -154,7 +157,7 @@ for (pat in unique(tcr_sample_metadata$indv_label)){
                                   linkage=li,
                                   metri=metri) 
       jsdplist[[pat]][[li]] = p_
-      ggsave(plot = p_ , filename = file.path(figs_dir, str_glue("TCR_{pat}_{li}_{metri}_tree.pdf")), height=8.5,  width=4.6, )
+      ggsave(plot = p_ , filename = file.path(fig2_figs_path, str_glue("TCR_{pat}_{li}_{metri}_tree.pdf")), height=8.5,  width=4.6, )
     }
   }
 }
@@ -170,7 +173,7 @@ flattenlist <- function(x){
   }
 }
 
-ggsave(plot = wrap_plots(flattenlist(lapply(jsdplist, function(x){x[["single"]]})), ncol = 2), filename = file.path(figs_dir, str_glue("TCR_all_pat_trees.pdf")), height = 40, width = 15)
+ggsave(plot = wrap_plots(flattenlist(lapply(jsdplist, function(x){x[["single"]]})), ncol = 2), filename = file.path(fig2_figs_path, str_glue("TCR_all_pat_trees.pdf")), height = 40, width = 15)
 ggsave(plot = wrap_plots(
   list(jsdplist[["Patient A"]][["single"]], 
        jsdplist[["Patient B"]][["single"]],
@@ -178,11 +181,11 @@ ggsave(plot = wrap_plots(
        jsdplist[["Patient D"]][["single"]],
        jsdplist[["Patient E"]][["single"]],
        jsdplist[["Patient F"]][["single"]],
-       jsdplist[["Patient G"]][["single"]]), nrow = 1), filename = file.path(figs_dir, str_glue("TCR_pat_trees_together.pdf")), height = 5, width = 11)
+       jsdplist[["Patient G"]][["single"]]), nrow = 1), filename = file.path(fig2_figs_path, str_glue("TCR_pat_trees_together.pdf")), height = 5, width = 11)
 ggsave(plot = wrap_plots(
   list(jsdplist[["Patient J"]][["single"]], 
        jsdplist[["Patient I"]][["single"]],
-       jsdplist[["Patient H"]][["single"]]), nrow = 1), filename = file.path(figs_dir, str_glue("TCR_comparator_trees_together.pdf")), height = 5, width = 5.5)
+       jsdplist[["Patient H"]][["single"]]), nrow = 1), filename = file.path(fig2_figs_path, str_glue("TCR_comparator_trees_together.pdf")), height = 5, width = 5.5)
 
 
 ```
@@ -221,7 +224,7 @@ inner_join(gtex, tcr) %>%
   scale_shape_manual(values=c(1:100)) + 
   theme(legend.position = "bottom") + 
   labs(x="JSD according to GTEx median summary", y="JSD according to TCR profiles", shape="patient") + theme_classic() ,
-filename = file.path(figs_dir, "GTEx-vs-TCR-summary.pdf"),
+filename = file.path(fig2_figs_path, "GTEx-vs-TCR-summary.pdf"),
 width=12, height=12) 
   
 
@@ -415,8 +418,8 @@ corr_df_no_tri[upper.tri(corr_df_no_tri)] <- NA
   labs(fill="JSD") + theme(axis.text = element_text(size=3)) + ylim(c(-1, 16)) + xlim(-.09, 1.04) )
   
 
-ggsave(p_gtex_spec_tissue, filename = file.path(figs_dir, "GTEx_PtD_tissues.pdf"), height=5, width=4)
-ggsave(p_tree_and_heatmap, filename = file.path(figs_dir, "GTEx_PtD_tissues_with_heatmap.pdf"), height=5, width=9)
+ggsave(p_gtex_spec_tissue, filename = file.path(fig2_figs_path, "GTEx_PtD_tissues.pdf"), height=5, width=4)
+ggsave(p_tree_and_heatmap, filename = file.path(fig2_figs_path, "GTEx_PtD_tissues_with_heatmap.pdf"), height=5, width=9)
 
 ```
 

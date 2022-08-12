@@ -3,20 +3,23 @@
 
 ```{R}
 load("tcr_objects.Rdata")
+fig4_figs_path <- file.path("figures", "fig2")
+dir.create(fig4_figs_path, showWarnings = FALSE)
+
 
 (V = venn::venn(clones_per_pt[paste("Patient", LETTERS[1:7])], ilab = TRUE, zcolor = "style", opacity = .2, ggplot = TRUE))
 
 
 
 ggsave(plot=V ,height=6,width=6,dpi=200, 
-       filename="fig4_venn_plot_7.pdf", 
+       filename=file.path(fig4_figs_path, "fig4_venn_plot_7.pdf"), 
        useDingbats=FALSE)
 (Vaa = venn::venn(aa_per_pt[paste("Patient", LETTERS[1:7])], ilab = TRUE, zcolor = "style", opacity = .2, ggplot = TRUE))
 
 
 
 ggsave(plot=Vaa ,height=6,width=6,
-       filename="fig4_venn_plot_7_aa.pdf", 
+       filename=file.path(fig4_figs_path,"fig4_venn_plot_7_aa.pdf"), 
        useDingbats=FALSE)
 
 

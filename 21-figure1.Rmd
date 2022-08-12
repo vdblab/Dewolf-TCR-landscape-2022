@@ -20,6 +20,9 @@ load("tcr_objects.Rdata")
 ## Human Clone Tissue Summary
 
 ```{r}
+figures_path <- file.path("figures", "fig1")
+dir.create(figures_path, showWarnings = FALSE)
+
 tissue_annotations = read.csv("data/updated_colors_dendrograms.csv")
 diversity <- read.csv("tables/st4.csv") %>% 
   left_join(tcr_sample_metadata) %>% 
@@ -51,7 +54,7 @@ div_base <- ggplot(diversity %>% filter(org == "Human"), aes(y=reorder(tissue_la
     theme_classic() + 
     scale_fill_manual(values = human_patient_colors, breaks = names(human_patient_colors), guide="none"))
 
-ggsave(plot=fig1b ,height=5,width=6, filename="fig1b.pdf")
+ggsave(plot=fig1b ,height=5,width=6, filename=file.path(figures_path, "fig1b.pdf"))
 
 (fig1c <- div_base +
     geom_point(aes(x=len, fill = indv_label), size = 4, shape=21, alpha = .9, position = jitter) +
@@ -68,7 +71,7 @@ ggsave(plot=fig1b ,height=5,width=6, filename="fig1b.pdf")
     theme(axis.text.x = element_text(size = 8, hjust = 0, face = "bold")))
 
 
-ggsave(plot=fig1c ,height=5,width=6, filename="fig1c.pdf")
+ggsave(plot=fig1c ,height=5,width=6, filename=file.path(figures_path, "fig1c.pdf"))
 
 
 
@@ -84,7 +87,7 @@ ggsave(plot=fig1c ,height=5,width=6, filename="fig1c.pdf")
   theme(axis.text.x = element_text(size = 8, angle =0, hjust = 0, face = "bold")))
 
 ggsave(plot=fig1d ,height=5,width=6,dpi=200, 
-       filename="fig1d.pdf", 
+       filename=file.path(figures_path, "fig1d.pdf"), 
        useDingbats=FALSE)
 
 #this is the plot for making the the clonality distribution for figure 1 
@@ -101,10 +104,10 @@ ggsave(plot=fig1d ,height=5,width=6,dpi=200,
   theme(axis.text.x = element_text(size = 8, angle = 0, hjust = 0, face = "bold")))
 
 ggsave(plot=fig1e ,height=5,width=6,dpi=200, 
-       filename="fig1e.pdf", 
+       filename=file.path(figures_path, "fig1e.pdf"), 
        useDingbats=FALSE)
 
-ggsave(patchwork::plot_spacer()  + fig1b + fig1c + fig1d + fig1e + plot_layout(widths = c(1, .7, 1,1,1), nrow=1, guides="collect") + plot_annotation(tag_levels = "A"), width = 24, height=5, filename = "fig1.pdf")
+ggsave(patchwork::plot_spacer()  + fig1b + fig1c + fig1d + fig1e + plot_layout(widths = c(1, .7, 1,1,1), nrow=1, guides="collect") + plot_annotation(tag_levels = "A"), width = 24, height=5, filename = file.path(figures_path,"fig1.pdf"))
 ```
 
 
