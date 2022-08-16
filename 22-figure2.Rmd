@@ -99,6 +99,7 @@ newannotations <- read.csv("data/updated_colors_dendrograms.csv")
 
 jsdplist = list()
 plot_patient_tcr_tree <- function(df = tcr_pairs, patient="Pt3", metri="JSD", linkage="single"){
+  if (!"newannotations" %in% ls() ){newannotations <- read.csv("data/updated_colors_dendrograms.csv") }
   # subsets the comparisons of interest  
   tcr_pairs_matrix <- df %>%
     select(tissue.x, tissue.y, all_of(metri)) %>% 
@@ -107,11 +108,12 @@ plot_patient_tcr_tree <- function(df = tcr_pairs, patient="Pt3", metri="JSD", li
     column_to_rownames("tissue.x")  %>% 
     as.matrix()
   # convert spearman correlations to "distances" if needed
-  if(metri == "JSD"){
-    hclust_ob <- hclust(as.dist(tcr_pairs_matrix), method = linkage ) %>% as.dendrogram()
+  if(grepl("JSD", metri)){
+    # this us
+    hclust_ob <- hclust(as.dist(tcr_pairs_matrix), method = linkage ) 
     tick_min <- min(1-tcr_pairs_matrix)
   } else{
-    hclust_ob <- hclust(1-as.dist(tcr_pairs_matrix), method = linkage)  %>% as.dendrogram()
+    hclust_ob <- hclust(1-as.dist(tcr_pairs_matrix), method = linkage)  
     tick_min <- min(tcr_pairs_matrix)
   }
   # convert to phylo
