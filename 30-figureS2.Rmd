@@ -19,27 +19,17 @@ load("./tcr_objects.Rdata")
 
 s2diversity = tcr_sample_metadata %>%
   left_join(read.csv("tables/st4.csv")) %>%
-  left_join(read.csv("tmpdiversity.csv") %>%
+  left_join(read.csv("data/patient_attributes.csv") %>%
               mutate(subject=paste("Patient", subject)), by=c("indv_label" = "subject")) %>%
   left_join(read.csv("data/updated_colors_dendrograms.csv"), by="tissue")
 
 jitter2 <- position_jitter(width = 0.15, height = 0.0)
 
 GI = s2diversity %>%
-#  filter(!tissue_label %in% c("PBSCs", "Bone Marrow", "pre-tx PBMCs", "Heart", "Kidney", "mLN")) %>%
   filter(!tissue_label %in% c("PBSCs", "Bone Marrow", "pre-tx PBMCs", "Heart", "Kidney", "mLN")) %>%
+  filter(tissue != "Graft/Blood") %>% 
   filter(org=="Human")
 
-
-GI_GVHD = GI %>%
-  filter(CMV.reactivation != "n/a")
-
-d <- ggplot(GI, aes(plotgroup, slope))
-
-(d <- ggplot(GI, aes(tissue, slope)) +
-  geom_boxplot(aes(fill = allograft), alpha = 0.5) +
-  theme(axis.text=element_text(size=15, color = "black")) +
-  theme_classic())
 
 #these are the plots for clonality
 c <- ggplot(GI, aes(tissue_label, clonality))
@@ -57,7 +47,7 @@ c <- ggplot(GI, aes(tissue_label, clonality))
 
 cc <- ggplot(GI_GVHD, aes(tissue, clonality))
 
-clonality_CMV = cc + geom_dotplot(binaxis = "y", stackdir = "center", binpositions="all", aes(fill = CMV.reactivation), dotsize = 1, stroke = 2, alpha = .8, position = jitter2) +
+clonality_CMV = cc + geom_point(binaxis = "y", stackdir = "center", binpositions="all", aes(fill = CMV.reactivation), dotsize = 1, stroke = 2, alpha = .8, position = jitter2) +
   theme_classic() + theme(axis.text=element_text(size=15, color = "black")) +
   theme(axis.text.y=element_text(size=12, color = "black"), legend.text = element_text(size = 12, color = "black"), legend.title = element_text(size = 15, color = "black"), axis.title = element_text(size = 15, color = "black", face = "bold")) +
   theme(axis.text.x = element_text(size = 12, hjust = 0, color = "black", angle = -30)) +
@@ -65,7 +55,7 @@ clonality_CMV = cc + geom_dotplot(binaxis = "y", stackdir = "center", binpositio
   xlab("") + scale_fill_brewer(palette = "Set1")
 
 #this plot colors by grade of GVHD peri-autopsy (acute GVHD
-clonality_GVHD = cc + geom_dotplot(binaxis = "y", stackdir = "center", binpositions="all", aes(fill = GVHD_severity), dotsize = 1, stroke = 2, alpha = .8, position = jitter2) +
+clonality_GVHD = cc + geom_point(binaxis = "y", stackdir = "center", binpositions="all", aes(fill = GVHD_severity), dotsize = 1, stroke = 2, alpha = .8, position = jitter2) +
   theme_classic() + theme(axis.text=element_text(size=15, color = "black")) +
   theme(axis.text.y=element_text(size=12, color = "black"), legend.text = element_text(size = 12, color = "black"), legend.title = element_text(size = 15, color = "black"), axis.title = element_text(size = 15, color = "black", face = "bold")) +
   theme(axis.text.x = element_text(size = 12, hjust = 0, color = "black", angle = -30)) +
@@ -76,7 +66,7 @@ clonality_GVHD = cc + geom_dotplot(binaxis = "y", stackdir = "center", binpositi
 s <- ggplot(GI, aes(tissue, slope))
 
 #this plot colors by allograft source
-slope_graft = s + geom_dotplot(binaxis = "y", stackdir = "center", binpositions="all", aes(fill = allograft), dotsize = 1, stroke = 2, alpha = .8, position = jitter2) +
+slope_graft = s + geom_point(binaxis = "y", stackdir = "center", binpositions="all", aes(fill = allograft), dotsize = 1, stroke = 2, alpha = .8, position = jitter2) +
   theme_classic() + theme(axis.text=element_text(size=15, color = "black")) +
   theme(axis.text.y=element_text(size=12, color = "black"), legend.text = element_text(size = 12, color = "black"), legend.title = element_text(size = 15, color = "black"), axis.title = element_text(size = 15, color = "black", face = "bold")) +
   theme(axis.text.x = element_text(size = 12, hjust = 0, color = "black", angle = -30)) +
@@ -87,7 +77,7 @@ slope_graft = s + geom_dotplot(binaxis = "y", stackdir = "center", binpositions=
 
 ss <- ggplot(GI_GVHD, aes(tissue, slope))
 
-slope_CMV = ss + geom_dotplot(binaxis = "y", stackdir = "center", binpositions="all", aes(fill = CMV.reactivation), dotsize = 1, stroke = 2, alpha = .8, position = jitter2) +
+slope_CMV = ss + geom_point(binaxis = "y", stackdir = "center", binpositions="all", aes(fill = CMV.reactivation), dotsize = 1, stroke = 2, alpha = .8, position = jitter2) +
   theme_classic() + theme(axis.text=element_text(size=15, color = "black")) +
   theme(axis.text.y=element_text(size=12, color = "black"), legend.text = element_text(size = 12, color = "black"), legend.title = element_text(size = 15, color = "black"), axis.title = element_text(size = 15, color = "black", face = "bold")) +
   theme(axis.text.x = element_text(size = 12, hjust = 0, color = "black", angle = -30)) +
@@ -95,7 +85,7 @@ slope_CMV = ss + geom_dotplot(binaxis = "y", stackdir = "center", binpositions="
   xlab("") + scale_fill_brewer(palette = "Set1")
 
 #this plot colors by grade of GVHD peri-autopsy (acute GVHD)
-slope_GVHD = ss + geom_dotplot(binaxis = "y", stackdir = "center", binpositions="all", aes(fill = GVHD_severity), dotsize = 1, stroke = 2, alpha = .8, position = jitter2) +
+slope_GVHD = ss + geom_point(binaxis = "y", stackdir = "center", binpositions="all", aes(fill = GVHD_severity), dotsize = 1, stroke = 2, alpha = .8, position = jitter2) +
   theme_classic() + theme(axis.text=element_text(size=15, color = "black")) +
   theme(axis.text.y=element_text(size=12, color = "black"), legend.text = element_text(size = 12, color = "black"), legend.title = element_text(size = 15, color = "black"), axis.title = element_text(size = 15, color = "black", face = "bold")) +
   theme(axis.text.x = element_text(size = 12, hjust = 0, color = "black", angle = -30)) +
