@@ -22,15 +22,14 @@ The following chunk serves two purposes: reading in the TCR data, and calculatin
 ```{R}
 tcr_objects_path <- "tcr_objects.Rdata"
 if(!file.exists(tcr_objects_path)){
-  tcr_raw_output <- file.path("data/TCR", "tcr_unified.csv")
+  tcr_raw_output <- file.path("data/TCR", "tcr_unified.csv") 
+  if(tools::md5sum(tcr_raw_output) != "6f0f6e1bfc6ff1b040692d3a7dad20cc") warning("tcr_unified.csv may need be re-created, it does not match the validated version")
   tcr_raw <- data.table::fread(tcr_raw_output) %>% 
     filter(frame_type == "In") %>%
-    mutate( indv_label = paste(samp_type, indv_id),
-            indv_label = ifelse(!is.na(exp_rep), paste0(indv_label, ", rep", exp_rep), indv_label ),
-            indv_label = ifelse(!is.na(collection_day), paste0(indv_label, ", day ", collection_day), indv_label ),
-            indv_tissue_label = paste(samp_type, indv_id, "-", gsub("_", " ", tissue))
-    ) %>% 
     as_tibble()
+  tcr_sample_metadata <- tcr_raw %>% 
+    select(sample_name, org,  samp_type, collection_day,  sample_amount_ng, indv_type, exp_rep, gvhd, indv_id, indv_label, tissue) %>% 
+    distinct()
 
   these_samples <-  unique(tcr_raw$sample_name)
   #tcr_raw <- tcr_raw %>% filter(sample_name %in%  these_samples[1:50])
@@ -194,9 +193,6 @@ if(!file.exists(tcr_objects_path)){
   # spear_tcr_agg_individuals<- spear_tcr_agg_individuals[, rownames(spear_tcr_agg_individuals)]
   # 
 
-  tcr_sample_metadata <- tcr_raw %>% 
-    select(sample_name, org,  samp_type, collection_day,  sample_amount_ng, indv_type, exp_rep, gvhd, indv_id, indv_label, tissue) %>% 
-    distinct()
   # sample_patient_combos <-  sample_combinations %>% select(1:2) %>% 
   #   left_join(tcr_sample_metadata, by=c("sample1"="sample_name") ) %>%
   #   left_join(tcr_sample_metadata, by=c("sample2"="sample_name") ) %>%

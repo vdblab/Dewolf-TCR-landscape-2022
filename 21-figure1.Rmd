@@ -39,7 +39,7 @@ jitter <- position_jitter(width = 0.0, height = 0.1)
 jitter2 <- position_jitter(width = 0.15, height = 0.01)
 
 
-div_base <- ggplot(diversity %>% filter(org == "Human"), aes(y=reorder(tissue_label, desc(anatomic_order))))
+div_base <- ggplot(diversity %>% filter(org == "Human"), aes(y=reorder(tissue_label_fig1, desc(anatomic_order))))
 
 (fig1b <- ggplot(data.frame(nclones=sapply(clones_per_pt, n_distinct)) %>% rownames_to_column("indv_label") %>% 
                    filter(grepl("Patient", indv_label )),
@@ -115,7 +115,7 @@ ggsave(patchwork::plot_spacer()  + fig1b + fig1c + fig1d + fig1e + plot_layout(w
 ## Mouse Figure 1 additions
 
 ```{r}
-div_base_mouse <- ggplot(diversity %>% filter(org != "Human"), aes(y=reorder(tissue_label, desc(anatomic_order))))
+div_base_mouse <- ggplot(diversity %>% filter(org != "Human"), aes(y=reorder(tissue_label_fig1, desc(anatomic_order))))
 
 
 

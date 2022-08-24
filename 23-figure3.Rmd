@@ -26,7 +26,7 @@ make_alluvial_dataset <- function(tcr_raw, tcr_sample_metadata, tissue_metadata,
   top_clones <- tcr_raw %>% 
     filter(sample_name %in% samples_of_interest) %>%
     group_by(sample_name) %>%
-    slice_max(n = num, order_by=productive_frequency, with_ties = TRUE) %>%
+    slice_max(n = topn, order_by=productive_frequency, with_ties = TRUE) %>%
     arrange(desc(productive_frequency)) %>% 
     mutate(tissue_clone_rank=row_number()) %>% 
     select(sample_name, rearrangement, tissue_clone_rank)
@@ -63,7 +63,7 @@ make_alluvial_dataset <- function(tcr_raw, tcr_sample_metadata, tissue_metadata,
   
   p_ <- ggplot(plot_data,
                 aes(x = reorder(tissue_label, anatomic_order), stratum = frequency_nudged, y=frequency_nudged, alluvium = key,
-                    fill = ifelse(key%in%1:10, ref_color, "gray75"))) +
+                    fill = ifelse(key%in%1:topn, ref_color, "gray75"))) +
       labs(x="", y="", fill = "Nucleotide ID", title="") +
       geom_flow(stat = "alluvium", curve_type = "sigmoid", color = "gray45", size = .3) +
       geom_stratum(alpha = 1) +
@@ -85,9 +85,8 @@ make_alluvial_dataset <- function(tcr_raw, tcr_sample_metadata, tissue_metadata,
               p_=p_))
 }
 newannotations <- read.csv("data/updated_colors_dendrograms.csv") 
-thisdata <- make_alluvial_dataset(tcr_raw, tcr_sample_metadata, tissue_metadata = newannotations)
-thisdata$p_
-thisdata <- make_alluvial_dataset(tcr_raw, ref_org = "Human", ref_pt = "Patient A", ref_tissue = "spleen", tcr_sample_metadata = tcr_sample_metadata, tissue_metadata = newannotations, topn = 5)
+
+thisdata <- make_alluvial_dataset(tcr_raw, ref_org = "Human", ref_pt = "Patient D", ref_tissue = "duodenum", tcr_sample_metadata = tcr_sample_metadata, tissue_metadata = newannotations, topn = 10)
 
 plots_to_make <- list(
   "Patient A"=c(org="Human", topn=10, ref_tissue="esophagus", ref_color="mediumpurple"),
