@@ -32,11 +32,11 @@ dir.create("data/TCR", showWarnings = FALSE)
 tcr_raw_output <- file.path("data/TCR", "tcr_unified.csv")
 
 if (!file.exists(tcr_raw_output)){
-  raw_files <- dir(tcr_data_dir, full.names = TRUE)
+  raw_files <- sort(dir(tcr_data_dir, full.names = TRUE))
   if (length(raw_files) == 0){
     stop(paste0("No files found within ", tcr_data_dir))
   }
-  tcr_raw <- map(raw_files, .f=function(x){
+  tcr_raw_original <- map(raw_files, .f=function(x){
     # x = "sampleExport.2022-06-01_05-18-41//Balb-c_1_blood.tsv"
     read.csv(x, sep = "\t") %>% mutate(sample_name=gsub("\\.tsv", "", basename(x)))
   }) %>% bind_rows() %>% 
@@ -84,8 +84,19 @@ if (!file.exists(tcr_raw_output)){
       ),
       exp_rep =  ifelse(grepl("Recipient_tx", sample_name), gsub("Recipient_tx(\\d*?)_(\\d+)_.*", "\\1", sample_name), NA),
       collection_day = ifelse(grepl("Recipient_tx", sample_name), gsub("Recipient_tx.*D(\\d*?)_.*", "\\1", sample_name), NA)
-    )
-  # View(tcr_raw %>% select(sample_name, org, gvhd,samp_type,  indv_id, tissue, exp_rep, collection_day) %>% distinct())
-  write.csv(tcr_raw, file = tcr_raw_output, row.names = FALSE)
+    ) %>% 
+    mutate(
+      indv_label = paste(samp_type, indv_id),
+      indv_label = ifelse(!is.na(exp_rep), paste0(indv_label, ", rep", exp_rep), indv_label ),
+      indv_label = ifelse(!is.na(collection_day), paste0(indv_label, ", day ", collection_day), indv_label ),
+      indv_tissue_label = paste(samp_type, indv_id, "-", gsub("_", " ", tissue)),
+      sample_amount_ng = round(sample_amount_ng, 2)
+    )  
+  # Ran into strange issue with rounding the sample_ammount_ng; now we round above
+  #   > read.csv("data/TCR/tcr_unified.csv") %>% filter(sample_name == "Balb-c_1_spleen") %>% pull(sample_amount_ng) %>% unique()
+  #      [1] 1195.458 1195.458
+
+  # View(tcr_raw_original %>% select(sample_name, org, gvhd,samp_type,  indv_id, tissue, exp_rep, collection_day) %>% distinct())
+  write.csv(tcr_raw_original, file = tcr_raw_output, row.names = FALSE)
 }
 ```
