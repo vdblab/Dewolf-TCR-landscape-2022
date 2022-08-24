@@ -14,11 +14,11 @@ Download the data as follows:
 - select all
 - click export -> export Sample (NOT  V2!)
 - wait patiently
-- move downloaded zip to this repo, unpack, and set the `tcr_data_dir` variable below to that folder
+- move downloaded zip to this repo, unpack, and rename the folder to `samples`
 
 
 ```{R}
-tcr_data_dir <- "sampleExport.2022-06-22_19-39-10/"
+tcr_data_dir <- "samples/"
 ```
 
 The resulting file `TCR/tcr_unified.csv` is used for later analyses including the GLIPH2 analysis.
