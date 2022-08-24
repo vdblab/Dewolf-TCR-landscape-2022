@@ -85,8 +85,9 @@ for (depth_threshold in c(250, 500, 1000, 5000)){
       results[[paste0(pt, "_depth", depth_threshold, "_topn", topn)]] <- bind_rows(depthdf, topndf) 
     }
   }
-} 
+}
 
+# fix usage of this to differentiate total clones (ie unique clones) from total tempaltes
 total_clones <- tcr_corrs %>% filter(sample1 == sample2) %>% select(sample1, overlapping_clones) %>% distinct() %>%
   rename(total_clones=overlapping_clones)
 
@@ -141,29 +142,30 @@ ggsave(p_depth_comparisons, filename = file.path("figures", "depth_effect_on_jsd
 ## 
 
 ```{r}
+samples_productive_templates <- tcr_raw %>% select(sample_name, productive_templates)  %>% distinct()
 depth_data <- tcr_corrs %>% 
          left_join(tcr_sample_metadata %>% select(sample_name, org, indv_label,samp_type, gvhd) %>% rename(sample1=sample_name), by="sample1")%>% 
          left_join(tcr_sample_metadata %>% select(sample_name, org, indv_label, samp_type, gvhd) %>% rename(sample2=sample_name), by="sample2")%>% 
-  left_join(total_clones, by=c("sample1"="sample1")) %>%
-  left_join(total_clones, by=c("sample2"="sample1")) %>% 
+  left_join(samples_productive_templates, by=c("sample1"="sample_name")) %>%
+  left_join(samples_productive_templates, by=c("sample2"="sample_name")) %>% 
   filter(!grepl("pretx_blood", sample1),  !grepl("pretx_blood", sample2)) %>% 
   filter(!grepl("[Dd]onor", sample1),  !grepl("[Dd]onor", sample2))  %>% 
   filter(indv_label.x == indv_label.y)  %>%
   filter(sample1 != "PtD_autopsy_marrow_TCRB", sample2 != "PtD_autopsy_marrow_TCRB") %>%
   filter(sample1 != sample2) %>% 
   mutate(
-    pct_overlap = pmin(total_clones.x, total_clones.y)/pmax(total_clones.x, total_clones.y),
-    pair_max_clones = pmax(total_clones.x, total_clones.y),
-    pair_min_clones = pmin(total_clones.x, total_clones.y),
+    productive_templates_total_similarity = pmin(productive_templates.x, productive_templates.y)/pmax(productive_templates.x, productive_templates.y),
+    pair_max_templates = pmax(productive_templates.x, productive_templates.y),
+    pair_min_templates = pmin(productive_templates.x, productive_templates.y),
          )%>%
   rowwise() %>% 
   mutate(
-    gmean = sqrt(total_clones.x*total_clones.y),
-    mean = mean(c(total_clones.x, total_clones.y)),
+    gmean = sqrt(productive_templates.x*productive_templates.y),
+    mean = mean(c(productive_templates.x, productive_templates.y)),
   )
 
 ggplot( depth_data,
-          aes(x=total_clones.x, y=total_clones.y)) + 
+          aes(x=productive_templates.x, y=productive_templates.y)) + 
   geom_point(aes(color=JSD), alpha=.3) + 
   scale_color_gradient(low="blue", high = "red") + 
   scale_y_log10() + scale_x_log10()
@@ -177,7 +179,7 @@ ggplot( depth_data,
   facet_grid(gvhd.x~org.x)  +
 #   
 # ggplot( depth_data,
-#           aes(x=pct_overlap, y=gmean)) + 
+#           aes(x=productive_templates_total_similarity, y=gmean)) + 
 #   geom_point(aes(color=JSD), alpha=.3) + 
 #   scale_color_gradient(low="blue", high = "red") + 
 # #  scale_y_log10() + scale_x_log10() + 
@@ -185,7 +187,7 @@ ggplot( depth_data,
 #   facet_grid(gvhd.x~org.x) +
 
   ggplot( depth_data,
-          aes(x=pct_overlap, y=JSD)) + 
+          aes(x=productive_templates_total_similarity, y=JSD)) + 
   geom_point(aes(color=JSD), alpha=.3) + 
   scale_color_gradient(low="blue", high = "red") + 
 #  scale_y_log10() + scale_x_log10() + 
@@ -193,9 +195,10 @@ ggplot( depth_data,
   facet_grid(gvhd.x~org.x) 
 
 summary(lm(JSD ~gmean,  data=depth_data %>% filter(org.x == "Human" )))
+summary(lm(JSD ~gmean,  data=depth_data %>% filter(org.x != "Human" )))
 
 
-ggplot( depth_data %>% filter(org.x == "Human"),
+ggplot( depth_data ,
           aes(x=gmean, y=JSD)) + 
   geom_point(aes(color=JSD), alpha=.3) + 
   scale_color_gradient(low="blue", high = "red") + 
@@ -214,25 +217,25 @@ ggplot( depth_data %>% filter(org.x == "Human"),
 
 #human
   ggplot( depth_data %>% filter(org.x == "Human"),
-          aes(x=pct_overlap, y=JSD)) + 
-  geom_point(aes(color=pair_min_clones), alpha=.3) + 
+          aes(x=productive_templates_total_similarity, y=JSD)) + 
+  geom_point(aes(color=pair_min_templates), alpha=.3) + 
   scale_color_gradient(low="blue", high = "red") + 
   facet_wrap(~indv_label.x) 
   ggplot( depth_data %>% filter(org.x == "Human"),
           aes(x=gmean, y=JSD)) + 
-  geom_point(aes(color=pair_min_clones), alpha=.3) + 
+  geom_point(aes(color=pair_min_templates), alpha=.3) + 
   scale_color_gradient(low="blue", high = "red") + 
   facet_wrap(~indv_label.x, scales="free") 
   
 #mouse
   ggplot( depth_data %>% filter(org.x != "Human"),
-          aes(x=pct_overlap, y=JSD)) + 
-  geom_point(aes(color=pair_min_clones), alpha=.3) + 
+          aes(x=productive_templates_total_similarity, y=JSD)) + 
+  geom_point(aes(color=pair_min_templates), alpha=.3) + 
   scale_color_gradient(low="blue", high = "red") + 
   facet_wrap(~indv_label.x)  
   ggplot( depth_data %>% filter(org.x != "Human"),
           aes(x=gmean, y=JSD)) + 
-  geom_point(aes(color=pair_min_clones), alpha=.3) + 
+  geom_point(aes(color=pair_min_templates), alpha=.3) + 
   scale_color_gradient(low="blue", high = "red") + 
   facet_wrap(~indv_label.x, scales="free") 
 ```
@@ -248,15 +251,19 @@ tcr_corrs_equalized$JSD_norm <- NA
 
 for (i in 1:nrow(tcr_corrs_equalized)){
   these_samples <- c(tcr_corrs_equalized$sample1[i], tcr_corrs_equalized$sample2[i] )
-  depth_threshold <- min(tcr_corrs_equalized$total_clones.x[i], tcr_corrs_equalized$total_clones.y[i] )
+  depth_threshold <- min(tcr_corrs_equalized$productive_templates.x[i], tcr_corrs_equalized$productive_templates.y[i] )
   tcr_depth_filtered <- tcr_raw %>% 
     filter(sample_name %in% these_samples) %>% 
-    select(sample_name, rearrangement, amino_acid, productive_frequency, productive_templates, productive_rearrangements) %>%
-    mutate(lowdepth_templates = ((productive_frequency * productive_templates) *depth_threshold) / productive_templates) %>%
+    select(sample_name, rearrangement, amino_acid, templates, productive_templates, productive_frequency) %>%
+    mutate(lowdepth_templates = (templates *depth_threshold) / productive_templates) %>%
     filter(lowdepth_templates >=1) %>%
-    mutate(lowdepth_productive_frequency=lowdepth_templates/depth_threshold) %>% 
+    group_by(sample_name) %>%
+    mutate(total_lowdepth_templates = sum(lowdepth_templates)) %>%
+    ungroup() %>%
+    mutate(normalized_lowdepth_templates = (lowdepth_templates * min(total_lowdepth_templates)) / total_lowdepth_templates) %>%
+    mutate(lowdepth_productive_frequency = normalized_lowdepth_templates / min(total_lowdepth_templates)) %>%
     data.table::as.data.table() %>% 
-    data.table::dcast(sample_name~rearrangement, fill = 0, value.var="productive_frequency" ) %>%
+    data.table::dcast(sample_name~rearrangement, fill = 0, value.var="lowdepth_productive_frequency" ) %>%
     column_to_rownames("sample_name") %>% 
     data.matrix()
   tcr_corrs_equalized$JSD_norm[i] <- philentropy::JSD(tcr_depth_filtered, est.prob = "empirical")
@@ -276,7 +283,7 @@ ggplot(tcr_corrs_equalized, aes(x=JSD, y=JSD_norm)) +
 
 
 ```{r}
-for (pt in unique(tcr_corrs_equalized %>% filter(org.x == "Human") %>% pull(indv_label.x))){
+for (pt in unique(tcr_corrs_equalized %>% pull(indv_label.x))){
 pt_a_jsd <- plot_patient_tcr_tree(df = tcr_corrs_equalized %>%ungroup() %>%
                         filter(!is.na(JSD_norm)) %>% 
                         filter(indv_label.x == pt) %>% 
