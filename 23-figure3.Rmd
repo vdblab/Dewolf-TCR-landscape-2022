@@ -7,7 +7,6 @@ editor_options:
 
 ```{R}
 library(RColorBrewer)
-library(ggplot2) 
 library(tidyverse) 
 library(ggalluvial)
 load("tcr_objects.Rdata")
@@ -59,7 +58,10 @@ make_alluvial_dataset <- function(tcr_raw, tcr_sample_metadata, tissue_metadata,
     pivot_longer(cols = -key, names_to = "tissue", values_to="freq") %>%
     mutate(frequency_nudged = freq + rnorm(n=n(),  mean = 10E-7, sd = 10E-9)) %>% 
     data.frame() %>% 
-    left_join(tissue_metadata)
+    left_join(tissue_metadata) %>% 
+    group_by(tissue) %>%
+    mutate(tissue_total = sum(freq),
+           thislabel=ifelse(tissue == ref_tissue & row_number()==1, "*", ""))
   
   p_ <- ggplot(plot_data,
                 aes(x = reorder(tissue_label, anatomic_order), stratum = frequency_nudged, y=frequency_nudged, alluvium = key,
@@ -67,6 +69,7 @@ make_alluvial_dataset <- function(tcr_raw, tcr_sample_metadata, tissue_metadata,
       labs(x="", y="", fill = "Nucleotide ID", title="") +
       geom_flow(stat = "alluvium", curve_type = "sigmoid", color = "gray45", size = .3) +
       geom_stratum(alpha = 1) +
+      geom_text(aes(y=tissue_total *1.1, label=thislabel), size=15) +
   # consider , color=NA) + 
       scale_fill_identity() +
       theme_classic() +
@@ -89,22 +92,35 @@ newannotations <- read.csv("data/updated_colors_dendrograms.csv")
 thisdata <- make_alluvial_dataset(tcr_raw, ref_org = "Human", ref_pt = "Patient D", ref_tissue = "duodenum", tcr_sample_metadata = tcr_sample_metadata, tissue_metadata = newannotations, topn = 10)
 
 plots_to_make <- list(
-  "Patient A"=c(org="Human", topn=10, ref_tissue="esophagus", ref_color="mediumpurple"),
-  "Recipient 7, rep2, day 14"=c(org="Mouse", ref_tissue="skin", topn=10, ref_color="forestgreen")
+  "Patient A" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="S4A"),
+  "Patient B" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="S4B"),
+  "Patient C" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="S4C"),
+  "Patient D" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="S4D"),
+  "Patient E" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="S4E"),
+  "Patient F" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="3C"),
+  "Patient G" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="S4F"),
+  "Patient H" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="S4H"),
+  "Patient I" = c(org="Human", topn=10, ref_tissue="jejunem", ref_color="mediumpurple", f="3D"),
+  "Patient J" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="S4G"),
+  "Patient A" = c(org="Human", topn=10, ref_tissue="pretx_blood", ref_color="mediumpurple", f="S4I"),
+  "Patient D" = c(org="Human", topn=10, ref_tissue="pretx_blood", ref_color="mediumpurple", f="3E"),
+  "Patient F" = c(org="Human", topn=10, ref_tissue="pretx_blood", ref_color="mediumpurple", f="S4J"),
+  "Patient G" = c(org="Human", topn=10, ref_tissue="pretx_blood", ref_color="mediumpurple", f="S4K"),
+  "Recipient 7, rep2, day 14" = c(org="Mouse", ref_tissue="skin", topn=10, ref_color="forestgreen", f="S4A")
 )
 
   
 for (i in seq_along(plots_to_make)){
   thing = plots_to_make[[i]]
   
-thisdata <- make_alluvial_dataset(tcr_raw, tcr_sample_metadata, ref_org=thing["org"],
-                                  ref_tissue = thing["ref_tissue"], 
-                                  ref_pt=names(plots_to_make)[1], topn=thing["topn"])
-
-
-ggsave(plot=thisdata$p_ ,height=5,width=10,dpi=200, 
-       filename=file.path(figures_path, paste0("alluvial_", names(plots_to_make)[1], ".pdf")), 
-       useDingbats=FALSE)
+  thisdata <- make_alluvial_dataset(tcr_raw, tcr_sample_metadata, ref_org=thing["org"],
+                                    ref_tissue = thing["ref_tissue"], tissue_metadata = newannotations,
+                                    ref_pt=names(plots_to_make)[i], topn=as.numeric(thing["topn"]))
+  
+  
+  ggsave(plot=thisdata$p_ ,height=5,width=10,dpi=200, 
+         filename=file.path(figures_path, paste0(thing["f"],"_", names(plots_to_make)[i], ".pdf")), 
+         useDingbats=FALSE)
 }
 ```
 

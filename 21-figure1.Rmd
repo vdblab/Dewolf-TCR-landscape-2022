@@ -21,11 +21,11 @@ load("tcr_objects.Rdata")
 
 ```{r}
 figures_path <- file.path("figures", "fig1")
-dir.create(figures_path, showWarnings = FALSE)
+dir.create(figures_path, showWarnings = FALSE, recursive = TRUE)
 
 tissue_annotations = read.csv("data/updated_colors_dendrograms.csv")
 diversity <- read.csv("tables/st4.csv") %>% 
-  left_join(tcr_sample_metadata) %>% 
+  left_join(tcr_sample_metadata %>% select(-sample_amount_ng)) %>% 
   left_join(tissue_annotations, by="tissue")
 
 human_patient_colors <- c("mediumblue", "navy", "red", "yellow", "green4", "lightskyblue", "saddlebrown", "gray75", "gray45", "gray 85")
