@@ -194,7 +194,7 @@ ggplot( depth_data,
   geom_smooth(method="lm") + 
   facet_grid(gvhd.x~org.x) 
 
-summary(lm(JSD ~gmean,  data=depth_data %>% filter(org.x == "Human" )))
+  summary(lm(JSD ~gmean,  data=depth_data %>% filter(org.x == "Human" )))
 summary(lm(JSD ~gmean,  data=depth_data %>% filter(org.x != "Human" )))
 
 
@@ -252,7 +252,7 @@ tcr_corrs_equalized$JSD_norm <- NA
 for (i in 1:nrow(tcr_corrs_equalized)){
   these_samples <- c(tcr_corrs_equalized$sample1[i], tcr_corrs_equalized$sample2[i] )
   depth_threshold <- min(tcr_corrs_equalized$productive_templates.x[i], tcr_corrs_equalized$productive_templates.y[i] )
-  tcr_depth_filtered <- tcr_raw %>% 
+  tmp <- tcr_raw %>% 
     filter(sample_name %in% these_samples) %>% 
     select(sample_name, rearrangement, amino_acid, templates, productive_templates, productive_frequency) %>%
     mutate(lowdepth_templates = (templates *depth_threshold) / productive_templates) %>%
@@ -261,21 +261,42 @@ for (i in 1:nrow(tcr_corrs_equalized)){
     mutate(total_lowdepth_templates = sum(lowdepth_templates)) %>%
     ungroup() %>%
     mutate(normalized_lowdepth_templates = (lowdepth_templates * min(total_lowdepth_templates)) / total_lowdepth_templates) %>%
-    mutate(lowdepth_productive_frequency = normalized_lowdepth_templates / min(total_lowdepth_templates)) %>%
-    data.table::as.data.table() %>% 
+    mutate(lowdepth_productive_frequency = normalized_lowdepth_templates / min(total_lowdepth_templates)) 
+  tcr_depth_filtered <- tmp %>% data.table::as.data.table() %>% 
     data.table::dcast(sample_name~rearrangement, fill = 0, value.var="lowdepth_productive_frequency" ) %>%
     column_to_rownames("sample_name") %>% 
     data.matrix()
   tcr_corrs_equalized$JSD_norm[i] <- philentropy::JSD(tcr_depth_filtered, est.prob = "empirical")
 
+  if (nrow( tmp[tmp$sample_name == tcr_corrs_equalized$sample1[i], ]) > 0){
+    tcr_corrs_equalized$sample1_total_lowdepth_tempates[i] <- tmp[tmp$sample_name == tcr_corrs_equalized$sample1[i], ] %>% pull(total_lowdepth_templates) %>% unique()
+  } else {
+    tcr_corrs_equalized$sample1_total_lowdepth_tempates[i] = 0
+  }
+  if (nrow( tmp[tmp$sample_name == tcr_corrs_equalized$sample2[i], ]) > 0){
+    tcr_corrs_equalized$sample2_total_lowdepth_tempates[i] <- tmp[tmp$sample_name == tcr_corrs_equalized$sample2[i], ] %>% pull(total_lowdepth_templates) %>% unique()
+  } else {
+    tcr_corrs_equalized$sample2_total_lowdepth_tempates[i] = 0
+  }
+  
 }
 
-ggplot(tcr_corrs_equalized, aes(x=JSD, y=JSD_norm)) + 
+ggplot(tcr_corrs_equalized %>% 
+         mutate(per_remaining_of_min = (pmin(sample1_total_lowdepth_tempates, sample2_total_lowdepth_tempates))/pair_min_templates), aes(x=JSD, y=JSD_norm, color=per_remaining_of_min)) + 
   geom_point() +
   geom_abline(intercept = 0, slope = 1) + 
-  coord_equal(xlim=c(0, 1), ylim=c(0, 1))
+  coord_equal(xlim=c(0, 1), ylim=c(0, 1)) + 
+  scale_color_viridis_c()+
+  labs(color="")
 
 
+ggplot( tcr_corrs_equalized,
+        aes(x=gmean, y=JSD_norm)) + 
+  geom_point(aes(color=JSD_norm), alpha=.3) + 
+  scale_color_gradient(low="blue", high = "red") + 
+  scale_y_log10() + scale_x_log10() + 
+  geom_smooth(method="lm") + 
+  facet_grid(~org.x) 
 
 ```
 
@@ -299,6 +320,13 @@ pt_a_jsd_norm <- plot_patient_tcr_tree(df = tcr_corrs_equalized %>%ungroup() %>%
 ggsave(filename = file.path("figures", paste0("compare_JSD_normJSD_", pt, ".pdf")), plot =  pt_a_jsd + pt_a_jsd_norm + plot_annotation(tag_levels = "A", subtitle = "A is JSD, B is normalized JSD"))
 
 }
+
+pt_a_jsd_gmean<- plot_patient_tcr_tree(df = tcr_corrs_equalized %>%ungroup() %>%
+                        filter(!is.na(JSD_norm)) %>% 
+                        filter(indv_label.x == pt) %>% 
+                        left_join(tcr_sample_metadata, by=c("sample1"="sample_name")) %>% 
+                        left_join(tcr_sample_metadata, by=c("sample2"="sample_name")),
+                        metri = "gmean", patient = pt)
 
 ```
 

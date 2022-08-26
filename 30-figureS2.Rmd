@@ -17,7 +17,7 @@ load("./tcr_objects.Rdata")
 #diversity = read.csv("diversitystats.csv")
 #diversity %>% select(subject, allograft, `CMV reactivation`, `chronic GVHD`, `GVHD_severity`) %>% distinct() %>% write.csv("tmpdiversity.csv")
 
-s2diversity = tcr_sample_metadata %>%
+s2diversity = tcr_sample_metadata %>% 
   left_join(read.csv("tables/st4.csv")) %>%
   left_join(read.csv("data/patient_attributes.csv") %>%
               mutate(subject=paste("Patient", subject)), by=c("indv_label" = "subject")) %>%
@@ -28,11 +28,12 @@ jitter2 <- position_jitter(width = 0.15, height = 0.0)
 GI = s2diversity %>%
   filter(!tissue_label %in% c("PBSCs", "Bone Marrow", "pre-tx PBMCs", "Heart", "Kidney", "mLN")) %>%
   filter(tissue != "Graft/Blood") %>% 
-  filter(org=="Human")
+  filter(org=="Human") %>% 
+  filter("" != S2_uc_group)
 
 
 #these are the plots for clonality
-c <- ggplot(GI, aes(tissue_label, clonality))
+c <- ggplot(GI, aes(x=reorder(S2_uc_group, anatomic_order), clonality))
 
 #this plot colors by allograft source
 (clonality_graft = c +

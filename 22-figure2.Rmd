@@ -107,6 +107,10 @@ plot_patient_tcr_tree <- function(df = tcr_pairs, patient="Pt3", metri="JSD", li
     arrange(factor(tissue.x, colnames(.)[colnames(.) != "tissue.x"])) %>%
     column_to_rownames("tissue.x")  %>% 
     as.matrix()
+  if (!metri %in%  c("spearman", "JSD", "JSD_norm")){
+    print(warning("scaling input column"))
+    tcr_pairs_matrix <- tcr_pairs_matrix / max(tcr_pairs_matrix)
+  }
   # convert spearman correlations to "distances" if needed
   if(grepl("JSD", metri)){
     # this us

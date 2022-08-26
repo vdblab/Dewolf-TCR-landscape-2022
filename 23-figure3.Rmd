@@ -14,7 +14,25 @@ load("tcr_objects.Rdata")
 figures_path <- file.path("figures", "alluvials")
 dir.create(figures_path, showWarnings = FALSE)
 
-make_alluvial_dataset <- function(tcr_raw, tcr_sample_metadata, tissue_metadata, ref_org="Human", ref_pt="Patient B", ref_tissue="duodenum", topn=10, ref_color="mediumpurple"){
+
+get_top_clones_data <-  function(df, topn=10){
+  #max_productive_frequency is a sanity check
+   top_clones <- df %>% 
+    group_by(sample_name) %>%
+    slice_max(n = topn, order_by=productive_frequency, with_ties = TRUE) %>%
+    arrange(desc(productive_frequency)) %>% 
+    #mutate(top_tissue_clone_rank=row_number()) %>% 
+    mutate(max_productive_frequency = max(productive_frequency)) %>% 
+    select(sample_name, rearrangement,  productive_frequency, max_productive_frequency)
+  top_n_data <- df %>% 
+    group_by(sample_name) %>%
+    arrange(desc(productive_frequency))%>%
+    mutate(orig_tissue_clone_rank=rank(-productive_frequency,  ties.method = "first", na.last = "keep")) %>% 
+    ungroup() %>% 
+    filter(rearrangement %in% top_clones$rearrangement) 
+  return(list(top_clones = top_clones, top_n_data=top_n_data))
+}
+make_alluvial_dataset <- function(tcr_data, tcr_sample_metadata, tissue_metadata, ref_org="Human", ref_pt="Patient B", ref_tissue="duodenum", topn=10, ref_color="mediumpurple"){
   metadata_of_interest <- tcr_sample_metadata %>%
     filter(
       org==ref_org,
@@ -22,18 +40,10 @@ make_alluvial_dataset <- function(tcr_raw, tcr_sample_metadata, tissue_metadata,
     )
   if (!ref_tissue %in% metadata_of_interest$tissue){stop(paste("Tissue", ref_tissue, "not sampled in", ref_pt))}
   samples_of_interest <- metadata_of_interest  %>% pull(sample_name)
-  top_clones <- tcr_raw %>% 
-    filter(sample_name %in% samples_of_interest) %>%
-    group_by(sample_name) %>%
-    slice_max(n = topn, order_by=productive_frequency, with_ties = TRUE) %>%
-    arrange(desc(productive_frequency)) %>% 
-    mutate(tissue_clone_rank=row_number()) %>% 
-    select(sample_name, rearrangement, tissue_clone_rank)
-  
-  top_n_data <- tcr_raw %>% 
-    filter(indv_label == ref_pt) %>% 
-    filter(rearrangement %in% top_clones$rearrangement) 
-
+  res <- get_top_clones_data(df=tcr_data %>%filter(sample_name %in% samples_of_interest), topn = topn)
+  top_clones <- res$top_clones
+  top_n_data <- res$top_n_data
+  n_distinct(top_clones$rearrangement)
   top_n_data_wide <- top_n_data %>% 
     select(rearrangement, tissue, productive_frequency) %>%
     # dplyr::group_by(rearrangement, tissue) %>%
@@ -91,6 +101,9 @@ newannotations <- read.csv("data/updated_colors_dendrograms.csv")
 
 thisdata <- make_alluvial_dataset(tcr_raw, ref_org = "Human", ref_pt = "Patient D", ref_tissue = "duodenum", tcr_sample_metadata = tcr_sample_metadata, tissue_metadata = newannotations, topn = 10)
 
+
+
+
 plots_to_make <- list(
   "Patient A" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="S4A"),
   "Patient B" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="S4B"),
@@ -122,6 +135,66 @@ for (i in seq_along(plots_to_make)){
          filename=file.path(figures_path, paste0(thing["f"],"_", names(plots_to_make)[i], ".pdf")), 
          useDingbats=FALSE)
 }
+```
+
+
+## S5
+
+
+```{r}
+# remake to exlude graft in the top
+
+
+tissue_annotations <- read.csv("data/updated_colors_dendrograms.csv")
+tissues_to_completely_exclude = c("heart", "kidney", "autopsy_marrow", "graft_blood")
+cols_to_exclude_from_ranking = c("rearrangement", "amino_acid",  "pretx_blood", "autopsy_marrow")
+
+thisdata <- get_top_clones_data(df=tcr_data %>% filter(indv_label == "Patient D", !tissue %in% tissues_to_completely_exclude), topn = topn)
+#n_distinct(thisdata$top_n_data$rearrangement)
+
+#top_n_data %>% select(sample_name, productive_frequency, orig_tissue_clone_rank)
+
+
+
+hmap_data  <- thisdata$top_n_data %>% left_join(newannotations) %>% arrange(anatomic_order)  %>% 
+#hmap_data  <- thisdata$top_n_data %>% arrange(sample_name) %>%
+  select(rearrangement, amino_acid, tissue, orig_tissue_clone_rank) %>% 
+  filter(!tissue %in% tissues_to_completely_exclude ) %>%
+  pivot_wider(names_from = tissue, values_from = orig_tissue_clone_rank) %>%
+  rowwise() %>% 
+  mutate(y_order_mean = mean(c_across(colnames(.)[!colnames(.) %in% cols_to_exclude_from_ranking]), na.rm = TRUE))%>%
+  mutate(y_order_med = median(c_across(colnames(.)[!colnames(.) %in% cols_to_exclude_from_ranking]),  na.rm = TRUE)) 
+
+these_cols_to_exclude_from_ranking <- quos(cols_to_exclude_from_ranking[cols_to_exclude_from_ranking %in% colnames(hmap_data)])
+ordered_hmap_data <- hmap_data %>% 
+  relocate(pretx_blood, .after = last_col()) %>% 
+  arrange(y_order_mean, !!! cols_to_exclude_from_ranking[3:length(cols_to_exclude_from_ranking)]) %>% 
+  select(-y_order_mean, -y_order_med) 
+
+mat <- ordered_hmap_data %>% select(-amino_acid)%>% select(-rearrangement) %>% as.matrix()
+rownames(mat) <- gsub("^(.{10}).*", "\\1", ordered_hmap_data$rearrangement)
+
+tmp <- data.frame(tissue=colnames(mat)) %>% left_join(tissue_annotations) %>% mutate(rn=tissue) %>% column_to_rownames("rn")
+mat_colors=list(tissue=tmp %>% pull(S5_colors))
+names(mat_colors$tissue) <- rownames(tmp)
+
+pheatmap::pheatmap(
+                mat               = mat ,
+                color             = topo.colors(50),
+                border_color      = "black",
+                show_colnames     = TRUE,
+                show_rownames     = TRUE,
+                annotation_col    = tmp %>% select(tissue),
+                annotation_colors = mat_colors,
+                breaks            = seq(1,50,1),
+                # annotation_row    = clone_group,
+                # annotation_clors  = row_color,
+                drop_levels       = TRUE,
+                cluster_rows = F,
+                cluster_cols = F,
+                fontsize          = 10,
+               # main              = paste(paste(pt_ind, num, sep = "_"), "heatmap", sep = "_")
+)
 ```
 
 

@@ -11,7 +11,6 @@ import time
 import sys
 
 __version__ = "0.0.1"
-
 def get_args():  # pragma: no cover
     parser = argparse.ArgumentParser(
         description="compute JSD and normalized JSD on TCR sequencing files from AdaptiveBiotech " +
@@ -23,6 +22,8 @@ def get_args():  # pragma: no cover
                         help="Second TCR seq file")
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="print debugging info")
+    parser.add_argument("-d", "--header", action="store_true",
+                        help="print header info")
     args = parser.parse_args()
     return args
 
@@ -31,6 +32,16 @@ def filter_tcrs():
   pass
 def norm_jsdiv(P, Q):
   pass
+
+
+def morisita(x, y):
+  # taken verbatim from abdiv
+    Nx = sum(x)
+    Ny = sum(y)
+    lambda_x = sum(x**2)/(Nx**2)
+    lambda_y = sum(y**2)/(Ny**2)
+    m = 1 - 2 * sum(x * y)/((lambda_x + lambda_y) * Nx * Ny)
+    return(m)
 
 def jsdiv(P, Q):
   
@@ -69,7 +80,7 @@ def jsdiv(P, Q):
 #     column_to_rownames("sample_name") %>% 
 #     data.matrix()
 
-def pivot_tcr(both, bythis="amino_acid"):
+def pivot_tcr(both, bythis="amino_acid", fill=True):
   thisagg = "sum" 
   return (both[["sample_name", bythis,"productive_frequency"]]
     .pivot_table(
@@ -77,7 +88,7 @@ def pivot_tcr(both, bythis="amino_acid"):
       columns=bythis,
       values="productive_frequency",
       aggfunc=thisagg,
-      fill_value=0)
+      fill_value=0 if fill else np.nan)
     )
   
 def main(args):
@@ -96,7 +107,7 @@ def main(args):
   both = pd.concat([Adf, Bdf], axis=0)
   Asize = Adf["productive_templates"][0]
   Bsize = Bdf["productive_templates"][0]
-  print(Asize, Bsize)
+  if verbose: print(Asize, Bsize)
   depth_threshold = min(Asize, Bsize)
 
   both_filt = (both
@@ -107,8 +118,7 @@ def main(args):
     print(both_filt.head())
     print(both.shape)
     print(both_filt.shape)
-  new_templates_totals = both_filt[["sample_name", "lowdepth_templates"]].groupby("sample_name").sum())
-
+  new_templates_totals = both_filt[["sample_name", "lowdepth_templates"]].groupby("sample_name").sum()
     # filter(lowdepth_templates >=1) %>%
     # group_by(sample_name) %>%
     # mutate(total_lowdepth_templates = sum(lowdepth_templates)) %>%
@@ -121,7 +131,7 @@ def main(args):
     # data.matrix()
 
   
-  print(depth_threshold)
+  if verbose: print(depth_threshold)
   both_w_aa = pivot_tcr(both, bythis="amino_acid")
   both_w_nt = pivot_tcr(both, bythis="rearrangement")
   both_w_aa_filt = both_w_aa
@@ -135,8 +145,16 @@ def main(args):
   jsd_aa_raw = distance.jensenshannon(both_w_aa.iloc[0], both_w_aa.iloc[1], base=2) ** 2
   # AA JSD Filter
   jsd_aa_filt = distance.jensenshannon(both_w_aa.iloc[0], both_w_aa.iloc[1], base=2) ** 2
-  print(jsd_nt_raw, jsd_nt_filt, jsd_aa_raw, jsd_aa_filt)
-  
+  # NT Morisita raw 
+  morisita_nt_raw = morisita(x=both_w_nt.iloc[0], y=both_w_nt.iloc[1])
+  # overlapping clones 
+  overlapping_clones = pivot_tcr(both, bythis="rearrangement", fill=False).dropna(axis="columns", how='any').shape[1]
+  overlapping_aa = pivot_tcr(both, bythis="amino_acid", fill=False).dropna(axis="columns", how='any').shape[1]
+  if args.header:
+    print(f"fileA\tfileB\tsizeA\tsizeB\tnorm_sizeA\tnorm_sizeB\tjsd_nt_raw\tjsd_nt_norm\tjsd_aa_raw\tjsd_aa_norm\tmorisita_nt_raw\toverlapping_clones")
+    
+  print(f"{os.path.basename(args.A).replace('.tsv', '')}\t{os.path.basename(args.B).replace('.tsv', '')}\t{Asize}\t{Bsize}\t{new_templates_totals['lowdepth_templates'][0]}\t{new_templates_totals['lowdepth_templates'][1]}\t{jsd_nt_raw}\t{jsd_nt_filt}\t{jsd_aa_raw}\t{jsd_aa_filt}\t{morisita_nt_raw}\t{overlapping_clones}")
+
 if __name__ == "__main__":
   args=get_args()
   main(args)

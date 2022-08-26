@@ -292,9 +292,11 @@ for (si in 1:length(sets_of_comparisons)){
 ```{r}
 # note the lack of the `distinct()` call here; we need all the (redundant) comparisons for this figure
 set.seed(123)
+
 for(i in  unique(tcr_corrs_anno$indv_label.x)){
   tmp_p <- ggplot(tcr_corrs_anno %>% 
-           filter(indv_label.x == indv_label.y) %>% filter(indv_label.x==i)  %>%  left_join(newannotations, by=c("tissue.x"="tissue")) %>%
+           filter(indv_label.x == indv_label.y) %>% filter(indv_label.x==i)  %>%  
+             left_join(newannotations, by=c("tissue.x"="tissue")) %>%
            left_join(newannotations, by=c("tissue.y"="tissue")) , aes(x=tissue.x, y=JSD, shape=tissue.y, color=tissue.y)) + 
     geom_jitter(width = .2, height = 0, size=3)  + 
     scale_color_manual(values=newannotations$new_col, breaks=newannotations$tissue) +
