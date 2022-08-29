@@ -49,6 +49,7 @@ for (batch in c("just_patients", "all", "all_no_donor_mice", "all_no_donor_no_he
       filter(sample2 %in% these_samples$sample_name) %>% 
       select(sample1, sample2, all_of(metri))
     tcr_agg_individuals <- this_corr_data %>% 
+      arrange(sample1, sample2) %>% 
       pivot_wider(names_from="sample2", values_from=all_of(metri)) %>%
       column_to_rownames("sample1") %>%
       as.matrix()
@@ -83,7 +84,7 @@ for (batch in c("just_patients", "all", "all_no_donor_mice", "all_no_donor_no_he
   names(thesecolors)  <- unique(ugly_specific_tissue_key$indv_label)
   
   p_tcr_all <- ggtree(tmp)  %<+% ugly_specific_tissue_key + xlim(-.05, 1.25) +
-    geom_tiplab(aes(color=indv_label, label=tissue), 
+    geom_tiplab(aes(color=indv_label, label=gsub(" TCRB", "", gsub("_", " ", label))), 
                 offset = 0.01,#(1-max(tmp$edge.length)) + .01, 
                 align = FALSE, linetype = NA) +
     geom_tippoint() +
@@ -96,16 +97,16 @@ for (batch in c("just_patients", "all", "all_no_donor_mice", "all_no_donor_no_he
     theme(legend.position = c(.2, .95)) 
   
   # This nonsense adds the grouping label bars for the just_patients set.  Probably easier to just do in illustrator
-  if (metri=="JSD" & batch == "just_patients"){
-    p_tcr_all <-  p_tcr_all +
-      geom_cladelab(node=94, label=names(thesecolors)[1], angle=270, align=F, geom='text', textcolor=thesecolors[1], offset=.2, vjust=-.1, barcolor = thesecolors[1]) +
-      geom_cladelab(node=98, label=names(thesecolors)[2], angle=270, align=F, geom='text', textcolor=thesecolors[2], offset=.2, vjust=-.1, barcolor = thesecolors[2]) +
-      geom_cladelab(node=91, label=names(thesecolors)[3], angle=270, align=F, geom='text', textcolor=thesecolors[3], offset=.2, vjust=-.1, barcolor = thesecolors[3]) +
-      geom_cladelab(node=96, label=names(thesecolors)[4], angle=270, align=F, geom='text', textcolor=thesecolors[4], offset=.2, vjust=-.1, barcolor = thesecolors[4]) +
-      geom_cladelab(node=97, label=names(thesecolors)[5], angle=270, align=F, geom='text', textcolor=thesecolors[5], offset=.2, vjust=-.1, barcolor = thesecolors[5]) +
-      geom_cladelab(node=86, label=names(thesecolors)[6], angle=270, align=F, geom='text', textcolor=thesecolors[6], offset=.2, vjust=-.1, barcolor = thesecolors[6]) +
-      geom_cladelab(node=89, label=names(thesecolors)[7], angle=270, align=F, geom='text', textcolor=thesecolors[7], offset=.2, vjust=-.1, barcolor = thesecolors[7]) 
-  }
+  # if (metri=="JSD" & batch == "just_patients"){
+  #   p_tcr_all <-  p_tcr_all +
+  #     geom_cladelab(node=94, label=names(thesecolors)[1], angle=270, align=F, geom='text', textcolor=thesecolors[1], offset=.2, vjust=-.1, barcolor = thesecolors[1]) +
+  #     geom_cladelab(node=98, label=names(thesecolors)[2], angle=270, align=F, geom='text', textcolor=thesecolors[2], offset=.2, vjust=-.1, barcolor = thesecolors[2]) +
+  #     geom_cladelab(node=91, label=names(thesecolors)[3], angle=270, align=F, geom='text', textcolor=thesecolors[3], offset=.2, vjust=-.1, barcolor = thesecolors[3]) +
+  #     geom_cladelab(node=96, label=names(thesecolors)[4], angle=270, align=F, geom='text', textcolor=thesecolors[4], offset=.2, vjust=-.1, barcolor = thesecolors[4]) +
+  #     geom_cladelab(node=97, label=names(thesecolors)[5], angle=270, align=F, geom='text', textcolor=thesecolors[5], offset=.2, vjust=-.1, barcolor = thesecolors[5]) +
+  #     geom_cladelab(node=86, label=names(thesecolors)[6], angle=270, align=F, geom='text', textcolor=thesecolors[6], offset=.2, vjust=-.1, barcolor = thesecolors[6]) +
+  #     geom_cladelab(node=89, label=names(thesecolors)[7], angle=270, align=F, geom='text', textcolor=thesecolors[7], offset=.2, vjust=-.1, barcolor = thesecolors[7]) 
+  # }
   ggsave(p_tcr_all, height = 2 + n_indv, width = 9, filename = file.path(figs_dir, str_glue("{metri}_TCR_{batch}_tree.pdf")))
   
   

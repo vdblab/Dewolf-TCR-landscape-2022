@@ -7,9 +7,6 @@ editor_options:
 knitr::opts_chunk$set(echo = FALSE, fig.width=10, fig.height=7) 
 library(tidyverse) 
 library(patchwork)  # for combining figures
-library(gplots)     # for heatmap.2
-library(ggtree)    # for trees
-library(ape)   # for as.phylo
 ```
 
 # Summary Tables
@@ -54,7 +51,6 @@ slope_clean_low_frequency_clone<-function(vals)
   }
 } 
 slopes <- tcr_raw %>% 
-  filter(frame_type == 'In') %>%
   group_by(sample_name) %>%
   count(productive_frequency) %>% 
   #filter(n > sort(n)[2])
@@ -65,7 +61,7 @@ slopes <- tcr_raw %>%
 
 
 (tab_sample_summary <- tcr_raw %>% 
-    filter(frame_type == "In") %>% 
+#  group_by(sample_name, productive_templates, productive_rearrangements, sample_amount_ng, max_productive_frequency, productive_clonality) %>% 
   group_by(sample_name, productive_templates, productive_rearrangements, sample_amount_ng, max_productive_frequency) %>% 
   summarize(
     entropy = -sum(log2(productive_frequency)*productive_frequency),
@@ -74,7 +70,6 @@ slopes <- tcr_raw %>%
   left_join(slopes) %>%
   mutate (slope = abs(slope))
 )
-# TODO double check out vs adaptive's entropy/clonality calculations 
 
 write.csv(tab_sample_summary, row.names = FALSE, file = file.path(tab_dir, "st4.csv"))
 
