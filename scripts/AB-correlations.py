@@ -81,15 +81,21 @@ def jsdiv(P, Q):
 #     data.matrix()
 
 def pivot_tcr(both, bythis="amino_acid", fill=True):
+  # using speed up from https://stackoverflow.com/questions/55404617/faster-alternatives-to-pandas-pivot-table
   thisagg = "sum" 
-  return (both[["sample_name", bythis,"productive_frequency"]]
-    .pivot_table(
-      index="sample_name", 
-      columns=bythis,
-      values="productive_frequency",
-      aggfunc=thisagg,
-      fill_value=0 if fill else np.nan)
-    )
+  # return (both[["sample_name", bythis,"productive_frequency"]]
+  #   .pivot_table(
+  #     index="sample_name", 
+  #     columns=bythis,
+  #     values="productive_frequency",
+  #     aggfunc=thisagg,
+  #     fill_value=0 if fill else np.nan)
+  #   )
+  widedf = both[["sample_name", bythis,"productive_frequency"]].groupby(["sample_name", bythis]).agg({"productive_frequency":thisagg}).unstack(level=bythis)
+  if fill:
+    return(widedf.fillna(0))
+  else:
+    return(widedf)
   
 def main(args):
   verbose = args.verbose
@@ -102,11 +108,14 @@ def main(args):
     "templates", 
     "productive_templates"
   ]
+  if (args.A == args.B):
+    sys.stderr.write(f"Warning: skipping execution as A and B are same file path ({args.A} {args.B}) \n")
+    return()
   Adf = pd.read_csv(args.A, sep="\t", usecols=cols_of_interest).query('frame_type == "In"')
   Bdf = pd.read_csv(args.B, sep="\t", usecols=cols_of_interest).query('frame_type == "In"')
   both = pd.concat([Adf, Bdf], axis=0)
-  Asize = Adf["productive_templates"][0]
-  Bsize = Bdf["productive_templates"][0]
+  Asize = Adf["productive_templates"].iloc[0]
+  Bsize = Bdf["productive_templates"].iloc[0]
   if verbose: print(Asize, Bsize)
   depth_threshold = min(Asize, Bsize)
 
@@ -134,27 +143,43 @@ def main(args):
   if verbose: print(depth_threshold)
   both_w_aa = pivot_tcr(both, bythis="amino_acid")
   both_w_nt = pivot_tcr(both, bythis="rearrangement")
-  both_w_aa_filt = both_w_aa
-  both_w_nt_filt = both_w_nt
-
+  both_w_aa_filt = pivot_tcr(both_filt, bythis="amino_acid" )
+  both_w_nt_filt = pivot_tcr(both_filt, bythis="rearrangement")
   # this is way faster than manually calculating (eg .0015 vs .052s for the balb_1_blood vs balb_2_blood)
   jsd_nt_raw = distance.jensenshannon(both_w_nt.iloc[0], both_w_nt.iloc[1], base=2) ** 2
-  # NT JSD Filter
-  jsd_nt_filt = distance.jensenshannon(both_w_nt.iloc[0], both_w_nt.iloc[1], base=2) ** 2
   # AA JSD raw
   jsd_aa_raw = distance.jensenshannon(both_w_aa.iloc[0], both_w_aa.iloc[1], base=2) ** 2
-  # AA JSD Filter
-  jsd_aa_filt = distance.jensenshannon(both_w_aa.iloc[0], both_w_aa.iloc[1], base=2) ** 2
   # NT Morisita raw 
   morisita_nt_raw = morisita(x=both_w_nt.iloc[0], y=both_w_nt.iloc[1])
+
+  # this can occur when filtering pairs with extreme differences in size
+  # filtering/normalizing removes all tempaltes from the more diverse sample
+  if both_w_nt_filt.shape[0] !=2:
+    jsd_nt_filt = np.nan
+    jsd_aa_filt = np.nan
+    new_templates_totals_tup = (np.nan, np.nan)
+  else :
+    jsd_nt_filt = distance.jensenshannon(both_w_nt_filt.iloc[0], both_w_nt_filt.iloc[1], base=2) ** 2
+    jsd_aa_filt = distance.jensenshannon(both_w_aa_filt.iloc[0], both_w_aa_filt.iloc[1], base=2) ** 2
+    new_templates_totals_tup = ( new_templates_totals['lowdepth_templates'][0] ,  new_templates_totals['lowdepth_templates'][1] )
+
+
   # overlapping clones 
   overlapping_clones = pivot_tcr(both, bythis="rearrangement", fill=False).dropna(axis="columns", how='any').shape[1]
   overlapping_aa = pivot_tcr(both, bythis="amino_acid", fill=False).dropna(axis="columns", how='any').shape[1]
   if args.header:
     print(f"fileA\tfileB\tsizeA\tsizeB\tnorm_sizeA\tnorm_sizeB\tjsd_nt_raw\tjsd_nt_norm\tjsd_aa_raw\tjsd_aa_norm\tmorisita_nt_raw\toverlapping_clones")
     
-  print(f"{os.path.basename(args.A).replace('.tsv', '')}\t{os.path.basename(args.B).replace('.tsv', '')}\t{Asize}\t{Bsize}\t{new_templates_totals['lowdepth_templates'][0]}\t{new_templates_totals['lowdepth_templates'][1]}\t{jsd_nt_raw}\t{jsd_nt_filt}\t{jsd_aa_raw}\t{jsd_aa_filt}\t{morisita_nt_raw}\t{overlapping_clones}")
+  print(f"{os.path.basename(args.A).replace('.tsv', '')}\t{os.path.basename(args.B).replace('.tsv', '')}\t{Asize}\t{Bsize}\t{new_templates_totals_tup[0]}\t{new_templates_totals_tup[1]}\t{jsd_nt_raw}\t{jsd_nt_filt}\t{jsd_aa_raw}\t{jsd_aa_filt}\t{morisita_nt_raw}\t{overlapping_clones}")
 
 if __name__ == "__main__":
   args=get_args()
-  main(args)
+  try:
+    main(args)
+  except Exception as e:
+    sys.stderr.write(", ".join(sys.argv))
+    raise(e)
+  
+##  parallel AB-correlations.py {1} {2} > tmp :::: manifest.txt ::::+ manifest.txt
+    
+  

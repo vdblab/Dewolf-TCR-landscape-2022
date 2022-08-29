@@ -15,9 +15,18 @@ library(abdiv)
 ```
 
 # Processing the raw TCR data
+## External processing
+```
+bash scripts/get_file_pairs.sh ./samples/ > human_mouse_file_pairs.tsv
+parallel -a human_mouse_file_pairs.tsv --bar --progress --colsep "\t" ~/miniconda3/envs/pd/bin/python scripts/AB-correlations.py {1} {2} > tmp
+
+```
 ### Parsing and processing the TCR Data
 
 The following chunk serves two purposes: reading in the TCR data, and calculating the JSD correlations based on the TCR profiles.  This takes a while, so the results are saved in an object called `tcr_objects.Rdata`. If this object is not found, it will create it. 
+
+
+
 
 ```{R}
 tcr_objects_path <- "tcr_objects.Rdata"
