@@ -17,6 +17,10 @@ library(abdiv)
 # Processing the raw TCR data
 ## External processing
 ```
+
+bsub -W 2:00 -n 128 -Is  bash
+conda create -name tcr scipy pandas -y 
+conda activate tcrs
 bash scripts/get_file_pairs.sh ./samples/ > human_mouse_file_pairs.tsv
 parallel -a human_mouse_file_pairs.tsv --bar --progress --colsep "\t" ~/miniconda3/envs/pd/bin/python scripts/AB-correlations.py {1} {2} > tmp
 
@@ -286,6 +290,24 @@ if(!file.exists(tcr_objects_path)){
       filter(productive_frequency > 0) %>%
       pull(amino_acid) %>% unique()
   })
+  new_tcr_corrs <- read.csv(sep = "\t", "2022-08-29-tcr-correlations.tsv", header=FALSE, col.names = strsplit("fileA\tfileB\tsizeA\tsizeB\tnorm_sizeA\tnorm_sizeB\tjsd_nt_raw\tjsd_nt_norm\tjsd_aa_raw\tjsd_aa_norm\tmorisita_nt_raw\toverlapping_clone", split = "\t")[[1]], na.strings = c("nan"))
+  #do a double join to get all (non-unique combinations)
+  tmp <- rbind(
+    new_tcr_corrs, 
+    new_tcr_corrs %>% 
+      mutate(sizeX=sizeA, sizeA=sizeB, sizeA=sizeX, norm_sizeX=norm_sizeA, norm_sizeA=norm_sizeB, norm_sizeA=norm_sizeX) %>% 
+      select(-sizeX, -norm_sizeX)
+    ) %>%
+    bind_rows(new_tcr_corrs %>% select(fileA, sizeA) %>% distinct() %>% mutate(fileB=fileA, sizeB=sizeA))
+
+  # tmp <- left_join(
+  #   tcr_corrs %>% 
+  #     mutate(sample1new = pmin(sample1, sample2), sample2new=pmax(sample1, sample2)) %>% 
+  #     select(-sample1, -sample2) %>% distinct(), 
+  #   new_tcr_corrs %>% 
+  #     mutate(sample1new = pmin(fileA, fileB), sample2new=pmax(fileA, fileB)))  %>% 
+  #   filter(sample1new != sample2new)
+  # all.equal(tmp$JSD, tmp$jsd_nt_raw)
   
   # clones_per_pt <- list(
   #         PtA = clone_freq_by_pt$rearrangement[clone_freq_by_pt$patient_name == "Patient A" & clone_freq_by_pt$sum_productive_frequency > 0], 

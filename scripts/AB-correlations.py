@@ -108,9 +108,10 @@ def main(args):
     "templates", 
     "productive_templates"
   ]
+  # still useful to calculate some things on same input file pairs (eg "overlapping pairs"")
+  same_file = False
   if (args.A == args.B):
-    sys.stderr.write(f"Warning: skipping execution as A and B are same file path ({args.A} {args.B}) \n")
-    return()
+    same_file = True
   Adf = pd.read_csv(args.A, sep="\t", usecols=cols_of_interest).query('frame_type == "In"')
   Bdf = pd.read_csv(args.B, sep="\t", usecols=cols_of_interest).query('frame_type == "In"')
   both = pd.concat([Adf, Bdf], axis=0)
@@ -141,36 +142,45 @@ def main(args):
 
   
   if verbose: print(depth_threshold)
-  both_w_aa = pivot_tcr(both, bythis="amino_acid")
-  both_w_nt = pivot_tcr(both, bythis="rearrangement")
-  both_w_aa_filt = pivot_tcr(both_filt, bythis="amino_acid" )
-  both_w_nt_filt = pivot_tcr(both_filt, bythis="rearrangement")
-  # this is way faster than manually calculating (eg .0015 vs .052s for the balb_1_blood vs balb_2_blood)
-  jsd_nt_raw = distance.jensenshannon(both_w_nt.iloc[0], both_w_nt.iloc[1], base=2) ** 2
-  # AA JSD raw
-  jsd_aa_raw = distance.jensenshannon(both_w_aa.iloc[0], both_w_aa.iloc[1], base=2) ** 2
-  # NT Morisita raw 
-  morisita_nt_raw = morisita(x=both_w_nt.iloc[0], y=both_w_nt.iloc[1])
-
-  # this can occur when filtering pairs with extreme differences in size
-  # filtering/normalizing removes all tempaltes from the more diverse sample
-  if both_w_nt_filt.shape[0] !=2:
-    jsd_nt_filt = np.nan
-    jsd_aa_filt = np.nan
+  if not same_file:
+    both_w_aa = pivot_tcr(both, bythis="amino_acid")
+    both_w_nt = pivot_tcr(both, bythis="rearrangement")
+    both_w_aa_filt = pivot_tcr(both_filt, bythis="amino_acid" )
+    both_w_nt_filt = pivot_tcr(both_filt, bythis="rearrangement")
+    # this is way faster than manually calculating (eg .0015 vs .052s for the balb_1_blood vs balb_2_blood)
+    jsd_nt_raw = distance.jensenshannon(both_w_nt.iloc[0], both_w_nt.iloc[1], base=2) ** 2
+    # AA JSD raw
+    jsd_aa_raw = distance.jensenshannon(both_w_aa.iloc[0], both_w_aa.iloc[1], base=2) ** 2
+    # NT Morisita raw 
+    morisita_nt_raw = morisita(x=both_w_nt.iloc[0], y=both_w_nt.iloc[1])
+  
+    # this can occur when filtering pairs with extreme differences in size
+    # filtering/normalizing removes all tempaltes from the more diverse sample
+    if both_w_nt_filt.shape[0] !=2:
+      jsd_nt_filt = np.nan
+      jsd_aa_filt = np.nan
+      new_templates_totals_tup = (np.nan, np.nan)
+    else :
+      jsd_nt_filt = distance.jensenshannon(both_w_nt_filt.iloc[0], both_w_nt_filt.iloc[1], base=2) ** 2
+      jsd_aa_filt = distance.jensenshannon(both_w_aa_filt.iloc[0], both_w_aa_filt.iloc[1], base=2) ** 2
+      new_templates_totals_tup = ( new_templates_totals['lowdepth_templates'][0] ,  new_templates_totals['lowdepth_templates'][1] )
+    # overlapping clones 
+    overlapping_clones = pivot_tcr(both, bythis="rearrangement", fill=False).dropna(axis="columns", how='any').shape[1]
+    overlapping_aa = pivot_tcr(both, bythis="amino_acid", fill=False).dropna(axis="columns", how='any').shape[1]
+  
+  else:
+    jsd_nt_raw = 0
+    jsd_aa_raw = 0
+    jsd_nt_filt = 0
+    jsd_aa_filt = 0
+    morisita_nt_raw = 0
     new_templates_totals_tup = (np.nan, np.nan)
-  else :
-    jsd_nt_filt = distance.jensenshannon(both_w_nt_filt.iloc[0], both_w_nt_filt.iloc[1], base=2) ** 2
-    jsd_aa_filt = distance.jensenshannon(both_w_aa_filt.iloc[0], both_w_aa_filt.iloc[1], base=2) ** 2
-    new_templates_totals_tup = ( new_templates_totals['lowdepth_templates'][0] ,  new_templates_totals['lowdepth_templates'][1] )
-
-
-  # overlapping clones 
-  overlapping_clones = pivot_tcr(both, bythis="rearrangement", fill=False).dropna(axis="columns", how='any').shape[1]
-  overlapping_aa = pivot_tcr(both, bythis="amino_acid", fill=False).dropna(axis="columns", how='any').shape[1]
+    overlapping_clones = Adf["rearrangement"].nunique()
+    overlapping_aa  = Adf["amino_acid"].nunique()
   if args.header:
-    print(f"fileA\tfileB\tsizeA\tsizeB\tnorm_sizeA\tnorm_sizeB\tjsd_nt_raw\tjsd_nt_norm\tjsd_aa_raw\tjsd_aa_norm\tmorisita_nt_raw\toverlapping_clones")
+    print(f"fileA\tfileB\tsizeA\tsizeB\tnorm_sizeA\tnorm_sizeB\tjsd_nt_raw\tjsd_nt_norm\tjsd_aa_raw\tjsd_aa_norm\tmorisita_nt_raw\toverlapping_clones\t{overlapping_aa}")
     
-  print(f"{os.path.basename(args.A).replace('.tsv', '')}\t{os.path.basename(args.B).replace('.tsv', '')}\t{Asize}\t{Bsize}\t{new_templates_totals_tup[0]}\t{new_templates_totals_tup[1]}\t{jsd_nt_raw}\t{jsd_nt_filt}\t{jsd_aa_raw}\t{jsd_aa_filt}\t{morisita_nt_raw}\t{overlapping_clones}")
+  print(f"{os.path.basename(args.A).replace('.tsv', '')}\t{os.path.basename(args.B).replace('.tsv', '')}\t{Asize}\t{Bsize}\t{new_templates_totals_tup[0]}\t{new_templates_totals_tup[1]}\t{jsd_nt_raw}\t{jsd_nt_filt}\t{jsd_aa_raw}\t{jsd_aa_filt}\t{morisita_nt_raw}\t{overlapping_clones}\t{overlapping_aa}")
 
 if __name__ == "__main__":
   args=get_args()
