@@ -8,9 +8,8 @@ knitr::opts_chunk$set(echo = FALSE, fig.width=10, fig.height=7)
 library(tidyverse) 
 library(patchwork)  # for combining figures
 library(gplots)     # for heatmap.2
-library(ggtree)    # for trees
-library(ape)   # for as.phylo
-load("tcr_objects.Rdata")
+
+if (interactive())  load("tcr_objects.Rdata")
 ```
 
 # Figure 1
@@ -25,7 +24,8 @@ dir.create(figures_path, showWarnings = FALSE, recursive = TRUE)
 
 tissue_annotations = read.csv("data/updated_colors_dendrograms.csv")
 diversity <- read.csv("tables/st4.csv") %>% 
-  left_join(tcr_sample_metadata %>% select(-sample_amount_ng)) %>% 
+  left_join(tcr_sample_metadata %>% select(-sample_amount_ng) %>% 
+              select(sample_name:species)) %>%
   left_join(tissue_annotations, by="tissue")
 
 human_patient_colors <- c("mediumblue", "navy", "red", "yellow", "green4", "lightskyblue", "saddlebrown", "gray75", "gray45", "gray 85")

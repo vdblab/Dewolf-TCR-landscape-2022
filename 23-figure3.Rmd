@@ -9,7 +9,7 @@ editor_options:
 library(RColorBrewer)
 library(tidyverse) 
 library(ggalluvial)
-load("tcr_objects.Rdata")
+if (interactive()) load("tcr_objects.Rdata")
 
 figures_path <- file.path("figures", "alluvials")
 dir.create(figures_path, showWarnings = FALSE)

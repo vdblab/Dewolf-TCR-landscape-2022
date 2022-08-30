@@ -10,7 +10,7 @@ library(patchwork)  # for combining figures
 library(gplots)     # for heatmap.2
 library(ggtree)    # for trees
 library(ape)   # for as.phylo
-load("tcr_objects.Rdata")
+if (interactive())  load("tcr_objects.Rdata")
 load("GTEx/gtex_objects.Rdata")
 figs_dir <- "figures"
 dir.create(figs_dir, showWarnings = FALSE)
@@ -48,9 +48,11 @@ for (batch in c("just_patients", "all", "all_no_donor_mice", "all_no_donor_no_he
       filter(sample1 %in% these_samples$sample_name) %>% 
       filter(sample2 %in% these_samples$sample_name) %>% 
       select(sample1, sample2, all_of(metri))
+    this_corr_data$thismetric <- this_corr_data[, metri]
+    this_corr_data[, metri] <- NULL
     tcr_agg_individuals <- this_corr_data %>% 
       arrange(sample1, sample2) %>% 
-      pivot_wider(names_from="sample2", values_from=all_of(metri)) %>%
+      pivot_wider(names_from="sample2", values_from=thismetric) %>%
       column_to_rownames("sample1") %>%
       as.matrix()
     
@@ -112,12 +114,11 @@ for (batch in c("just_patients", "all", "all_no_donor_mice", "all_no_donor_no_he
   
   pmat_tcr_all<- ggplot(
     this_corr_data %>% 
-      rename(thisfill=metri) %>% 
       mutate(
         sample1=factor(sample1, levels = samples_ordered, ordered = TRUE),
         sample2=factor(sample2, levels = samples_ordered, ordered = TRUE),
-        lab = round(thisfill, 2),
-      ), aes(x=sample1, y=sample2, fill=thisfill)) + 
+        lab = round(thismetric, 2),
+      ), aes(x=sample1, y=sample2, fill=thismetric)) + 
     geom_tile() + 
     coord_fixed(ratio=1) + 
     geom_text(aes(label=lab), color="grey50", size=1)+

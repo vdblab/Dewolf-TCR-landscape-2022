@@ -5,7 +5,7 @@ library(patchwork)  # for combining figures
 library(gplots)     # for heatmap.2
 library(ggtree)    # for trees
 library(ape)   # for as.phylo
-load("tcr_objects.Rdata")
+if (interactive()) load("tcr_objects.Rdata")
 load("GTEx/gtex_objects.RData")
 ```
 
@@ -93,7 +93,6 @@ tcr_corrs_anno <- tcr_corrs %>%
 #  select(-sample1_tissue, -sample2_tissue, -sample1_clean, -sample2_clean) %>% 
   left_join(tcr_sample_metadata, by=c("sample1" = "sample_name")) %>% 
   left_join(tcr_sample_metadata, by=c("sample2" = "sample_name")) 
-
 
 newannotations <- read.csv("data/updated_colors_dendrograms.csv") 
 
@@ -225,11 +224,13 @@ tcr <- tcr_corrs_anno %>%
 ggsave(
 inner_join(gtex, tcr) %>%
   ggplot(aes(color=paste(from, to, sep="-"), y=tcr,x=gtex, label=paste(from, to, sep="-"), shape=patient)) +
-  geom_point(size=3) + geom_text_repel(size=2) + 
+  geom_point(size=3) + 
+  ggrepel::geom_text_repel(size=2) + 
   scale_color_discrete(guide="none") + 
   scale_shape_manual(values=c(1:100)) + 
   theme(legend.position = "bottom") + 
-  labs(x="JSD according to GTEx median summary", y="JSD according to TCR profiles", shape="patient") + theme_classic() ,
+  labs(x="JSD according to GTEx median summary", y="JSD according to TCR profiles", shape="patient") + 
+  theme_classic() ,
 filename = file.path(fig2_figs_path, "GTEx-vs-TCR-summary.pdf"),
 width=12, height=12) 
   
@@ -280,7 +281,7 @@ tissues_in_PtD_tcr <- c("Colon...Sigmoid", "Colon...Transverse",
 gtex_mat <-gtex_mat[tissues_in_PtD_tcr, tissues_in_PtD_tcr]
 hclust_col_dists <- hclust(as.dist(gtex_mat), method = "single") 
 dend2 <- hclust_col_dists %>% as.dendrogram
-labels_colors(dend2) <- data.frame(Tissue = labels(dend2)) %>%
+dendextend::labels_colors(dend2) <- data.frame(Tissue = labels(dend2)) %>%
   left_join(., tissue_key) %>% pull(col)
 tmp <- ape::as.phylo(dend2)
 
@@ -429,8 +430,4 @@ ggsave(p_tree_and_heatmap, filename = file.path(fig2_figs_path, "GTEx_PtD_tissue
 
 ```
 
-
-## 2D
-
-```{r}
 
