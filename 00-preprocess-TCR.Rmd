@@ -198,11 +198,12 @@ if(!file.exists(tcr_objects_path)){
   new_tcr_corrs <- read.csv(sep = "\t", "data/2022-08-29-tcr-correlations.tsv", header=FALSE, col.names = strsplit("fileA\tfileB\tsizeA\tsizeB\tnorm_sizeA\tnorm_sizeB\tJSD\tjsd_nt_norm\tjsd_aa_raw\tjsd_aa_norm\tmorisita_nt_raw\toverlapping_clones\toverlapping_aa", split = "\t")[[1]], na.strings = c("nan"))
   #do a double join to get all (non-unique combinations)
   tcr_corrs <- rbind(
-    new_tcr_corrs,
+    new_tcr_corrs %>% mutate(pair_is_unique=TRUE),
     new_tcr_corrs %>% 
       mutate(fileX=fileA, fileA=fileB, fileB=fileX,
              sizeX=sizeA, sizeA=sizeB, sizeB=sizeX, 
-             norm_sizeX=norm_sizeA, norm_sizeA=norm_sizeB, norm_sizeB=norm_sizeX) %>% 
+             norm_sizeX=norm_sizeA, norm_sizeA=norm_sizeB, norm_sizeB=norm_sizeX,
+             pair_is_unique=FALSE) %>% 
       select(-fileX, -sizeX, -norm_sizeX)
   ) %>% 
     rename(sample1=fileA, sample2=fileB)  %>% 

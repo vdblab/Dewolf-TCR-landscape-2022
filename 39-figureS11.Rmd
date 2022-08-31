@@ -12,7 +12,7 @@ library(rstatix)
 
 
 theme_set(theme_classic())
-load("tcr_objects.Rdata")
+if (interactive()) load("tcr_objects.Rdata")
 ```
 
 ## Validating Trees
@@ -76,14 +76,16 @@ Then the same was calculated across all samples:
 ```{r}
 
 
-## Aggregated
-
+tcr_corrs_anno <- tcr_corrs %>% 
+  left_join(tcr_sample_metadata %>% select(sample_name:species), by=c("sample1" = "sample_name")) %>% 
+  left_join(tcr_sample_metadata %>% select(sample_name:species), by=c("sample2" = "sample_name")) 
 
 pt_comp_df_all <- tcr_corrs_anno %>% 
   filter(indv_label.x == indv_label.y) %>% 
   mutate(A=pmin(tissue.x, tissue.y), B=pmax(tissue.x, tissue.y), value=JSD, pt=indv_label.x, org=org.x, stype=gvhd.x) %>%
   select(A, B, value, pt, org, stype) %>% distinct() %>% 
   filter(A != B) %>% 
+  filter(A != "graft_blood" & B != "graft_blood") %>%
   left_join(newannotations, by=c("A"="tissue")) %>%
   left_join(newannotations, by=c("B"="tissue")) %>%
   mutate(grp = ifelse(plotgroup.x==plotgroup.y, "Within", "Between")) 
@@ -131,7 +133,7 @@ stat_pvalue_manual(
                        rows=NULL) + 
   plot_layout(widths = c(8, 2)))
 
-ggsave(p_between_within, filename = file.path(figs_dir, "mouse_human_between_within.pdf"), width = 16, height = 8)
+ggsave(p_between_within, filename = file.path(boxdir, "mouse_human_between_within.pdf"), width = 16, height = 8)
 
 ```
 
@@ -157,7 +159,7 @@ The sampling was performed 100 times, and plotted below.
 
 ```{r}
 tissues_for_comparisons <- pt_comp_df_all %>%
-  filter(org == "Human") %>%
+  filter(org == "Human" ) %>% 
   group_by(plotgroup.x, org) %>% filter(n_distinct(grp) > 1) %>% pull(plotgroup.x) %>% unique()
 
 reps = 1000
@@ -173,7 +175,7 @@ pt_comp_df_all_shuff <- map(1:reps, .f=function(x){
 
 # only plot the first 6 cause 100 is a bit excessive
 p_inv_shuff <-ggplot(pt_comp_df_all_shuff %>% filter(shuffle <7), aes(x=plotgroup.x, color=fauxgrp, group=interaction(plotgroup.x, fauxgrp), y=value)) + geom_boxplot(outlier.colour = NA) + geom_point(position = position_jitterdodge(jitter.height = 0, jitter.width = .1 )) + stat_compare_means() + facet_wrap(~shuffle, ncol = 2) + theme(axis.text.x = element_text(angle=90, hjust=1)) + labs(caption="Each facet is a replicate of randomly assigning the 'Within'/'Between' grouping to comparisons relating to a anatomic system. \nFirst 6 replicates shown for clarity." ) 
-ggsave(p_inv_shuff, filename = file.path(figs_dir, "shuffles_between_within_first_six.pdf"), width = 16, height = 10)
+ggsave(p_inv_shuff, filename = file.path(boxdir, "shuffles_between_within_first_six.pdf"), width = 16, height = 10)
 
 
 
@@ -203,7 +205,7 @@ ggplot(shuff_summary, aes(y=plotgroup.x, group=plotgroup.x, x=p, fil=plotgroup.x
   geom_point(data=stat.test %>% filter(stype!="noGvHD"), aes(x=p.adj, y=plotgroup.x, color=plotgroup.x), shape=8, size=3, stroke=2) + scale_color_brewer(palette = "Dark2", guide="none") +
   labs(x="Adjusted P-value", y="System",  title="Shuffled-label tissue comparisons ")
 
-ggsave(p_shuff_summary, filename = file.path(figs_dir, "shuffles_between_within_summary.pdf"), width = 5, height=5)
+ggsave(p_shuff_summary, filename = file.path(boxdir, "shuffles_between_within_summary.pdf"), width = 5, height=5)
 
 ```
 
@@ -283,7 +285,7 @@ for (si in 1:length(sets_of_comparisons)){
   
   
   
-  ggsave(p_between_within_intestine + p_shuff_intestinal_summary + plot_layout(ncol=1, heights = c(.8, .3)) , filename = file.path(figs_dir, str_glue("mouse_human_between_within_{sname}.pdf")), width = 8, height = 8)
+  ggsave(p_between_within_intestine + p_shuff_intestinal_summary + plot_layout(ncol=1, heights = c(.8, .3)) , filename = file.path(boxdir, str_glue("mouse_human_between_within_{sname}.pdf")), width = 8, height = 8)
   
 }
 ```
@@ -304,7 +306,7 @@ for(i in  unique(tcr_corrs_anno$indv_label.x)){
     labs(x="Tissue", shape="Tissue", subtitle=i, color="Tissue") +
     theme_classic()   + theme(axis.text.x = element_text(angle=45, hjust=1)) + 
     scale_y_continuous(limits=c(0, 1))
-    ggsave(plot = tmp_p, filename = file.path(figs_dir, str_glue("TCR_raw_comparisons_{i}.pdf")), width = 9, height = 6)
+    ggsave(plot = tmp_p, filename = file.path(boxdir, str_glue("TCR_raw_comparisons_{i}.pdf")), width = 9, height = 6)
 }
 
 
@@ -316,45 +318,72 @@ for(i in  unique(tcr_corrs_anno$indv_label.x)){
 ## Summarizing Mouse TCR data
 
 ```{r}
-tcr_corrs_anno_mouse_sumamry <- tcr_corrs_anno %>%
+tcr_corrs_anno_mouse <- tcr_corrs_anno %>% 
+  filter(pair_is_unique == TRUE) %>% 
   filter(org.x=="Mouse") %>% filter(org.y=="Mouse") %>% 
   filter(indv_label.x==indv_label.y) %>% 
-  select(-sample1, -sample2, -spearman, -org.x, -org.y, -indv_label.x, -indv_label.y, -samp_type.x, -samp_type.y, -exp_rep.x, -exp_rep.y, -indv_tissue_label.x, -indv_tissue_label.y, -indv_id.x, -indv_id.y  ) %>%
+#  filter(gvhd.x == "GvHD" & gvhd.y == "GvHD") %>% 
+  #filter(tissue.x != tissue.y) %>%
+  select(JSD, tissue.x, tissue.y, gvhd.x, collection_day.x ) %>%
+  #select(-sample1, -sample2, -org.x, -org.y, -indv_label.x, -indv_label.y, -samp_type.x, -samp_type.y, -exp_rep.x, -exp_rep.y, -indv_tissue_label.x, -indv_tissue_label.y, -indv_id.x, -indv_id.y  ) %>%
   group_by(across(c(-JSD))) %>% 
-  dplyr::summarize(
+  mutate(
+    n=n(),
     JSD_mean = mean(JSD),
     JSD_median = median(JSD),
-    JSD_vat = var(JSD),
+    JSD_var = var(JSD),
   ) %>%
   select(tissue.x, tissue.y, everything()) %>% 
   ungroup() 
 
+tcr_corrs_anno_mouse_summary <- tcr_corrs_anno_mouse %>% select(-JSD) %>% distinct()
 
-# TODO:  put in some plots here:  is the variance across tissue pairs comparable?
-# 
+p_mouse_variance <- ggplot(tcr_corrs_anno_mouse %>% 
+                             filter(gvhd.x == "GvHD") %>% 
+                             filter(tissue.x != tissue.y) %>% 
+                             filter(collection_day.x==14), aes(x=reorder(interaction(tissue.x, tissue.y), desc(JSD_var)), y=JSD, color=as.character(n)))+
+  scale_color_discrete() + 
+  labs(color="N") +
+  theme(
+    legend.position = c(.31, .1),
+    legend.direction = "horizontal",
+    legend.background = element_rect(color="gray80", fill = NA),
+    #legend.background = element_blank() ,
+    axis.text.x = element_blank(),
+    axis.title.x =element_blank(),
+  ) + 
+  geom_jitter(height = 0, alpha=.3, width = .2) + 
+ggplot(tcr_corrs_anno_mouse_summary %>%                
+         filter(tissue.x != tissue.y) %>% 
+filter(gvhd.x == "GvHD") %>% filter(collection_day.x==14), aes(x=reorder(interaction(tissue.x, tissue.y), desc(JSD_var)), y=JSD_var))+
+  theme(axis.text.x = element_text(angle=45, hjust=1)) + 
+  geom_point() + 
+  labs(y="Variance in JSD", x="") +
+  plot_layout(nrow=2) +
+  plot_annotation(title="JSD and JSD variance across mouse tissue pairs (day 14)")
 
+
+ggsave(filename = file.path(boxdir, "mouse_JSD_variance.pdf"), plot = p_mouse_variance, width = 9, height=6)
 
 mouse_summary_plist <- list()
 for (gr in c("GvHD", "noGvHD")){
   for (cday in c(7, 14)){
     
-    this_corr_data <-  tcr_corrs_anno_mouse_sumamry %>% 
-      filter(gvhd.x == gr) %>% 
-      filter(gvhd.y == gr) 
+    this_corr_data <-  tcr_corrs_anno_mouse_summary %>% 
+      filter(gvhd.x == gr) 
     # No days for healthy mice, take all of them
     if (gr == "GvHD"){
       this_corr_data <-  this_corr_data %>% 
-        filter(collection_day.x  == cday) %>% 
-        filter(collection_day.y  == cday) 
+        filter(collection_day.x  == cday) 
     }
     tcr_agg_mice <- this_corr_data %>%   
       rename(sample1=tissue.x, sample2=tissue.y) %>% 
       select(sample1, sample2, JSD_mean) %>% distinct() %>% 
-      
+      arrange(desc(sample1), desc(sample2)) %>% 
       pivot_wider(names_from="sample2", values_from=JSD_mean) %>%
       column_to_rownames("sample1") %>%
       as.matrix()
-    
+    # the arrange() makes it possible to convert to a proper lower right tri distance matrix
     dend_<- hclust(as.dist(tcr_agg_mice), method = "single") %>% as.dendrogram()
     samples_ordered <- hclust(as.dist(tcr_agg_mice), method = "single")$labels[c( hclust(as.dist(tcr_agg_mice), method = "single")$order)]
     
@@ -419,9 +448,9 @@ for (gr in c("GvHD", "noGvHD")){
         )
     
     ggsave(p_tcr_all_heat,
-           filename = file.path(figs_dir, str_glue("aggregated_mouse_tcr_{gr}_day{cday}_heatmap.pdf")), width=6, height=8,device = "pdf")
+           filename = file.path(boxdir, str_glue("aggregated_mouse_tcr_{gr}_day{cday}_heatmap.pdf")), width=6, height=8,device = "pdf")
     ggsave(p_tcr_all_heat + scale_fill_gradient2(midpoint = .5, limits=c(0, 1)),
-           filename = file.path(figs_dir, str_glue("aggregated_mouse_tcr_{gr}_day{cday}_heatmap_altcolor.pdf")), width=6, height=8,device = "pdf")
+           filename = file.path(boxdir, str_glue("aggregated_mouse_tcr_{gr}_day{cday}_heatmap_altcolor.pdf")), width=6, height=8,device = "pdf")
     
     
     

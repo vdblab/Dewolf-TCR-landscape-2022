@@ -5,7 +5,7 @@ editor_options:
 ---
 # Aluvial Plots
 
-```{R}
+```{R make-alluvials}
 library(RColorBrewer)
 library(tidyverse) 
 library(ggalluvial)

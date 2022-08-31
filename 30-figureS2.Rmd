@@ -7,17 +7,22 @@ editor_options:
 # Supplementary figures
 ## S2
 
-analysis of divesity metrics across clinical variables: these are the plots for supplemental figure 2 looking at diversity metris accross different clinical varaibles
+analysis of divesity metrics across clinical variables: these are the plots for supplemental figure 2 looking at diversity metrics across different clinical variables
 
-```{R}
-load("./tcr_objects.Rdata")
-
+```{R S2-plots}
+if (interactive()) load("./tcr_objects.Rdata")
+s2_theme <- theme_classic() + theme(
+  axis.text=element_text(size=15, color = "black"),
+  axis.text.y=element_text(size=12, color = "black"),
+  legend.text = element_text(size = 12, color = "black"), legend.title = element_text(size = 15, color = "black"), axis.title = element_text(size = 15, color = "black", face = "bold"),
+  axis.text.x = element_text(size = 12, hjust = 0, color = "black", angle = -30))
 #TODO check groupings
 #setwd("/Volumes/Susan/Human GVHD/Summary analyses")
 #diversity = read.csv("diversitystats.csv")
 #diversity %>% select(subject, allograft, `CMV reactivation`, `chronic GVHD`, `GVHD_severity`) %>% distinct() %>% write.csv("tmpdiversity.csv")
 
 s2diversity = tcr_sample_metadata %>% 
+  select(sample_name : indv_tissue_label, -sample_amount_ng) %>% 
   left_join(read.csv("tables/st4.csv")) %>%
   left_join(read.csv("data/patient_attributes.csv") %>%
               mutate(subject=paste("Patient", subject)), by=c("indv_label" = "subject")) %>%
@@ -30,93 +35,69 @@ GI = s2diversity %>%
   filter(tissue != "Graft/Blood") %>% 
   filter(org=="Human") %>% 
   filter("" != S2_uc_group)
+GI_GVHD = GI %>%
+   filter(CMV.reactivation != "n/a")
 
 
 #these are the plots for clonality
-c <- ggplot(GI, aes(x=reorder(S2_uc_group, anatomic_order), clonality))
+basep <- ggplot(GI, aes(x=reorder(S2_uc_group, anatomic_order)))
 
 #this plot colors by allograft source
-(clonality_graft = c +
-  geom_point( aes(fill = allograft), shape=21, size = 4, stroke = 2, alpha = .8, position = jitter2) +
-  theme_classic() + theme(axis.text=element_text(size=15, color = "black")) +
-  theme(axis.text.y=element_text(size=12, color = "black"), legend.text = element_text(size = 12, color = "black"), legend.title = element_text(size = 15, color = "black"), axis.title = element_text(size = 15, color = "black", face = "bold")) +
-  theme(axis.text.x = element_text(size = 12, hjust = 0, color = "black", angle = -30)) +
-  #scale_x_discrete(limits = c("esophagus", "stomach", "small intestine", "large intestine", "rectum", "liver", "skin", "spleen")) +
+clonality_graft = basep  +
+  geom_point( aes(y = clonality, fill = allograft), shape=21, size = 4, stroke = 2, alpha = .8, position = jitter2) +
+  s2_theme +
   xlab("") + scale_fill_brewer(palette = "Set1")
-)
+
+#this plot colors by allograft source
+slope_graft = basep + 
+  geom_point( aes(y = slope, fill = allograft), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) +
+  s2_theme+
+  xlab("") + scale_fill_brewer(palette = "Set1")
+
+S2_A = clonality_graft + slope_graft + plot_layout(guides = "collect")
+
+
+
+
 #this plot colors by CMV
+cc <- ggplot(GI_GVHD, aes(x=reorder(S2_uc_group, anatomic_order)))
 
-cc <- ggplot(GI_GVHD, aes(tissue, clonality))
-
-clonality_CMV = cc + geom_point(binaxis = "y", stackdir = "center", binpositions="all", aes(fill = CMV.reactivation), dotsize = 1, stroke = 2, alpha = .8, position = jitter2) +
-  theme_classic() + theme(axis.text=element_text(size=15, color = "black")) +
-  theme(axis.text.y=element_text(size=12, color = "black"), legend.text = element_text(size = 12, color = "black"), legend.title = element_text(size = 15, color = "black"), axis.title = element_text(size = 15, color = "black", face = "bold")) +
-  theme(axis.text.x = element_text(size = 12, hjust = 0, color = "black", angle = -30)) +
-  scale_x_discrete(limits = c("esophagus", "stomach", "small intestine", "large intestine", "rectum", "liver", "skin", "spleen")) +
+clonality_CMV = cc + 
+  geom_point(aes(y=clonality, fill = CMV.reactivation),size = 4,  stroke = 2, alpha = .8, position = jitter2, shape=21) +
+  s2_theme +
   xlab("") + scale_fill_brewer(palette = "Set1")
+
+slope_CMV = cc + 
+  geom_point(aes(y=slope, fill = CMV.reactivation), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) +
+  s2_theme +
+  xlab("") + scale_fill_brewer(palette = "Set1")
+
+S2_B = clonality_CMV + slope_CMV + plot_layout(guides = "collect")
 
 #this plot colors by grade of GVHD peri-autopsy (acute GVHD
-clonality_GVHD = cc + geom_point(binaxis = "y", stackdir = "center", binpositions="all", aes(fill = GVHD_severity), dotsize = 1, stroke = 2, alpha = .8, position = jitter2) +
-  theme_classic() + theme(axis.text=element_text(size=15, color = "black")) +
-  theme(axis.text.y=element_text(size=12, color = "black"), legend.text = element_text(size = 12, color = "black"), legend.title = element_text(size = 15, color = "black"), axis.title = element_text(size = 15, color = "black", face = "bold")) +
-  theme(axis.text.x = element_text(size = 12, hjust = 0, color = "black", angle = -30)) +
-  scale_x_discrete(limits = c("esophagus", "stomach", "small intestine", "large intestine", "rectum", "liver", "skin", "spleen")) +
+clonality_GVHD = cc + 
+  geom_point(aes(y=clonality, fill = GVHD_severity), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) +
+ s2_theme +
   xlab("") + scale_fill_brewer(palette = "BuPu")
-
-#these are the plots for slope
-s <- ggplot(GI, aes(tissue, slope))
-
-#this plot colors by allograft source
-slope_graft = s + geom_point(binaxis = "y", stackdir = "center", binpositions="all", aes(fill = allograft), dotsize = 1, stroke = 2, alpha = .8, position = jitter2) +
-  theme_classic() + theme(axis.text=element_text(size=15, color = "black")) +
-  theme(axis.text.y=element_text(size=12, color = "black"), legend.text = element_text(size = 12, color = "black"), legend.title = element_text(size = 15, color = "black"), axis.title = element_text(size = 15, color = "black", face = "bold")) +
-  theme(axis.text.x = element_text(size = 12, hjust = 0, color = "black", angle = -30)) +
-  scale_x_discrete(limits = c("esophagus", "stomach", "small intestine", "large intestine", "rectum", "liver", "skin", "spleen")) +
-  xlab("") + scale_fill_brewer(palette = "Set1")
-
-#this plot colors by CMV
-
-ss <- ggplot(GI_GVHD, aes(tissue, slope))
-
-slope_CMV = ss + geom_point(binaxis = "y", stackdir = "center", binpositions="all", aes(fill = CMV.reactivation), dotsize = 1, stroke = 2, alpha = .8, position = jitter2) +
-  theme_classic() + theme(axis.text=element_text(size=15, color = "black")) +
-  theme(axis.text.y=element_text(size=12, color = "black"), legend.text = element_text(size = 12, color = "black"), legend.title = element_text(size = 15, color = "black"), axis.title = element_text(size = 15, color = "black", face = "bold")) +
-  theme(axis.text.x = element_text(size = 12, hjust = 0, color = "black", angle = -30)) +
-  scale_x_discrete(limits = c("esophagus", "stomach", "small intestine", "large intestine", "rectum", "liver", "skin", "spleen")) +
-  xlab("") + scale_fill_brewer(palette = "Set1")
 
 #this plot colors by grade of GVHD peri-autopsy (acute GVHD)
-slope_GVHD = ss + geom_point(binaxis = "y", stackdir = "center", binpositions="all", aes(fill = GVHD_severity), dotsize = 1, stroke = 2, alpha = .8, position = jitter2) +
-  theme_classic() + theme(axis.text=element_text(size=15, color = "black")) +
-  theme(axis.text.y=element_text(size=12, color = "black"), legend.text = element_text(size = 12, color = "black"), legend.title = element_text(size = 15, color = "black"), axis.title = element_text(size = 15, color = "black", face = "bold")) +
-  theme(axis.text.x = element_text(size = 12, hjust = 0, color = "black", angle = -30)) +
-  scale_x_discrete(limits = c("esophagus", "stomach", "small intestine", "large intestine", "rectum", "liver", "skin", "spleen")) +
+slope_GVHD = cc + 
+  geom_point(aes(y=slope, fill = GVHD_severity), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) +
+  s2_theme +
   xlab("") + scale_fill_brewer(palette = "BuPu")
 
-ggsave(plot=slope_GVHD, height=5,width=7,dpi=200,
-       filename="slope_GVHD.pdf",
+S2_C = clonality_GVHD + slope_GVHD + plot_layout(guides = "collect")
+
+
+
+ggsave(plot=S2_A, height=5,width=14,dpi=200,
+       filename="S2A_by_graft.pdf",
        useDingbats=FALSE)
-
-ggsave(plot=slope_CMV, height=5,width=7,dpi=200,
-       filename="slope_CMV.pdf",
+ggsave(plot=S2_B, height=5,width=14,dpi=200,
+       filename="S2B_by_CMV.pdf",
        useDingbats=FALSE)
-
-ggsave(plot=slope_graft, height=5,width=7,dpi=200,
-       filename="slope_graft.pdf",
+ggsave(plot=S2_C, height=5,width=14,dpi=200,
+       filename="S2C_by_GVHD.pdf",
        useDingbats=FALSE)
-
-ggsave(plot=clonality_GVHD, height=5,width=7,dpi=200,
-       filename="clonality_GVHD.pdf",
-       useDingbats=FALSE)
-
-
-ggsave(plot=clonality_CMV, height=5,width=7,dpi=200,
-       filename="clonality_CMV.pdf",
-       useDingbats=FALSE)
-
-ggsave(plot=clonality_graft, height=5,width=7,dpi=200,
-       filename="clonality_graft.pdf",
-       useDingbats=FALSE)
-
 
 ```
