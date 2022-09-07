@@ -3,7 +3,7 @@ output: html_document
 editor_options: 
   chunk_output_type: console
 ---
-```{r setup-TCR, include=FALSE}
+```{r 20-trees-1, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, fig.width=10, fig.height=7) 
 library(tidyverse) 
 library(patchwork)  # for combining figures
@@ -29,7 +29,7 @@ The following code creates plots showing the high-level relationships between th
 - `all_no_donor_no_healthy_control_mice`: Same as `all`, but without the mouse donor Tcells or the Balb-c healthy comparator mice.
 
 
-```{r}
+```{r 20-trees-2 }
 for (batch in c("just_patients", "just_humans", "all", "all_no_donor_mice", "all_no_donor_no_healthy_control_mice")){
   # batch="just_patients"
   if (batch == "just_patients"){
@@ -139,7 +139,7 @@ for (batch in c("just_patients", "just_humans", "all", "all_no_donor_mice", "all
 
 
 
-```{r}
+```{r 20-trees-3 }
 objects_for_saving <- c(  
 "jsd_tcr_agg_individuals",  
 "p_tcr_all", 
@@ -157,7 +157,7 @@ save(list = objects_for_saving, file = "tcr_graphic_objects.RData")
  
  ## Generate cross-patient tissue similarity plots for the GTEx transcription data
 
-```{r}
+```{r 20-trees-4 }
 
 for (metri in c("jsd")){
   tick_pos <- seq(0, 1, .1)

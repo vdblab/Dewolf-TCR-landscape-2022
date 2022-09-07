@@ -1,7 +1,7 @@
 
 ## Venn 
 
-```{R  humann-venn}
+```{R 24-figure4-1 }
 if (interactive()) load("tcr_objects.Rdata")
 fig4_figs_path <- file.path("figures", "fig4")
 dir.create(fig4_figs_path, showWarnings = FALSE)
@@ -31,7 +31,7 @@ ggsave(plot=Vaa ,height=6,width=6,
 
 
 
-```{R mouse-venn}
+```{R 24-figure4-2 }
 # make one for each set because venns can only handle so many
 for (thisrep in c("rep1", "rep2", "rep3")){
 Vmouse = venn::venn(clones_per_pt[grep(thisrep, names(clones_per_pt))], ilab = TRUE, zcolor = "style", opacity = .2, ggplot = TRUE)

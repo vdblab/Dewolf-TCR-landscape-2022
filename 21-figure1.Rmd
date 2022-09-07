@@ -3,7 +3,7 @@ output: html_document
 editor_options: 
   chunk_output_type: console
 ---
-```{r include=FALSE}
+```{r 21-figure1-1, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, fig.width=10, fig.height=7) 
 library(tidyverse) 
 library(patchwork)  # for combining figures
@@ -18,11 +18,10 @@ if (interactive())  load("tcr_objects.Rdata")
 
 ## Human Clone Tissue Summary
 
-```{r}
+```{r 21-figure1-2 }
 figures_path <- file.path("figures", "fig1")
 dir.create(figures_path, showWarnings = FALSE, recursive = TRUE)
 
-tissue_annotations = read.csv("data/updated_colors_dendrograms.csv")
 diversity <- read.csv("tables/st4.csv") %>% 
   left_join(tcr_sample_metadata %>% select(-sample_amount_ng) %>% 
               select(sample_name:species)) %>%
@@ -114,7 +113,7 @@ ggsave(patchwork::plot_spacer()  + fig1b + fig1c + fig1d + fig1e + plot_layout(w
 
 ## Mouse Figure 1 additions
 
-```{r}
+```{r 21-figure1-3 }
 div_base_mouse <- ggplot(diversity %>% filter(org != "Human"), aes(y=reorder(tissue_label_fig1, desc(anatomic_order))))
 
 

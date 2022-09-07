@@ -3,14 +3,14 @@ output: html_document
 editor_options: 
   chunk_output_type: console
 ---
-```{r setup-TCR, include=FALSE}
+```{r 10-tables-1, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, fig.width=10, fig.height=7) 
 library(tidyverse) 
 library(patchwork)  # for combining figures
 ```
 
 # Summary Tables
-```{r}
+```{r 10-tables-2 }
 tcr_objects_path <- "tcr_objects.Rdata"
 load(tcr_objects_path)
 tab_dir <- "tables"

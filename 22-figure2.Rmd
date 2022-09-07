@@ -1,4 +1,4 @@
-```{r include=FALSE}
+```{r 22-figure2-1, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, fig.width=10, fig.height=7) 
 library(tidyverse) 
 library(patchwork)  # for combining figures
@@ -12,7 +12,7 @@ load("GTEx/gtex_objects.RData")
 # Figure 2
 
 ## 2b
-```{R}
+```{R 22-figure2-2 }
 fig2_figs_path <- file.path("figures", "fig2")
 dir.create(fig2_figs_path, showWarnings = FALSE)
 
@@ -85,7 +85,7 @@ scatterplot_ascending_descending + scatterplot_ascending_skin + scatterplot_asce
 
 
 
-```{r}
+```{r 22-figure2-3 }
 # load("tcr_objects.Rdata")
 # load("tcr_graphic_objects.RData")
 
@@ -94,11 +94,10 @@ tcr_corrs_anno <- tcr_corrs %>%
   left_join(tcr_sample_metadata %>% select(sample_name:species), by=c("sample1" = "sample_name")) %>% 
   left_join(tcr_sample_metadata %>% select(sample_name:species), by=c("sample2" = "sample_name")) 
 
-newannotations <- read.csv("data/updated_colors_dendrograms.csv") 
 
 jsdplist = list()
 plot_patient_tcr_tree <- function(df = tcr_pairs, patient="Pt3", metri="JSD", linkage="single"){
-  if (!"newannotations" %in% ls() ){newannotations <- read.csv("data/updated_colors_dendrograms.csv") }
+  if (!"tissue_annotations" %in% ls() ){tissue_annotations <- read.csv("data/updated_colors_dendrograms.csv") }
   # subsets the comparisons of interest  
   tcr_pairs_matrix <- df %>%
     select(tissue.x, tissue.y, all_of(metri)) %>% 
@@ -127,7 +126,7 @@ plot_patient_tcr_tree <- function(df = tcr_pairs, patient="Pt3", metri="JSD", li
 
   ticks <- make_ticks_df(dendr=hclust_ob  %>% as.dendrogram)
   return(
-    ggtree(hclust_ob_as_phylo)  %<+% newannotations + xlim(min(ticks$x), 2.2)+#xlim(min(ticks$x), .9)+
+    ggtree(hclust_ob_as_phylo)  %<+% tissue_annotations + xlim(min(ticks$x), 2.2)+#xlim(min(ticks$x), .9)+
       geom_tiplab(aes(color=new_col, label=tissue_label), 
                   offset = .14, size=2,
                   align = T, linetype = NA, fontface="bold") +
@@ -200,7 +199,7 @@ ggsave(plot = wrap_plots(
 
 
 
-```{r gtex-tcr-scatterplot}
+```{r 22-figure2-4 }
 
 gtex <- jsd_individuals_dist_list[["All"]][[2]] %>% as.data.frame() %>% rownames_to_column("from") %>% pivot_longer(names_to = "to", cols=-from, values_to = "gtex") %>% 
   mutate(key = paste0(pmin(from, to), pmax(from, to), sep = "")) %>% 
@@ -241,7 +240,7 @@ width=12, height=12)
 ## 2C: Quantifying Anatomic distances with GTEx
 
 
-```{r}
+```{r 22-figure2-5 }
 cluster_order <- data.frame(
   Tissue=labels(jsd_individuals_dist_list[["Tissues_in_TCR"]][[1]])
 ) %>% full_join(specific_tissue_key)
@@ -289,7 +288,7 @@ tmp$edge.length <- tmp$edge.length*2
 ticks <- make_ticks_df(dendr = dend2,dofilter =  TRUE, tick_pos = seq(0, 1, .05)) %>%
   filter(lab < .2)
 
-this_anno <- left_join(newannotations, specific_tissue_key %>% select(-col), c("tissue" ="TissueTCR")) %>% select(Tissue, everything())
+this_anno <- left_join(tissue_annotations, specific_tissue_key %>% select(-col), c("tissue" ="TissueTCR")) %>% select(Tissue, everything())
 (p_gtex_spec_tissue <- ggtree(tmp)  %<+% this_anno +
     xlim(min(ticks$x), .4) +
     geom_tiplab(aes(color=col, label=label), 

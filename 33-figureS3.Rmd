@@ -6,7 +6,8 @@ editor_options:
 
 ## S3
 
-```{R}
+```{R 33-figureS3-1 }
+library(ggpubr)
 if (interactive()) load("tcr_objects.Rdata")
 figures_path_s3 <- file.path("figures", "figS3")
 dir.create(figures_path_s3, showWarnings = FALSE, recursive = TRUE)

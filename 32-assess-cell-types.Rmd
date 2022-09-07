@@ -8,7 +8,7 @@ editor_options:
 Here we considered <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7855494/> to see which TCRs are associated with MAIT and NKT cell types. 
 
 
-```{R}
+```{R 32-assess-cell-types-1 }
 library(tidyverse) 
 if (interactive()) load("tcr_objects.Rdata")
 
@@ -23,7 +23,7 @@ tcr_raw %>% filter(org=="Human") %>% mutate(Tcell_type=case_when(v_family %in% c
 ### Mice
 
 
-```{r}
+```{r 32-assess-cell-types-2 }
 
 tcr_raw %>% filter(org=="Mouse") %>% mutate(Tcell_type=case_when(v_family %in% c("TCRBV09", "TCRBV13") ~ "MAIT", v_family %in% c("TCRBV02","TCRBV07","TCRBV08") ~ "NKT", TRUE ~ "Other")) %>% group_by(sample_name,tissue,  indv_label, Tcell_type) %>% summarize(prop=sum(productive_frequency))  %>%
  ggplot(aes(x=tissue, y=prop,fill=Tcell_type)) + geom_bar(position="stack", stat="identity") + facet_wrap(~indv_label, scales = "free_x") + theme(axis.text.x = element_text(angle=45, hjust=1))

@@ -3,7 +3,7 @@ output: html_document
 editor_options: 
   chunk_output_type: console
 ---
-```{r setup-TCR, include=FALSE}
+```{r 31-assess-depth-and-JSD-1, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, fig.width=10, fig.height=7) 
 library(tidyverse) 
 library(patchwork)  # for combining figures
@@ -20,7 +20,7 @@ theme_set(theme_classic())
 
 The following chunk serves two purposes: reading in the TCR data, and calculating the JSD correlations based on the TCR profiles.  This takes a while, so the results are saved in an object called `tcr_objects.Rdata`. If this object is not found, it will create it. 
 
-```{R}
+```{R 31-assess-depth-and-JSD-2 }
 tcr_objects_path <- "tcr_objects.Rdata"
 load(tcr_objects_path)
 
@@ -123,7 +123,7 @@ ggsave(p_depth_comparisons, filename = file.path("figures", "depth_effect_on_jsd
 
 
 ## How different filtering schemes relate to the raw JSD scores
-```{R}
+```{R 31-assess-depth-and-JSD-3 }
 (p_depth_comparisons_bytotal <- ggplot(resultsdf, 
                                aes(x=JSD, y=value, color=total_clones.x, shape=indv_label)) + 
     scale_shape_manual(values=1:15) + 
@@ -141,7 +141,7 @@ ggsave(p_depth_comparisons, filename = file.path("figures", "depth_effect_on_jsd
 
 ## 
 
-```{r}
+```{r 31-assess-depth-and-JSD-4 }
 samples_productive_templates <- tcr_raw %>% select(sample_name, productive_templates)  %>% distinct()
 depth_data <- tcr_corrs %>% 
          left_join(tcr_sample_metadata %>% select(sample_name, org, indv_label,samp_type, gvhd) %>% rename(sample1=sample_name), by="sample1")%>% 
@@ -243,7 +243,7 @@ ggplot( depth_data %>% filter(org.x == "Human"),
 
 ## calculating JSDs after pair-wise equalizing
 
-```{R}   
+```{R 31-assess-depth-and-JSD-5 }
 
 tcr_corrs_equalized <- depth_data 
 tcr_corrs_equalized$JSD_norm <- NA
@@ -303,7 +303,7 @@ ggplot( tcr_corrs_equalized,
 ## Trees on normalized JSDs
 
 
-```{r}
+```{r 31-assess-depth-and-JSD-6 }
 for (pt in unique(tcr_corrs_equalized %>% pull(indv_label.x))){
 pt_a_jsd <- plot_patient_tcr_tree(df = tcr_corrs_equalized %>%ungroup() %>%
                         filter(!is.na(JSD_norm)) %>% 

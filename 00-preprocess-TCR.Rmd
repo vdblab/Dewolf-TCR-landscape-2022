@@ -18,13 +18,13 @@ Download the data as follows:
 - eventually move downloaded zip to this repo, unpack, and move the tsv files to `data/raw_TCR_data/`.
 
 
-```{R}
+```{R 00-preprocess-TCR-1 }
 tcr_data_dir <- "data/raw_TCR_data/"
 ```
 
 The resulting file `TCR/tcr_unified.csv` is used for later analyses including the GLIPH2 analysis.
 
-```{r tcr-raw-data-parsing}
+```{r 00-preprocess-TCR-2 }
 library(tidyverse)
 knitr::opts_chunk$set(echo = TRUE)
 
@@ -111,12 +111,11 @@ if (!file.exists(tcr_raw_output)){
 
 This can be done in R but the very large matrices make it slow. 
 ```
-
 bsub -W 2:00 -n 128 -Is  bash
 conda create -name tcr scipy pandas -y 
 conda activate tcrs
-bash scripts/get_file_pairs.sh ./samples/ > human_mouse_file_pairs.tsv
-parallel -a human_mouse_file_pairs.tsv --bar --progress --colsep "\t" ~/miniconda3/envs/pd/bin/python scripts/AB-correlations.py {1} {2} > tmp
+bash scripts/get_file_pairs.sh ./data/raw_TCR_data/ > human_mouse_file_pairs.tsv
+parallel -a human_mouse_file_pairs.tsv --bar --progress --colsep "\t" ~/miniconda3/envs/pd/bin/python scripts/AB-correlations.py {1} {2} > data/2022-08-29-tcr-correlations.tsv
 
 ```
 ### Parsing and processing the TCR Data
@@ -124,7 +123,7 @@ parallel -a human_mouse_file_pairs.tsv --bar --progress --colsep "\t" ~/minicond
 The following chunk serves two purposes: reading in the TCR data, and calculating the JSD correlations based on the TCR profiles.  This takes a while, so the results are saved in an object called `tcr_objects.Rdata`. If this object is not found, it will create it. 
 
 
-```{R, eval=FALSE}
+```{R 00-preprocess-TCR-3, eval=FALSE}
 tcr_objects_path <- "tcr_objects.Rdata"
 if(!file.exists(tcr_objects_path)){
   tcr_raw_output <- file.path("data/TCR", "tcr_unified.csv") 
@@ -173,7 +172,7 @@ if(!file.exists(tcr_objects_path)){
     unlist(.)
   
   num_shared_aa = list_of_paired_patient_aa %>% 
-    map(~num_overlap_clones(.)) %>% 
+    map(~num_overlap_clones2(.)) %>% 
     unlist(.)
   
   paired_patients$num_shared_clones = num_shared_clone
@@ -200,6 +199,7 @@ if(!file.exists(tcr_objects_path)){
   tcr_corrs <- rbind(
     new_tcr_corrs %>% mutate(pair_is_unique=TRUE),
     new_tcr_corrs %>% 
+      filter(fileA != fileB) %>%
       mutate(fileX=fileA, fileA=fileB, fileB=fileX,
              sizeX=sizeA, sizeA=sizeB, sizeB=sizeX, 
              norm_sizeX=norm_sizeA, norm_sizeA=norm_sizeB, norm_sizeB=norm_sizeX,
@@ -208,11 +208,13 @@ if(!file.exists(tcr_objects_path)){
   ) %>% 
     rename(sample1=fileA, sample2=fileB)  %>% 
     distinct()
+  tissue_annotations = read.csv("data/updated_colors_dendrograms.csv")
 
   save(
     list = c(
       "tcr_sample_metadata", 
       "tcr_corrs",
+      "tissue_annotations",
       #"shared_clones",
       "clones_per_pt",
       "aa_per_pt",
@@ -234,7 +236,7 @@ if(!file.exists(tcr_objects_path)){
 
 
 
-```{R, eval=FALSE}
+```{R 00-preprocess-TCR-4, eval=FALSE}
 tcr_objects_path <- "tcr_objects.Rdata"
 if(!file.exists(tcr_objects_path)){
   tcr_raw_output <- file.path("data/TCR", "tcr_unified.csv") 

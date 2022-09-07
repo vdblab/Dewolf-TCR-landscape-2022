@@ -9,7 +9,7 @@ editor_options:
 
 analysis of divesity metrics across clinical variables: these are the plots for supplemental figure 2 looking at diversity metrics across different clinical variables
 
-```{R S2-plots}
+```{R 30-figureS2-1 }
 if (interactive()) load("./tcr_objects.Rdata")
 s2_theme <- theme_classic() + theme(
   axis.text=element_text(size=15, color = "black"),
@@ -26,7 +26,7 @@ s2diversity = tcr_sample_metadata %>%
   left_join(read.csv("tables/st4.csv")) %>%
   left_join(read.csv("data/patient_attributes.csv") %>%
               mutate(subject=paste("Patient", subject)), by=c("indv_label" = "subject")) %>%
-  left_join(read.csv("data/updated_colors_dendrograms.csv"), by="tissue")
+  left_join(tissue_annotations, by="tissue")
 
 jitter2 <- position_jitter(width = 0.15, height = 0.0)
 
