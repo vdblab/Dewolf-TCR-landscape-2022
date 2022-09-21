@@ -24,6 +24,9 @@ def get_args():  # pragma: no cover
                         help="print debugging info")
     parser.add_argument("-d", "--header", action="store_true",
                         help="print header info")
+    parser.add_argument("-t", "--topn", action="store",
+                        default=0, 
+                        help="consider at most this number of clones for calcualtions")
     args = parser.parse_args()
     return args
 
@@ -114,6 +117,18 @@ def main(args):
     same_file = True
   Adf = pd.read_csv(args.A, sep="\t", usecols=cols_of_interest).query('frame_type == "In"')
   Bdf = pd.read_csv(args.B, sep="\t", usecols=cols_of_interest).query('frame_type == "In"')
+  if False:
+    Adf = pd.read_csv("./data/raw_TCR_data/PtB_duodenum_TCRB.tsv", sep="\t", usecols=cols_of_interest).query('frame_type == "In"')
+    Bdf = pd.read_csv("./data/raw_TCR_data/PtB_ileum_TCRB.tsv", sep="\t", usecols=cols_of_interest).query('frame_type == "In"')
+    
+  if args.topn != 0:
+    if verbose: print( "pre-filter size:", Adf.shape[0], Adf.shape[0])
+    Adf['rank'] = Adf['productive_frequency'].rank(method='dense', ascending=False)
+    Bdf['rank'] = Bdf['productive_frequency'].rank(method='dense', ascending=False)
+    Adf = Adf.query('rank <= ' + args.topn)
+    Bdf = Bdf.query('rank <= ' + args.topn)
+    if verbose: print( "post-filter size:", Adf.shape[0], Adf.shape[0])
+    
   both = pd.concat([Adf, Bdf], axis=0)
   Asize = Adf["productive_templates"].iloc[0]
   Bsize = Bdf["productive_templates"].iloc[0]
@@ -178,9 +193,9 @@ def main(args):
     overlapping_clones = Adf["rearrangement"].nunique()
     overlapping_aa  = Adf["amino_acid"].nunique()
   if args.header:
-    print(f"fileA\tfileB\tsizeA\tsizeB\tnorm_sizeA\tnorm_sizeB\tjsd_nt_raw\tjsd_nt_norm\tjsd_aa_raw\tjsd_aa_norm\tmorisita_nt_raw\toverlapping_clones\t{overlapping_aa}")
+    print(f"fileA\tfileB\tsizeA\tsizeB\ttopn\tnorm_sizeA\tnorm_sizeB\tjsd_nt_raw\tjsd_nt_norm\tjsd_aa_raw\tjsd_aa_norm\tmorisita_nt_raw\toverlapping_clones\t{overlapping_aa}")
     
-  print(f"{os.path.basename(args.A).replace('.tsv', '')}\t{os.path.basename(args.B).replace('.tsv', '')}\t{Asize}\t{Bsize}\t{new_templates_totals_tup[0]}\t{new_templates_totals_tup[1]}\t{jsd_nt_raw}\t{jsd_nt_filt}\t{jsd_aa_raw}\t{jsd_aa_filt}\t{morisita_nt_raw}\t{overlapping_clones}\t{overlapping_aa}")
+  print(f"{os.path.basename(args.A).replace('.tsv', '')}\t{os.path.basename(args.B).replace('.tsv', '')}\t{Asize}\t{Bsize}\t{args.topn}\t{new_templates_totals_tup[0]}\t{new_templates_totals_tup[1]}\t{jsd_nt_raw}\t{jsd_nt_filt}\t{jsd_aa_raw}\t{jsd_aa_filt}\t{morisita_nt_raw}\t{overlapping_clones}\t{overlapping_aa}")
 
 if __name__ == "__main__":
   args=get_args()

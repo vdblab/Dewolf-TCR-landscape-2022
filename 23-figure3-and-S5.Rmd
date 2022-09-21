@@ -148,13 +148,19 @@ dir.create(figures_path_s5, showWarnings = FALSE)
 
 
 tissue_annotations <- read.csv("data/updated_colors_dendrograms.csv")
-tissues_to_completely_exclude = c("heart", "kidney", "graft_blood", "Heart", "Kidney", "Graft/Blood")
+tissues_to_completely_exclude = c("heart", "kidney", "Heart", "Kidney")
 
 cols_to_exclude_from_ranking = c("rearrangement", "amino_acid")
 
 supp_data_file_list <- list()
 for (pat in tcr_sample_metadata %>% filter(org == "Human") %>% pull(indv_label) %>% unique){
   thisdata <- get_top_clones_data(df=tcr_raw %>% filter(indv_label == all_of(pat), !tissue %in% tissues_to_completely_exclude), topn = 10)
+  
+  # Patient A's donor sample consists almost entirely of singltons. We do not plot that for this sample
+  if (pat == "Patient A"){
+    thisdata  <- thisdata %>% filter(tissue != "graft_blood") 
+  }
+
   #n_distinct(thisdata$top_n_data$rearrangement)
   
   #top_n_data %>% select(sample_name, productive_frequency, orig_tissue_clone_rank)
@@ -194,7 +200,10 @@ for (pat in tcr_sample_metadata %>% filter(org == "Human") %>% pull(indv_label) 
   mat_colors=list(tissue_label=tmp %>% pull(S5_colors))
   names(mat_colors$tissue_label) <- rownames(tmp)
   pdf(file=file.path(figures_path_s5, paste0(pat, ".pdf")))
-  
+  # if (pat == "Patient A"){
+  #   mat <- mat[, colnames(mat)[colnames(mat) != "Graft/Blood"] ]
+  #   mat <- mat[rowSums(mat, na.rm = TRUE) !=0 , ]
+  # }
   pheatmap::pheatmap(na_col = "grey70",
     mat               = mat ,
     color             = c(topo.colors(50), rep("grey90", 5)),

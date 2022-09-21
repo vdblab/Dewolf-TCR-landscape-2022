@@ -1,0 +1,125 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, fig.width=10, fig.height=7) 
+library(tidyverse) 
+library(patchwork)  # for combining figures
+library(dendextend) # for tanglegrams
+library(ggrepel)
+library(ggpubr)
+library(rstatix)
+
+
+theme_set(theme_classic())
+if (interactive()) load("tcr_objects.Rdata")
+uc_figs_dir <- file.path("figures", "UC")
+dir.create(uc_figs_dir, showWarnings = FALSE)
+
+```
+
+# Comparing patients to UC cohort Validating Trees
+
+Data were downloaded from https://clients.adaptivebiotech.com/pub/werner-2018-clinexpimmunol and moved to `data/UC_raw_TCR_data`
+
+TCR JSDs were calculated similar to the description in 00-preprocess-TCR:
+```
+bash scripts/get_file_pairs.sh ./data/UC_raw_TCR_data/ > UC_file_pairs.tsv
+parallel -a UC_file_pairs.tsv --bar --progress --colsep "\t" ~/miniconda3/envs/pd/bin/python scripts/AB-correlations.py {1} {2} > data/2022-09-06-UC-tcr-correlations.tsv
+```
+
+## recreating figure 5b
+```{r}
+uc_metadata = data.frame("raw"=gsub(".tsv", "", dir("data/UC_raw_TCR_data/", pattern = ".tsv"))) %>% 
+  mutate(tissue=ifelse(grepl("Blood", raw), "blood", "rectum"),
+         severity=factor(gsub(".*?_.*?_(.*)", "\\1", raw), levels = c("control", "mild_disease", "moderate_disease", "severe_disease"), ordered = TRUE),
+         disease=ifelse(severity != "control", "disease", "control"),
+         indv_label = gsub("(.*)?_.*?_(.*)", "\\1", raw)
+  )
+
+nonrectal_lower_GI <- c("colon", "ileum",  "mid_colon", "ascending_colon", "colon_ascending","descending_colon", "jejunum", "transverse_colon", "L_colon",  "left_colon", "right_colon", "terminalileum"  )  
+nonrectal_lower_GI <- tissue_annotations[tissue_annotations$S2_uc_group == "Large Intestine", "tissue"]
+upper_GI <- c("stomach", "esophagus", "duodenum", "small_intestine" )  
+upper_GI <- tissue_annotations[tissue_annotations$S2_uc_group == "Small Intestine", "tissue"]
+
+
+# we change ascending_colon to colon_ascending to make it sort later alphabetically :/ 
+
+thismetric = "JSD"
+msk_uc_corrs <- read.csv(sep = "\t", "data/2022-09-21-UC-tcr-correlations.tsv", header=FALSE, col.names = strsplit("fileA\tfileB\tsizeA\tsizeB\tnorm_sizeA\tnorm_sizeB\tna\tthreshold\tJSD\tjsd_nt_norm\tjsd_aa_raw\tjsd_aa_norm\tmorisita_nt_raw\toverlapping_clones\toverlapping_aa", split = "\t")[[1]], na.strings = c("nan")) %>%
+    left_join(uc_metadata, by=c("fileA"="raw")) %>% 
+    left_join(uc_metadata, by=c("fileB"="raw")) %>% 
+  select(indv_label.x, indv_label.y, tissue.x, tissue.y, disease.x, all_of(thismetric)) %>%
+  mutate(cohort = "UC") %>% 
+  bind_rows(
+    tcr_corrs_anno %>%   filter(org.x == "Human", org.y=="Human") %>% 
+      mutate(disease.x = gvhd.x, cohort="MSK") %>% 
+      select(indv_label.x, indv_label.y, disease.x, tissue.x, tissue.y,  all_of(thismetric), cohort)
+  )%>%
+  filter(tissue.x %in% c("blood", "autopsy_blood", "rectum", nonrectal_lower_GI, upper_GI),tissue.y %in% c("blood", "autopsy_blood", "rectum", nonrectal_lower_GI, upper_GI) ) %>% 
+  filter(tissue.x %in% c("blood", "autopsy_blood") | tissue.y %in% c("blood", "autopsy_blood")) %>% 
+ filter(indv_label.x == indv_label.y, tissue.x != tissue.y)  %>% 
+  mutate(
+    tissue.x = ifelse(tissue.x == "ascending_colon", "colon_ascending", tissue.x),
+    tissue.y = ifelse(tissue.y == "ascending_colon", "colon_ascending", tissue.y),
+    ) %>% 
+  mutate(tissueA = pmin(tissue.x, tissue.y),
+         tissueB = pmax(tissue.x, tissue.y)) %>% 
+  mutate(xgroup=case_when(
+    tissueB  == "rectum" & cohort == "MSK"  ~ "GvHD\n(rectum)",
+    tissueB %in% nonrectal_lower_GI ~ "GvHD\n(non-rectal lower GI)",
+    tissueB %in% upper_GI ~ "GvHD\n(Upper GI)",
+    TRUE ~ paste0("UC - ", disease.x )
+  ))
+
+theselimits = sort(unique(msk_uc_corrs$xgroup))
+theselimits <- theselimits[c(4,5,2,1,3)]
+
+ggplot(msk_uc_corrs%>%
+         rename(metic= all_of(thismetric)) %>%
+         select(indv_label.x, xgroup, metic, tissueA, tissueB) %>% distinct() %>% 
+         filter(!indv_label.x %in% c("P01", "P08")), aes(x=xgroup, y=metic)) + geom_boxplot(outlier.colour = NA, color="grey") +  
+  geom_jitter(width = .1, height = 0) +
+  scale_x_discrete(limits=theselimits) + theme_classic() +
+  scale_y_continuous(limits = c(0, 1)) + 
+  labs(
+    title = paste("Blood-tissue pair", thismetric),
+    x="",
+    y=thismetric,
+    caption=paste0("groups:\n  - Non-rectal lower GI includes ", paste(nonrectal_lower_GI, collapse=",")))
+
+
+
+```
+
+
+
+```{r}
+msk_uc_corrs <- read.csv(sep = "\t", "data/2022-09-06-UC-tcr-correlations.tsv", header=FALSE, col.names = strsplit("fileA\tfileB\tsizeA\tsizeB\tnorm_sizeA\tnorm_sizeB\tJSD\tjsd_nt_norm\tjsd_aa_raw\tjsd_aa_norm\tmorisita_nt_raw\toverlapping_clones\toverlapping_aa", split = "\t")[[1]], na.strings = c("nan")) %>%
+    left_join(uc_metadata, by=c("fileA"="raw")) %>% 
+    left_join(uc_metadata, by=c("fileB"="raw")) %>% 
+  select(indv_label.x, indv_label.y, tissue.x, tissue.y, disease.x, all_of(thismetric)) %>%
+  mutate(cohort = "UC") %>% 
+  bind_rows(
+    tcr_corrs_anno %>%   filter(org.x == "Human", org.y=="Human") %>% 
+      mutate(disease.x = gvhd.x, cohort="MSK") %>% 
+      select(indv_label.x, indv_label.y, disease.x, tissue.x, tissue.y,  all_of(thismetric), cohort)
+  )%>%
+  filter(tissue.x %in% c("blood", "autopsy_blood", "rectum", nonrectal_lower_GI, upper_GI),tissue.y %in% c("blood", "autopsy_blood", "rectum", nonrectal_lower_GI, upper_GI) ) %>% 
+  filter(tissue.x %in% c("blood", "autopsy_blood") | tissue.y %in% c("blood", "autopsy_blood")) %>% 
+ filter(indv_label.x == indv_label.y, tissue.x != tissue.y)  %>% 
+  mutate(
+    tissue.x = ifelse(tissue.x == "ascending_colon", "colon_ascending", tissue.x),
+    tissue.y = ifelse(tissue.y == "ascending_colon", "colon_ascending", tissue.y),
+    ) %>% 
+  mutate(tissueA = pmin(tissue.x, tissue.y),
+         tissueB = pmax(tissue.x, tissue.y)) %>% 
+  mutate(xgroup=case_when(
+    tissueB  == "rectum" & cohort == "MSK"  ~ "GvHD\n(rectum)",
+    tissueB %in% nonrectal_lower_GI ~ "GvHD\n(non-rectal lower GI)",
+    tissueB %in% upper_GI ~ "GvHD\n(Upper GI)",
+    TRUE ~ paste0("UC - ", disease.x )
+  ))
+
+
+
+
+
+```
