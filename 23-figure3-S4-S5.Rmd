@@ -137,6 +137,31 @@ for (i in seq_along(plots_to_make)){
 ```
 
 
+### Mouse Alluvials
+```{r}
+mouse_plots_to_make <- list(
+  "Recipient 7, rep2, day 14" = c(org="Mouse", ref_tissue="skin", topn=10, ref_color="forestgreen", f="S4A")
+)
+
+for (i in seq_along(mouse_plots_to_make)){
+  thing = mouse_plots_to_make[[i]]
+  
+  # identify which mouse donor
+  rep = tcr_sample_metadata %>% filter(indv_label ==names(mouse_plots_to_make)[i]) %>% pull(exp_rep) %>% unique()
+  tmpmetadata <- tcr_sample_metadata %>% filter(grepl(paste0("Donor_", rep, "_"), sample_name))
+  # add a dummy row to create that mouse's donor "tissue" to metadata so it is included in plots
+  tmpmetadata$indv_label <- names(mouse_plots_to_make)[i]
+  thisdata <- make_alluvial_dataset(tcr_raw, rbind(tcr_sample_metadata, tmpmetadata), ref_org=thing["org"],
+                                    ref_tissue = thing["ref_tissue"], tissue_metadata = tissue_annotations,
+                                    ref_pt=names(mouse_plots_to_make)[i], topn=as.numeric(thing["topn"]))
+  thisdata$p_
+}
+```
+
+
+
+
+
 ## S5
 
 

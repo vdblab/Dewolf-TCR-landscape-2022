@@ -42,8 +42,16 @@ upper_GI <- tissue_annotations[tissue_annotations$S2_uc_group == "Small Intestin
 
 # we change ascending_colon to colon_ascending to make it sort later alphabetically :/ 
 
+uc_corrs_raw <- read.csv(sep = "\t", "data/2022-09-06-UC-tcr-correlations.tsv", header=FALSE, col.names = strsplit("fileA\tfileB\tsizeA\tsizeB\tnorm_sizeA\tnorm_sizeB\tthreshold\tJSD\tjsd_nt_norm\tjsd_aa_raw\tjsd_aa_norm\tmorisita_nt_raw\toverlapping_clones\toverlapping_aa", split = "\t")[[1]], na.strings = c("nan"))  %>% filter(JSD != 0) %>% arrange(fileA, fileB)
+uc_corrs_filtered1k <- read.csv(sep = "\t", "data/2022-09-21-UC-tcr-correlations.tsv", header=FALSE, col.names = strsplit("fileA\tfileB\tsizeA\tsizeB\tNA\tthreshold\tnorm_sizeA\tnorm_sizeB\tJSD\tjsd_nt_norm\tjsd_aa_raw\tjsd_aa_norm\tmorisita_nt_raw\toverlapping_clones\toverlapping_aa", split = "\t")[[1]], na.strings = c("nan")) %>% filter(JSD != 0) %>%  arrange(fileA, fileB)
+tmpdf <- data.frame(raw=uc_corrs_raw$JSD, filtered1k=uc_corrs_filtered1k$JSD)
+tmpdf$raw - tmpdf$filtered1k
+ggplot(tmpdf, aes(x=raw, y=filtered1k) ) + geom_point()
+
+
+
 thismetric = "JSD"
-msk_uc_corrs <- read.csv(sep = "\t", "data/2022-09-21-UC-tcr-correlations.tsv", header=FALSE, col.names = strsplit("fileA\tfileB\tsizeA\tsizeB\tnorm_sizeA\tnorm_sizeB\tna\tthreshold\tJSD\tjsd_nt_norm\tjsd_aa_raw\tjsd_aa_norm\tmorisita_nt_raw\toverlapping_clones\toverlapping_aa", split = "\t")[[1]], na.strings = c("nan")) %>%
+msk_uc_corrs <- read.csv(sep = "\t", "data/2022-09-21-UC-tcr-correlations.tsv", header=FALSE, col.names = strsplit("fileA\tfileB\tsizeA\tsizeB\tnorm_sizeA\tnorm_sizeB\tthreshold\tJSD\tjsd_nt_norm\tjsd_aa_raw\tjsd_aa_norm\tmorisita_nt_raw\toverlapping_clones\toverlapping_aa", split = "\t")[[1]], na.strings = c("nan")) %>%
     left_join(uc_metadata, by=c("fileA"="raw")) %>% 
     left_join(uc_metadata, by=c("fileB"="raw")) %>% 
   select(indv_label.x, indv_label.y, tissue.x, tissue.y, disease.x, all_of(thismetric)) %>%

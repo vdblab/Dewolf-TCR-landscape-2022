@@ -1,0 +1,56 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, fig.width=10, fig.height=7) 
+library(tidyverse) 
+library(patchwork)  # for combining figures
+library(ggrepel)
+library(ggpubr)
+library(rstatix)
+
+
+theme_set(theme_classic())
+if (interactive()) load("tcr_objects.Rdata")
+ab_figs_dir <- file.path("figures", "abundance")
+dir.create(ab_figs_dir, showWarnings = FALSE)
+
+```
+
+# Abundance plots
+```{r}
+groups = c("mice", "humans", "all")
+for (g in groups){
+  if (g == "mice"){
+    indata <- tcr_raw %>% filter(org == "Mouse")
+  }else if(g == "humans"){
+    indata <- tcr_raw %>% filter(org == "Human")
+  } else{
+    indata <- tcr_raw 
+  }
+  
+  
+  
+  
+print(paste("plotting", g, "by individual and gvhd status"))
+p_top10_by_pt_gvhd <-ggplot(indata %>% left_join(tissue_annotations %>% select(tissue, tissue_label_fig1))  %>% group_by(indv_label,gvhd, tissue_label_fig1, sample_name) %>% arrange(desc(productive_frequency)) %>% mutate(top10=ifelse(row_number() < 11, paste0("Top 10 (", org, ")"), "Other")) %>% group_by(indv_label, gvhd, tissue_label_fig1, sample_name, top10) %>% summarize(freq=sum(productive_frequency)), aes(x=tissue_label_fig1, y=freq, fill=top10)) + geom_bar(stat="identity") + scale_fill_manual(values = c("Top 10 (Mouse)"="firebrick", "Top 10 (Human)"="red", "Other"="grey")) + theme_classic() + theme(axis.text.x =element_text(angle=90, hjust=1)) + scale_x_discrete(expand = c(0,0)) + scale_y_continuous(expand=c(0,0)) + facet_grid(gvhd~indv_label, scales = "free_x")
+
+ggsave(p_top10_by_pt_gvhd, filename = file.path(ab_figs_dir, paste0(g,"_top10_by_pt_and_gvhd.pdf")), width = 25, height = 10)
+print(paste("plotting", g, "by individual"))
+
+p_top10_by_pt <-ggplot(indata%>% left_join(tissue_annotations %>% select(tissue, tissue_label_fig1)) %>%  group_by(indv_label, tissue_label_fig1, sample_name) %>% arrange(desc(productive_frequency)) %>% mutate(top10=ifelse(row_number() < 11, paste0("Top 10 (", org, ")"), "Other")) %>% group_by(indv_label, tissue_label_fig1, sample_name, top10) %>% summarize(freq=sum(productive_frequency)), aes(x=tissue_label_fig1, y=freq, fill=top10)) + geom_bar(stat="identity") + scale_fill_manual(values = c("Top 10 (Mouse)"="firebrick", "Top 10 (Human)"="red", "Other"="grey")) + theme_classic() + theme(axis.text.x =element_text(angle=90, hjust=1)) + scale_x_discrete(expand = c(0,0)) + scale_y_continuous(expand=c(0,0)) + facet_wrap(~indv_label, scales = "free_x")
+
+ggsave(p_top10_by_pt, filename = file.path(ab_figs_dir, paste0(g,"_top10_by_pt.pdf")), width = 10, height = 15)
+print(paste("plotting", g, "by tissue"))
+
+p_top10_by_tissue <-ggplot(indata%>% left_join(tissue_annotations %>% select(tissue, tissue_label_fig1)) %>%  group_by(indv_label, total_templates, tissue_label_fig1, sample_name) %>% arrange(desc(productive_frequency)) %>% mutate(top10=ifelse(row_number() < 11, paste0("Top 10 (", org, ")"), "Other")) %>% group_by(indv_label, total_templates, tissue_label_fig1, sample_name, top10) %>% summarize(freq=sum(productive_frequency)) , aes(x=indv_label, y=freq, fill=top10)) + geom_bar(stat="identity") + scale_fill_manual(values = c("Top 10 (Mouse)"="firebrick", "Top 10 (Human)"="red", "Other"="grey")) + theme_classic() + theme(axis.text.x =element_text(angle=90, hjust=1)) + scale_x_discrete(expand = c(0,0)) + scale_y_continuous(expand=c(0,0)) + facet_wrap(~tissue_label_fig1, scales = "free_x")
+ggsave(p_top10_by_tissue, filename = file.path(ab_figs_dir, paste0(g,"_top10_by_tissue.pdf")), width = 10, height = 15)
+
+}
+
+# #line/slope plots
+# ggplot(indata %>% left_join(tissue_annotations %>% select(tissue, tissue_label_fig1)) %>% 
+#          filter(grepl("PtD", sample_name)) %>% 
+#           group_by(indv_label,gvhd, tissue_label_fig1, sample_name) %>% freq=sum(productive_frequency) %?% 
+#           mutate(rank=rank(productive_frequency)), aes(x=productive_frequency, y=freq
+#        
+#        %>% group_by(indv_label, gvhd, tissue_label_fig1, sample_name, rank) %>% summarize(freq=sum(productive_frequency)), aes(x=rank, y=freq)) + geom_point(stat="identity") + scale_fill_manual(values = c("Top 10 (Mouse)"="firebrick", "Top 10 (Human)"="red", "Other"="grey")) + theme_classic() + theme(axis.text.x =element_text(angle=90, hjust=1)) + scale_x_discrete(expand = c(0,0)) + scale_y_continuous(expand=c(0,0)) + facet_wrap(~tissue_label_fig1, scales = "free_x")
+
+```

@@ -193,9 +193,9 @@ def main(args):
     overlapping_clones = Adf["rearrangement"].nunique()
     overlapping_aa  = Adf["amino_acid"].nunique()
   if args.header:
-    print(f"fileA\tfileB\tsizeA\tsizeB\ttopn\tnorm_sizeA\tnorm_sizeB\tjsd_nt_raw\tjsd_nt_norm\tjsd_aa_raw\tjsd_aa_norm\tmorisita_nt_raw\toverlapping_clones\t{overlapping_aa}")
+    print(f"fileA\tfileB\tsizeA\tsizeB\tnorm_sizeA\tnorm_sizeB\ttopn\tjsd_nt_raw\tjsd_nt_norm\tjsd_aa_raw\tjsd_aa_norm\tmorisita_nt_raw\toverlapping_clones\t{overlapping_aa}")
     
-  print(f"{os.path.basename(args.A).replace('.tsv', '')}\t{os.path.basename(args.B).replace('.tsv', '')}\t{Asize}\t{Bsize}\t{args.topn}\t{new_templates_totals_tup[0]}\t{new_templates_totals_tup[1]}\t{jsd_nt_raw}\t{jsd_nt_filt}\t{jsd_aa_raw}\t{jsd_aa_filt}\t{morisita_nt_raw}\t{overlapping_clones}\t{overlapping_aa}")
+  print(f"{os.path.basename(args.A).replace('.tsv', '')}\t{os.path.basename(args.B).replace('.tsv', '')}\t{Asize}\t{Bsize}\t{new_templates_totals_tup[0]}\t{new_templates_totals_tup[1]}\t{args.topn}\t{jsd_nt_raw}\t{jsd_nt_filt}\t{jsd_aa_raw}\t{jsd_aa_filt}\t{morisita_nt_raw}\t{overlapping_clones}\t{overlapping_aa}")
 
 if __name__ == "__main__":
   args=get_args()
