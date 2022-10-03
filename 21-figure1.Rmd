@@ -22,6 +22,7 @@ if (interactive())  load("tcr_objects.Rdata")
 figures_path <- file.path("figures", "fig1")
 dir.create(figures_path, showWarnings = FALSE, recursive = TRUE)
 
+tissue_annotations <- read.csv("data/updated_colors_dendrograms.csv")
 diversity <- read.csv("tables/st4.csv") %>% 
   left_join(tcr_sample_metadata %>% select(-sample_amount_ng) %>% 
               select(sample_name:species)) %>%
@@ -114,12 +115,18 @@ ggsave(patchwork::plot_spacer()  + fig1b + fig1c + fig1d + fig1e + plot_layout(w
 ## Mouse Figure 1 additions
 
 ```{r 21-figure1-3 }
-div_base_mouse <- ggplot(diversity %>% filter(org != "Human"), aes(y=reorder(tissue_label_fig1, desc(anatomic_order))))
+
+div_base_mouse <- ggplot(diversity %>% filter(org != "Human", gvhd=="GvHD" | samp_type == "Donor" ),
+                           aes(y=reorder(tissue_label_fig1, desc(anatomic_order))))
+
+#mouse_patient_colors <- c("mediumblue", "navy", "red", "yellow", "green4", "lightskyblue", "saddlebrown", "gray75", "gray45", "gray 85")
+#names(human_patient_colors) <- paste("Patient", LETTERS[1:10])
 
 
 
 (mouse_fig1e = div_base_mouse +
-  geom_point( aes(x=clonality, fill = indv_label), size=4, shape=21, alpha = .9, position = jitter) +
+  #geom_point( aes(x=clonality, fill = indv_label), size=4, shape=21, alpha = .9, position = jitter) +
+  geom_point( aes(x=clonality), size=4, shape=21, alpha = .9, position = jitter, fill="black") +
   theme_classic()  +
   labs(y="clonality", x="") +
   theme(legend.position = "right") + 
