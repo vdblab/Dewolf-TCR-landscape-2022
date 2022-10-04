@@ -2,7 +2,7 @@ tissue,tissue_label,system,col,gtex,plotgroup,new_col,shape,tissue_label_fig1,an
 blood,PBSCs,Blood,#D13B32,Whole.Blood,PBSCs,#cc3333,1,pre-transplant (host) PBMCs,26,,red
 autopsy_blood,PBSCs,Blood,#D13B32,Whole.Blood,PBSCs,#cc3333,1,PBMCs,27,,red
 autopsy_marrow,Bone Marrow,Blood,#D13B32,,Bone Marrow,#cc3333,2,bone marrow,24,,red4
-Tcells,T-cells,Blood,#D13B32,Whole.Blood,T-cells,#A60000,3,T cells,30,,
+Tcells,T-cells,Blood,#D13B32,Whole.Blood,T-cells,#A60000,3,donor,30,,
 A_blood,PBSCs,Blood,#D13B32,Whole.Blood,PBSCs,#cc3333,1,PBMCs,28,,red
 A_marrow,Bone Marrow,Lymphatic,#D13B32,,Bone Marrow,#cc3333,2,bone marrow,25,,red4
 pretx_blood,pre-tx PBMCs,Blood,#D13B32,Whole.Blood,pre-tx PBMCs,#cc3333,1,pre-transplant (host) PBMCs,29,,yellow
