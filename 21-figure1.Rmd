@@ -39,7 +39,7 @@ jitter <- position_jitter(width = 0.0, height = 0.1)
 jitter2 <- position_jitter(width = 0.15, height = 0.01)
 
 
-div_base <- ggplot(diversity %>% filter(org == "Human"), aes(y=reorder(tissue_label_fig1, desc(anatomic_order))))
+div_base <- ggplot(diversity %>% filter(sample_name != "PtD_autopsy_marrow_TCRB") %>% filter(org == "Human"), aes(y=reorder(tissue_label_fig1, desc(anatomic_order)))) 
 
 (fig1b <- ggplot(data.frame(nclones=sapply(clones_per_pt, n_distinct)) %>% rownames_to_column("indv_label") %>% 
                    filter(grepl("Patient", indv_label )),
@@ -74,7 +74,22 @@ ggsave(plot=fig1b ,height=5,width=6, filename=file.path(figures_path, "fig1b.pdf
 ggsave(plot=fig1c ,height=5,width=6, filename=file.path(figures_path, "fig1c.pdf"))
 
 
+(fig1f <- div_base +
+    geom_point(aes(x=productive_templates, fill = indv_label), size = 4, shape=21, alpha = .9, position = jitter) +
+    theme_classic()  +
+    scale_x_log10(
+      breaks = c(1 %o% 10^(-6:6)),
+      labels = scales::trans_format("log10", scales::math_format(10^.x))
+    ) +
+    theme(legend.position = "right") +
+    labs(x="templates", y="") +
+    #scale_y_discrete(breaks=tissue_annotations$tissue, labels=tissue_annotations$tissue_label) +
+    theme(axis.text.y = element_text(size = 10, face = "bold")) + 
+    scale_fill_manual(values = human_patient_colors, breaks = names(human_patient_colors)) +
+    theme(axis.text.x = element_text(size = 8, hjust = 0, face = "bold")))
 
+
+ggsave(plot=fig1f ,height=5,width=6, filename=file.path(figures_path, "fig1f.pdf"))
 
 (fig1d = div_base +
   geom_point( aes(x=max_productive_frequency, fill = indv_label), size=4, shape=21, alpha = .9, position = jitter) +
