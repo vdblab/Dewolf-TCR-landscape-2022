@@ -1,3 +1,8 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
 ```{r setup-39, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, fig.width=10, fig.height=7) 
 library(tidyverse) 
@@ -296,10 +301,13 @@ for (si in 1:length(sets_of_comparisons)){
 # note the lack of the `distinct()` call here; we need all the (redundant) comparisons for this figure
 set.seed(123)
 
+tcr_corrs_anno = tcr_corrs_anno %>% filter(sample1 != "PtA_autopsy_marrow_TCRB") %>% filter(sample2 != "PtA_autopsy_marrow_TCRB")
+
 for(i in  unique(tcr_corrs_anno$indv_label.x)){
   tmp_p <- ggplot(tcr_corrs_anno %>% 
            filter(indv_label.x == indv_label.y) %>% filter(indv_label.x==i)  %>%  
              left_join(tissue_annotations, by=c("tissue.x"="tissue")) %>%
+             filter(tissue.x != tissue.y) %>%
            left_join(tissue_annotations, by=c("tissue.y"="tissue")) , aes(x=tissue.x, y=JSD, shape=tissue.y, color=tissue.y)) + 
     geom_jitter(width = .2, height = 0, size=3)  + 
     scale_color_manual(values=tissue_annotations$new_col, breaks=tissue_annotations$tissue) +
@@ -309,6 +317,38 @@ for(i in  unique(tcr_corrs_anno$indv_label.x)){
     scale_y_continuous(limits=c(0, 1))
     ggsave(plot = tmp_p, filename = file.path(boxdir, str_glue("TCR_raw_comparisons_{i}.pdf")), width = 9, height = 6)
 }
+
+#formatting individual graph to focus on comparisons with blood (Figure R1)
+  tmp_gvhd <- ggplot(tcr_corrs_anno %>% 
+           filter(indv_label.x == indv_label.y) %>%
+             filter(indv_label.x %in% c("Patient A", "Patient D", "Patient F", "Patient G"))  %>% 
+             left_join(tissue_annotations, by=c("tissue.x"="tissue")) %>%
+             filter(tissue.x != tissue.y) %>% filter(tissue.x == "autopsy_blood") %>%
+             filter(tissue.y != "graft_blood") %>%
+             filter(tissue.y != "autopsy_marrow")%>%
+             filter(tissue.y != "spleen")%>%
+             filter(tissue.y != "mLN")%>%
+             filter(tissue.y != "heart")%>%
+             filter(tissue.y != "kidney") %>%
+             filter(tissue.y != "pretx_blood") %>% 
+             left_join(tissue_annotations, by=c("tissue.y"="tissue")) , aes(x=indv_label.x, y=JSD)) + 
+    geom_violin() + 
+    geom_jitter(aes(color=tissue_label_fig1.y) , width = .2, height = 0, size=3)  +
+    scale_color_manual(values=tissue_annotations$new_col, breaks=tissue_annotations$tissue_label_fig1) +
+    scale_shape_manual(values=tissue_annotations$shape, breaks=tissue_annotations$tissue_label_fig1) +
+    labs(x="GVHD Patient", shape="Tissue", color="Tissue") +
+    theme_classic()   + theme(axis.text.x = element_text(angle=45, hjust=1)) + 
+    scale_y_continuous(limits=c(0, 1))
+
+tmp_gvhd
+
+#mean, median, standard deviation for blood/GVHD comparisons
+data.frame(tmp_gvhd$data  %>% group_by(sample1)  %>%
+   summarize(sample1,
+    mean_JSD=mean(JSD),
+    median_clones_per_patient=median(JSD),
+    sd_JSD=sd(JSD),
+    ))
 
 
 

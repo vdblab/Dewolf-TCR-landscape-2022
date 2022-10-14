@@ -8,6 +8,7 @@ knitr::opts_chunk$set(echo = FALSE, fig.width=10, fig.height=7)
 library(tidyverse) 
 library(patchwork)  # for combining figures
 library(gplots)     # for heatmap.2
+library(RColorBrewer)
 
 if (interactive())  load("tcr_objects.Rdata")
 ```
@@ -28,6 +29,63 @@ diversity <- read.csv("tables/st4.csv") %>%
               select(sample_name:species)) %>%
   left_join(tissue_annotations, by="tissue")
 
+indvs <- unique(tcr_raw$indv_label)
+
+clones_per_pt_no_graft <- lapply(setNames(indvs, indvs), function(x) {
+    tcr_raw %>% filter(indv_label == x) %>% 
+    filter(tissue != "graft_blood") %>% 
+      filter(productive_frequency > 0) %>%
+      pull(rearrangement) %>% unique()
+  }) %>% 
+  sapply(n_distinct)
+
+data.frame(nclones=clones_per_pt_no_graft) %>% 
+  rownames_to_column("indv_label")  %>% left_join(tcr_sample_metadata %>% select(indv_label, org)%>%distinct()) %>% 
+  filter(!grepl("Donor", indv_label)) %>% 
+  group_by(org) %>% summarize(
+    mean_clones_per_patient=mean(nclones),
+    median_clones_per_patient=median(nclones),
+    sd_clones_per_patient=sd(nclones),
+    )
+
+clones_per_pt_yes_graft <- lapply(setNames(indvs, indvs), function(x) {
+    tcr_raw %>% filter(indv_label == x) %>% 
+      filter(productive_frequency > 0) %>%
+      pull(rearrangement) %>% unique()
+  }) %>% 
+  sapply(n_distinct)
+
+data.frame(nclones=clones_per_pt_yes_graft) %>% 
+  rownames_to_column("indv_label")  %>% left_join(tcr_sample_metadata %>% select(indv_label, org)%>%distinct()) %>% 
+  filter(!grepl("Donor", indv_label)) %>% 
+  group_by(org) %>% summarize(
+    mean_clones_per_patient=mean(nclones),
+    median_clones_per_patient=median(nclones),
+    sd_clones_per_patient=sd(nclones),
+    )
+
+tcr_raw %>% 
+    filter(!tissue %in%  c("autopsy_blood", "graft_blood", "blood", "Tcells", "pretx_blood", "autopsy_marrow")) %>% 
+      filter(productive_frequency > 0) %>%
+  group_by(sample_name, org) %>% 
+   filter(!grepl("Donor", indv_label)) %>% 
+ summarize(n_distinct_clones = n_distinct(rearrangement)) %>% 
+  ungroup()   %>% 
+   group_by(org) %>% summarize(n=n(), 
+    mean_clones_per_tissue=mean(n_distinct_clones),
+    median_clones_per_tissue=median(n_distinct_clones),
+    sd_clones_per_tissue=sd(n_distinct_clones),
+    min= min(n_distinct_clones),
+    max= max(n_distinct_clones),
+    
+    )
+
+
+```
+
+
+```{r}
+
 human_patient_colors <- c("mediumblue", "navy", "red", "yellow", "green4", "lightskyblue", "saddlebrown", "gray75", "gray45", "gray 85")
 names(human_patient_colors) <- paste("Patient", LETTERS[1:10])
 
@@ -39,7 +97,7 @@ jitter <- position_jitter(width = 0.0, height = 0.1)
 jitter2 <- position_jitter(width = 0.15, height = 0.01)
 
 
-div_base <- ggplot(diversity %>% filter(sample_name != "PtD_autopsy_marrow_TCRB") %>% filter(org == "Human"), aes(y=reorder(tissue_label_fig1, desc(anatomic_order)))) 
+div_base <- ggplot(diversity %>% filter(sample_name != "PtD_autopsy_marrow_TCRB") %>% filter(sample_name != "PtD_heart_TCRB") %>% filter(sample_name != "PtD_kidney_TCRB") %>% filter(org == "Human"), aes(y=reorder(tissue_label_fig1, desc(anatomic_order)))) 
 
 (fig1b <- ggplot(data.frame(nclones=sapply(clones_per_pt, n_distinct)) %>% rownames_to_column("indv_label") %>% 
                    filter(grepl("Patient", indv_label )),
@@ -54,16 +112,16 @@ div_base <- ggplot(diversity %>% filter(sample_name != "PtD_autopsy_marrow_TCRB"
     theme_classic() + 
     scale_fill_manual(values = human_patient_colors, breaks = names(human_patient_colors), guide="none"))
 
-ggsave(plot=fig1b ,height=5,width=6, filename=file.path(figures_path, "fig1b.pdf"))
+ggsave(plot=fig1b ,height=6,width=5, filename=file.path(figures_path, "fig1b.pdf"))
 
 (fig1c <- div_base +
-    geom_point(aes(x=len, fill = indv_label), size = 4, shape=21, alpha = .9, position = jitter) +
+    geom_point(aes(x=len, fill = indv_label), size = 6, shape=21, alpha = .9, position = jitter) +
     theme_classic()  +
     scale_x_log10(
       breaks = c(1 %o% 10^(-6:6)),
       labels = scales::trans_format("log10", scales::math_format(10^.x))
     ) +
-    theme(legend.position = "right") +
+    theme(legend.position = "none") +
     labs(x="unique clones", y="") +
     #scale_y_discrete(breaks=tissue_annotations$tissue, labels=tissue_annotations$tissue_label) +
     theme(axis.text.y = element_text(size = 10, face = "bold")) + 
@@ -71,17 +129,16 @@ ggsave(plot=fig1b ,height=5,width=6, filename=file.path(figures_path, "fig1b.pdf
     theme(axis.text.x = element_text(size = 8, hjust = 0, face = "bold")))
 
 
-ggsave(plot=fig1c ,height=5,width=6, filename=file.path(figures_path, "fig1c.pdf"))
-
+ggsave(plot=fig1c ,height=4.5,width=5, filename=file.path(figures_path, "fig1c.pdf"))
 
 (fig1f <- div_base +
-    geom_point(aes(x=productive_templates, fill = indv_label), size = 4, shape=21, alpha = .9, position = jitter) +
+    geom_point(aes(x=productive_templates, fill = indv_label), size = 6, shape=21, alpha = .9, position = jitter) +
     theme_classic()  +
     scale_x_log10(
       breaks = c(1 %o% 10^(-6:6)),
       labels = scales::trans_format("log10", scales::math_format(10^.x))
     ) +
-    theme(legend.position = "right") +
+    theme(legend.position = "none") +
     labs(x="templates", y="") +
     #scale_y_discrete(breaks=tissue_annotations$tissue, labels=tissue_annotations$tissue_label) +
     theme(axis.text.y = element_text(size = 10, face = "bold")) + 
@@ -89,19 +146,19 @@ ggsave(plot=fig1c ,height=5,width=6, filename=file.path(figures_path, "fig1c.pdf
     theme(axis.text.x = element_text(size = 8, hjust = 0, face = "bold")))
 
 
-ggsave(plot=fig1f ,height=5,width=6, filename=file.path(figures_path, "fig1f.pdf"))
+ggsave(plot=fig1f ,height=4.5,width=5, filename=file.path(figures_path, "fig1f.pdf"))
 
 (fig1d = div_base +
-  geom_point( aes(x=max_productive_frequency, fill = indv_label), size=4, shape=21, alpha = .9, position = jitter) +
+  geom_point( aes(x=max_productive_frequency, fill = indv_label), size=6, shape=21, alpha = .9, position = jitter) +
   theme_classic() + 
     labs(x="clone frequency (%)", y="") +
- theme(legend.position = "right") + 
+ theme(legend.position = "none") + 
 #  scale_y_discrete(breaks=tissue_annotations$tissue, labels=tissue_annotations$tissue_label) +
   theme(axis.text.y = element_text(size = 10, face = "bold")) + 
   scale_fill_manual(values = human_patient_colors, breaks = names(human_patient_colors)) +
   theme(axis.text.x = element_text(size = 8, angle =0, hjust = 0, face = "bold")))
 
-ggsave(plot=fig1d ,height=5,width=6,dpi=200, 
+ggsave(plot=fig1d ,height=4.5,width=5,dpi=200, 
        filename=file.path(figures_path, "fig1d.pdf"), 
        useDingbats=FALSE)
 
@@ -109,16 +166,16 @@ ggsave(plot=fig1d ,height=5,width=6,dpi=200,
 
 
 (fig1e = div_base +
-  geom_point( aes(x=clonality, fill = indv_label), size=4, shape=21, alpha = .9, position = jitter) +
+  geom_point( aes(x=clonality, fill = indv_label), size=6, shape=21, alpha = .9, position = jitter) +
   theme_classic()  +
-  labs(y="clonality", x="") +
-  theme(legend.position = "right") + 
+  labs(x="clonality", y="") +
+  theme(legend.position = "none") + 
 #  scale_y_discrete(breaks=tissue_annotations$tissue, labels=tissue_annotations$tissue_label) +
   theme(axis.text.y = element_text(size = 10, face = "bold")) +  
   scale_fill_manual(values = human_patient_colors, breaks = names(human_patient_colors)) +
   theme(axis.text.x = element_text(size = 8, angle = 0, hjust = 0, face = "bold")))
 
-ggsave(plot=fig1e ,height=5,width=6,dpi=200, 
+ggsave(plot=fig1e ,height=4.5,width=5,dpi=200, 
        filename=file.path(figures_path, "fig1e.pdf"), 
        useDingbats=FALSE)
 
@@ -138,16 +195,82 @@ div_base_mouse <- ggplot(diversity %>% filter(org != "Human", gvhd=="GvHD" | sam
 #names(human_patient_colors) <- paste("Patient", LETTERS[1:10])
 
 
-
-(mouse_fig1e = div_base_mouse +
-  #geom_point( aes(x=clonality, fill = indv_label), size=4, shape=21, alpha = .9, position = jitter) +
-  geom_point( aes(x=clonality), size=4, shape=21, alpha = .9, position = jitter, fill="black") +
+(mouse_fig1g = div_base_mouse +
+  #geom_point( aes(x=len, fill = indv_label), size=4, shape=21, alpha = .9, position = jitter) +
+  geom_point( aes(x=len), size=4, shape=21, alpha = .9, position = jitter, fill="black") + scale_x_log10(
+      breaks = c(1 %o% 10^(-6:6)),
+      labels = scales::trans_format("log10", scales::math_format(10^.x))
+    ) +
   theme_classic()  +
-  labs(y="clonality", x="") +
+  labs(x="unique clones", y="") +
   theme(legend.position = "right") + 
 #  scale_y_discrete(breaks=tissue_annotations$tissue, labels=tissue_annotations$tissue_label) +
   theme(axis.text.y = element_text(size = 10, face = "bold")) +  
   theme(axis.text.x = element_text(size = 8, angle = 0, hjust = 0, face = "bold")))
+
+ggsave(plot=mouse_fig1g ,height=4.5,width=5,dpi=200, 
+       filename=file.path(figures_path, "mouse_fig1g.pdf"), 
+       useDingbats=FALSE)
+
+(mouse_fig1h = div_base_mouse +
+  geom_point( aes(x=max_productive_frequency), size=6, shape=21, alpha = .5, position = jitter, fill="black") +
+  theme_classic()  +
+  labs(x="clone frequency (%)", y="") +
+  theme(legend.position = "right") + 
+#  scale_y_discrete(breaks=tissue_annotations$tissue, labels=tissue_annotations$tissue_label) +
+  theme(axis.text.y = element_text(size = 10, face = "bold")) +  
+  theme(axis.text.x = element_text(size = 8, angle = 0, hjust = 0, face = "bold")))
+
+ggsave(plot=mouse_fig1h ,height=4.5,width=5,dpi=200, 
+       filename=file.path(figures_path, "mouse_fig1h.pdf"), 
+       useDingbats=FALSE)
+
+(mouse_fig1i = div_base_mouse +
+  geom_point( aes(x=clonality), size=4, shape=21, alpha = .9, position = jitter, fill="black") +
+  theme_classic()  +
+  labs(x="clonality", y="") +
+  theme(legend.position = "right") + 
+#  scale_y_discrete(breaks=tissue_annotations$tissue, labels=tissue_annotations$tissue_label) +
+  theme(axis.text.y = element_text(size = 10, face = "bold")) +  
+  theme(axis.text.x = element_text(size = 8, angle = 0, hjust = 0, face = "bold")))
+
+ggsave(plot=mouse_fig1i ,height=4.5,width=5,dpi=200, 
+       filename=file.path(figures_path, "mouse_fig1i.pdf"), 
+       useDingbats=FALSE)
+
+(mouse_fig1j = div_base_mouse +
+  geom_point( aes(x=productive_templates), size=5, shape=21, alpha = .5, position = jitter, fill="black") + scale_x_log10(
+      breaks = c(1 %o% 10^(-6:6)),
+      labels = scales::trans_format("log10", scales::math_format(10^.x))
+    ) +
+  theme_classic()  +
+  labs(x="templates", y="") +
+  theme(legend.position = "right") + 
+#  scale_y_discrete(breaks=tissue_annotations$tissue, labels=tissue_annotations$tissue_label) +
+  theme(axis.text.y = element_text(size = 10, face = "bold")) +  
+  theme(axis.text.x = element_text(size = 8, angle = 0, hjust = 0, face = "bold")))
+
+ggsave(plot=mouse_fig1j ,height=4.5,width=5,dpi=200, 
+       filename=file.path(figures_path, "mouse_fig1j.pdf"), 
+       useDingbats=FALSE)
+
+nb.cols <- 16
+mouse_colors <- colorRampPalette(brewer.pal(8, "Pastel1"))(nb.cols)
+
+(fig1g <- ggplot(data.frame(nclones=sapply(clones_per_pt, n_distinct)) %>% rownames_to_column("indv_label") %>% 
+                   filter(grepl("Recipient", indv_label )),
+                 aes(y=indv_label,x=nclones, fill=indv_label)) +
+    geom_bar( stat="identity", orientation = "y", alpha=.9, width = .6) + 
+    scale_x_log10(
+      expand=c(0,0),
+      breaks = c(1 %o% 10^(-6:6)),
+      labels = scales::trans_format("log10", scales::math_format(10^.x))
+    ) +
+    scale_y_discrete(limits=rev, name="") +
+    theme_classic() + theme(legend.position = "none") + 
+    scale_fill_manual(values = mouse_colors)) 
+
+ggsave(plot=fig1g ,height=6,width=5, filename=file.path(figures_path, "fig1g.pdf"))
 
 ```
 
