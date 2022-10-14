@@ -122,7 +122,13 @@ plots_to_make <- list(
   "Patient D" = c(org="Human", topn=10, ref_tissue="autopsy_blood", ref_color="mediumpurple", f="3E"),
   "Patient F" = c(org="Human", topn=10, ref_tissue="autopsy_blood", ref_color="mediumpurple", f="S4J"),
   "Patient G" = c(org="Human", topn=10, ref_tissue="autopsy_blood", ref_color="mediumpurple", f="S4K"),
-  "Recipient 7, rep2, day 14" = c(org="Mouse", ref_tissue="skin", topn=10, ref_color="forestgreen", f="S4A")
+  "Recipient 7, rep2, day 14" = c(org="Mouse", ref_tissue="skin", topn=10, ref_color="forestgreen", f="S4A"),
+   "Patient B" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="brightblue4", f="S4L"), 
+  "Patient C" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="brightblue4", f="S4M"), 
+  "Patient D" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="brightblue4", f="S4N"), 
+  "Patient E" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="brightblue4", f="S4O"), 
+  "Patient F" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="brightblue4", f="S4P"),
+  "Patient G" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="brightblue4", f="S4Q")
 )
 
   
@@ -135,9 +141,16 @@ for (i in seq_along(plots_to_make)){
     thistcr_sample_metadata <- thistcr_sample_metadata %>% 
       filter(!tissue %in% c("kidney,", "heart", "autopsy_marrow") )
   }
+  # Patient A's donor sample is so diverse it makes the alluvial layers illegible
+  if(names(plots_to_make)[i] == "Patient A"){
+    thistcr_sample_metadata <- thistcr_sample_metadata %>% 
+      filter(!tissue %in% c("graft_blood") )
+  }
   thisdata <- make_alluvial_dataset(
     tcr_raw, tcr_sample_metadata=thistcr_sample_metadata, ref_org=thing["org"],
-    ref_tissue = thing["ref_tissue"], tissue_metadata = tissue_annotations,
+    ref_tissue = thing["ref_tissue"], 
+    ref_color = thing["ref_color"],
+    tissue_metadata = tissue_annotations,
     ref_pt=names(plots_to_make)[i], topn=as.numeric(thing["topn"]))
   
   
@@ -183,7 +196,6 @@ dir.create(figures_path_s5, showWarnings = FALSE)
 # remake to exlude graft in the top
 
 
-tissue_annotations <- read.csv("data/updated_colors_dendrograms.csv")
 tissues_to_completely_exclude = c("heart", "kidney", "Heart", "Kidney")
 
 cols_to_exclude_from_ranking = c("rearrangement", "amino_acid")
@@ -252,6 +264,7 @@ for (pat in tcr_sample_metadata %>% filter(org == "Human") %>% pull(indv_label) 
     # annotation_row    = clone_group,
     # annotation_clors  = row_color,
     drop_levels       = TRUE,
+    fontsize_row = 4,
     angle_col = 315, 
       
     cluster_rows = F,

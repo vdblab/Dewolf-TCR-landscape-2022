@@ -32,6 +32,8 @@ parallel -a UC_file_pairs.tsv --bar --progress --colsep "\t" ~/miniconda3/envs/p
 
 ## recreating figure 5b
 ```{r}
+
+
 uc_metadata = data.frame("raw"=gsub(".tsv", "", dir("data/UC_raw_TCR_data/", pattern = ".tsv"))) %>% 
   mutate(tissue=ifelse(grepl("Blood", raw), "blood", "rectum"),
          severity=factor(gsub(".*?_.*?_(.*)", "\\1", raw), levels = c("control", "mild_disease", "moderate_disease", "severe_disease"), ordered = TRUE),
@@ -46,6 +48,9 @@ uc_metadata = data.frame("raw"=gsub(".tsv", "", dir("data/UC_raw_TCR_data/", pat
 # 
 
 # we change ascending_colon to colon_ascending to make it sort later alphabetically :/ 
+tcr_corrs_anno <- tcr_corrs %>% 
+  left_join(tcr_sample_metadata %>% select(sample_name:species), by=c("sample1" = "sample_name")) %>% 
+  left_join(tcr_sample_metadata %>% select(sample_name:species), by=c("sample2" = "sample_name"))
 
 thismetric = "JSD"
 msk_uc_corrs <- read.csv(sep = "\t", "data/2022-10-12-UC-tcr-correlations.tsv", header=FALSE, col.names = strsplit("fileA\tfileB\tsizeA\tsizeB\tnorm_sizeA\tnorm_sizeB\tthreshold\tJSD\tjsd_nt_norm\tjsd_aa_raw\tjsd_aa_norm\tmorisita_nt_raw\toverlapping_clones\toverlapping_aa", split = "\t")[[1]], na.strings = c("nan")) %>%

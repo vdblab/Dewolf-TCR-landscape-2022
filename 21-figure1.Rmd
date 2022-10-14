@@ -23,7 +23,6 @@ if (interactive())  load("tcr_objects.Rdata")
 figures_path <- file.path("figures", "fig1")
 dir.create(figures_path, showWarnings = FALSE, recursive = TRUE)
 
-tissue_annotations <- read.csv("data/updated_colors_dendrograms.csv")
 diversity <- read.csv("tables/st4.csv") %>% 
   left_join(tcr_sample_metadata %>% select(-sample_amount_ng) %>% 
               select(sample_name:species)) %>%
