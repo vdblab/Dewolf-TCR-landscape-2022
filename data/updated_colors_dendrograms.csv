@@ -1,32 +1,32 @@
-tissue,tissue_label,system,col,gtex,plotgroup,new_col,shape,tissue_label_fig1,anatomic_order,S2_uc_group,S5_colors
-blood,PBSCs,Blood,#D13B32,Whole.Blood,PBSCs,#cc3333,1,blood,26,,red
-autopsy_blood,PBSCs,Blood,#D13B32,Whole.Blood,PBSCs,#cc3333,1,PBMCs,27,,red
-autopsy_marrow,Bone Marrow,Blood,#D13B32,,Bone Marrow,#cc3333,2,bone marrow,24,,red4
-Tcells,T-cells,Blood,#D13B32,Whole.Blood,T-cells,#A60000,3,donor,30,,
-A_blood,PBSCs,Blood,#D13B32,Whole.Blood,PBSCs,#cc3333,1,PBMCs,28,,red
-A_marrow,Bone Marrow,Lymphatic,#D13B32,,Bone Marrow,#cc3333,2,bone marrow,25,,red4
-pretx_blood,pre-tx PBMCs,Blood,#D13B32,Whole.Blood,pre-tx PBMCs,#cc3333,1,pre-tx (host) PBMCs,29,,yellow
-ascending_colon,Ascending Colon,Lower GI,#C084B3,,Large Intestine,#cc99cc,16,ascending colon,8,Large Intestine,hotpink1
-colon,Colon,Lower GI,#C084B3,,Large Intestine,#cc99cc,16,ascending colon,15,Large Intestine,hotpink1
-right_colon,Ascending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,#cc99cc,16,ascending colon,9,Large Intestine,hotpink1
-mid_colon,Mid Colon,Lower GI,#C084B3,Colon...Transverse,Large Intestine,#cc99cc,15,transverse colon,10,Large Intestine,pink
-descending_colon,Descending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,#cc99cc,20,descending colon,12,Large Intestine,pink
-left_colon,Descending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,#cc99cc,20,descending colon,13,Large Intestine,pink
-L_colon,Descending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,#cc99cc,20,descending colon,14,Large Intestine,pink
-transverse_colon,Transverse Colon,Lower GI,#C084B3,Colon...Transverse,Large Intestine,#cc99cc,16,transverse colon,11,Large Intestine,palevioletred2
-rectum,Rectum,Lower GI,#C084B3,,Large Intestine,#cc99cc,25,rectum,16,Rectum,maroon
-duodenum,Duodenum,Upper GI,#67B357,,Small Intestine,#666699,17,duodenum,3,Small Intestine,mediumpurple
-ileum,Ileum,Lower GI,#67B357,Small.Intestine...Terminal.Ileum,Small Intestine,#666699,24,ileum,5,Small Intestine,slateblue1
-jejunum,Jejunum,Lower GI,#67B357,,Small Intestine,#666699,25,jejunum,4,Small Intestine,slateblue3
-small_intestine,Small Intestine,Lower GI,#67B357,,Small Intestine,#666699,17,duodenum,7,Small Intestine,mediumpurple
-stomach,Stomach,Upper GI,#4B86B8,Stomach,Upper GI,#6699cc,23,stomach,2,,paleturquoise3
-esophagus,Esophagus,Upper GI,#4B86B8,Esophagus...Muscularis,Upper GI,#6699cc,24,esophagus,1,,paleturquoise
-skin,Skin,Skin,#E99D59,,Skin,#009933,10,skin,18,,springgreen4
-skinb,Skin,Skin,#E99D59,,Skin,#009933,10,skin,19,,springgreen4
-heart,Heart,Circulatory,#7B589E,,Heart,#99cc66,15,heart,22,,
-kidney,Kidney,Renal,#7B589E,,Kidney,#99cc66,7,kidney,23,,
-liver,Liver,Liver,#3A7E46,,Liver,#663333,12,liver,20,,tan4
-mLN,mLN,Lymphatic,#475CA4,,mLN,#ff9933,18,mLN,17,,limegreen
-spleen,Spleen,Lymphatic,#475CA4,,Spleen,#ff9933,11,spleen,21,,orange
-terminalileum,Ileum,Lower GI,#67B357,Small.Intestine...Terminal.Ileum,Small Intestine,#666699,24,ileum,6,Small Intestine,
-graft_blood,Graft/Blood,Donor,#FFC0CB,,donor,#FFC0CB,8,donor,31,,#1E2F96
+tissue,tissue_label,system,col,gtex,plotgroup,between_within_groups,new_col,shape,tissue_label_fig1,anatomic_order,uc_group,S5_colors,S2_groups
+blood,PBSCs,Blood,#D13B32,Whole.Blood,PBSCs,blood,#cc3333,1,blood,26,,red,
+autopsy_blood,PBSCs,Blood,#D13B32,Whole.Blood,PBSCs,blood,#cc3333,1,PBMCs,27,,red,
+autopsy_marrow,Bone Marrow,Blood,#D13B32,,Bone Marrow,bone marrow,#cc3333,2,bone marrow,24,,red4,
+Tcells,T-cells,Blood,#D13B32,Whole.Blood,T-cells,,#A60000,3,donor,30,,,
+A_blood,PBSCs,Blood,#D13B32,Whole.Blood,PBSCs,blood,#cc3333,1,PBMCs,28,,red,
+A_marrow,Bone Marrow,Lymphatic,#D13B32,,Bone Marrow,bone marrow,#cc3333,2,bone marrow,25,,red4,
+pretx_blood,pre-tx PBMCs,Blood,#D13B32,Whole.Blood,pre-tx PBMCs,pre-tx blood,#cc3333,1,pre-tx (host) PBMCs,29,,yellow,
+ascending_colon,Ascending Colon,Lower GI,#C084B3,,Large Intestine,Large Intestine,#cc99cc,16,ascending colon,8,Large Intestine,hotpink1,Large Intestine
+colon,Colon,Lower GI,#C084B3,,Large Intestine,Large Intestine,#cc99cc,16,ascending colon,9,Large Intestine,hotpink1,Large Intestine
+right_colon,Ascending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,Large Intestine,#cc99cc,16,ascending colon,10,Large Intestine,hotpink1,Large Intestine
+mid_colon,Mid Colon,Lower GI,#C084B3,Colon...Transverse,Large Intestine,Large Intestine,#cc99cc,15,transverse colon,11,Large Intestine,pink,Large Intestine
+descending_colon,Descending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,Large Intestine,#cc99cc,20,descending colon,13,Large Intestine,pink,Large Intestine
+left_colon,Descending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,Large Intestine,#cc99cc,20,descending colon,14,Large Intestine,pink,Large Intestine
+L_colon,Descending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,Large Intestine,#cc99cc,20,descending colon,15,Large Intestine,pink,Large Intestine
+transverse_colon,Transverse Colon,Lower GI,#C084B3,Colon...Transverse,Large Intestine,Large Intestine,#cc99cc,16,transverse colon,12,Large Intestine,palevioletred2,Large Intestine
+rectum,Rectum,Lower GI,#C084B3,,Large Intestine,Large Intestine,#cc99cc,25,rectum,16,Rectum,maroon,Rectum
+duodenum,Duodenum,Upper GI,#67B357,,Small Intestine,Small Intestine,#666699,17,duodenum,3,Small Intestine,mediumpurple,Small Intestine
+ileum,Ileum,Lower GI,#67B357,Small.Intestine...Terminal.Ileum,Small Intestine,Small Intestine,#666699,24,ileum,5,Small Intestine,slateblue1,Small Intestine
+jejunum,Jejunum,Lower GI,#67B357,,Small Intestine,Small Intestine,#666699,25,jejunum,4,Small Intestine,slateblue3,Small Intestine
+small_intestine,Small Intestine,Lower GI,#67B357,,Small Intestine,Small Intestine,#666699,17,duodenum,7,Small Intestine,mediumpurple,Small Intestine
+stomach,Stomach,Upper GI,#4B86B8,Stomach,Upper GI,Stomach,#6699cc,23,stomach,2,,paleturquoise3,Stomach
+esophagus,Esophagus,Upper GI,#4B86B8,Esophagus...Muscularis,Upper GI,Esophagus,#6699cc,24,esophagus,1,,paleturquoise,Esophagus
+skin,Skin,Skin,#E99D59,,Skin,Skin,#009933,10,skin,18,,springgreen4,Skin
+skinb,Skin,Skin,#E99D59,,Skin,Skin,#009933,10,skin,19,,springgreen4,Skin
+heart,Heart,Circulatory,#7B589E,,Heart,,#99cc66,15,heart,22,,,
+kidney,Kidney,Renal,#7B589E,,Kidney,,#99cc66,7,kidney,23,,,
+liver,Liver,Liver,#3A7E46,,Liver,Liver,#663333,12,liver,20,,tan4,Liver
+mLN,mLN,Lymphatic,#475CA4,,mLN,mLN,#ff9933,18,mLN,17,,limegreen,
+spleen,Spleen,Lymphatic,#475CA4,,Spleen,Spleen,#ff9933,11,spleen,21,,orange,Spleen
+terminalileum,Ileum,Lower GI,#67B357,Small.Intestine...Terminal.Ileum,Small Intestine,Small Intestine,#666699,24,ileum,6,Small Intestine,,Small Intestine
+graft_blood,Graft/Blood,Donor,#FFC0CB,,donor,,#FFC0CB,8,donor,31,,#1E2F96,

@@ -17,6 +17,7 @@ theme_set(theme_classic())
 if (interactive()) load("tcr_objects.Rdata")
 uc_figs_dir <- file.path("figures", "UC")
 dir.create(uc_figs_dir, showWarnings = FALSE)
+figures_path <- file.path("figures", "UC")
 
 ```
 
@@ -42,9 +43,9 @@ uc_metadata = data.frame("raw"=gsub(".tsv", "", dir("data/UC_raw_TCR_data/", pat
   )
 
 # # nonrectal_lower_GI <- c("colon", "ileum",  "mid_colon", "ascending_colon",  "colon_ascending","descending_colon", "jejunum", "transverse_colon", "L_colon",  "left_colon", "right_colon", "terminalileum"  )  
-# nonrectal_lower_GI <- tissue_annotations[tissue_annotations$S2_uc_group == "Large Intestine", "tissue"]
+# nonrectal_lower_GI <- tissue_annotations[tissue_annotations$uc_group == "Large Intestine", "tissue"]
 # upper_GI <- c("stomach", "esophagus", "duodenum", "small_intestine" )  
-# upper_GI <- tissue_annotations[tissue_annotations$S2_uc_group == "Small Intestine", "tissue"]
+# upper_GI <- tissue_annotations[tissue_annotations$uc_group == "Small Intestine", "tissue"]
 # 
 
 # we change ascending_colon to colon_ascending to make it sort later alphabetically :/ 
@@ -66,17 +67,17 @@ msk_uc_corrs <- read.csv(sep = "\t", "data/2022-10-12-UC-tcr-correlations.tsv", 
   filter(tissue.x %in% c("blood", "autopsy_blood") ) %>% 
   # filter(tissue.x %in% c("blood", "autopsy_blood") | tissue.y %in% c("blood", "autopsy_blood")) %>% 
  filter(indv_label.x == indv_label.y, tissue.x != tissue.y)  %>% 
-  inner_join(tissue_annotations %>% select(S2_uc_group, tissue) %>% filter(S2_uc_group != "") %>% distinct(), by=c("tissue.y" = "tissue")) %>% 
+  inner_join(tissue_annotations %>% select(uc_group, tissue) %>% filter(uc_group != "") %>% distinct(), by=c("tissue.y" = "tissue")) %>% 
   mutate(xgroup=case_when(
     cohort == "UC" ~  paste0("UC - ", disease.x),
-    cohort == "MSK" ~  paste0("GvHD - ", S2_uc_group),
+    cohort == "MSK" ~  paste0("GvHD - ", uc_group),
     TRUE ~ "Issue"
   ))
 
 theselimits = sort(unique(msk_uc_corrs$xgroup))
 theselimits <- theselimits[c(4,5,2,1,3)]
 
-ggplot(msk_uc_corrs%>%
+fig1R <- ggplot(msk_uc_corrs%>%
          rename(metic= all_of(thismetric)) %>%
          select(indv_label.x, xgroup, metic, tissue.x, tissue.y) %>% distinct() %>% 
          filter(!indv_label.x %in% c("P01", "P08")), aes(x=xgroup, y=metic)) + geom_boxplot(outlier.colour = NA, color="grey") +  
@@ -88,7 +89,7 @@ ggplot(msk_uc_corrs%>%
     x="",
     y=thismetric)
 
-
+ggsave(plot=fig1R ,height=4,width=6, filename=file.path(figures_path, "Revision_fig1R.pdf"))
 
 ```
 

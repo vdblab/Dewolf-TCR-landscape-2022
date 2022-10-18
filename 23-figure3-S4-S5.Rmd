@@ -123,12 +123,12 @@ plots_to_make <- list(
   "Patient F" = c(org="Human", topn=10, ref_tissue="autopsy_blood", ref_color="mediumpurple", f="S4J"),
   "Patient G" = c(org="Human", topn=10, ref_tissue="autopsy_blood", ref_color="mediumpurple", f="S4K"),
   "Recipient 7, rep2, day 14" = c(org="Mouse", ref_tissue="skin", topn=10, ref_color="forestgreen", f="S4A"),
-   "Patient B" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="brightblue4", f="S4L"), 
-  "Patient C" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="brightblue4", f="S4M"), 
-  "Patient D" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="brightblue4", f="S4N"), 
-  "Patient E" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="brightblue4", f="S4O"), 
-  "Patient F" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="brightblue4", f="S4P"),
-  "Patient G" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="brightblue4", f="S4Q")
+   "Patient B" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="navy", f="S4L"), 
+  "Patient C" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="navy", f="S4M"), 
+  "Patient D" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="navy", f="S4N"), 
+  "Patient E" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="navy", f="S4O"), 
+  "Patient F" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="navy", f="S4P"),
+  "Patient G" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="navy", f="S4Q")
 )
 
   
@@ -139,7 +139,7 @@ for (i in seq_along(plots_to_make)){
   # do any patient-specific filtering here
   if(names(plots_to_make)[i] == "Patient D"){
     thistcr_sample_metadata <- thistcr_sample_metadata %>% 
-      filter(!tissue %in% c("kidney,", "heart", "autopsy_marrow") )
+      filter(!tissue %in% c("kidney", "heart", "autopsy_marrow") )
   }
   # Patient A's donor sample is so diverse it makes the alluvial layers illegible
   if(names(plots_to_make)[i] == "Patient A"){
