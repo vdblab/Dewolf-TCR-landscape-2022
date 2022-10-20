@@ -320,25 +320,47 @@ p_ + scale_x_log10()
 abundance_summary_data <-  tcr_raw %>% 
   group_by(sample_name) %>% 
   arrange(desc(productive_frequency)) %>% 
-  mutate(clone_rank = rank(desc(productive_frequency), ties.method = "first"),
-         cumu_templates = cumsum(templates),) %>%
+  mutate(
+    clone_rank = rank(desc(productive_frequency), ties.method = "min"),
+    clone_rank_ave = rank(desc(productive_frequency), ties.method = "average"),
+         cumu_templates = cumsum(templates)) %>%
   group_by(sample_name, org, gvhd, samp_type , clone_rank, productive_templates) %>%
   summarize(max_cumulative_tempaltes_at_clone_rank = max(cumu_templates),
             perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100) %>% 
-   ungroup()
+  distinct() %>% 
+  ungroup()
 
-abundance_summary_data_grouped_summaries <- abundance_summary_data %>% 
-   group_by(org, gvhd, clone_rank ) %>% 
+
+all_combos <- expand.grid(
+  sample_name=unique(abundance_summary_data$sample_name),
+  clone_rank = 1:max(abundance_summary_data$clone_rank))
+
+abundance_summary_data_grouped_summaries <- abundance_summary_data %>%
+    full_join(all_combos) %>% 
+  arrange(sample_name, clone_rank) %>% 
+  fill(everything(), .direction = "down") %>% 
+   group_by(org, gvhd, clone_rank) %>%
   summarize(
     grp=paste0(org, "-", gvhd),
-    mean_perc_cu = mean(perc_cu)) %>% distinct() %>% ungroup() 
-  
+    mean_perc_cu = mean(perc_cu),
+    min_perc_cu = min(perc_cu),
+    max_perc_cu = max(perc_cu),
+    sem_perc_cu = sqrt(var(perc_cu)/n()),
+    sd_perc_cu = sd(perc_cu),
+    ) %>% 
+  distinct() %>%
+  ungroup() 
+
+
+# ggplot() +   geom_line(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=mean_perc_cu, group=grp), alpha=.7) 
+
  ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) + geom_line(alpha=.02) +
    geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10() 
 
 ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) +
   geom_line(alpha=.05) +
-  geom_smooth(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=mean_perc_cu, group=grp), alpha=.7) +
+  geom_line(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=mean_perc_cu, group=grp), alpha=.7) +
+  geom_ribbon(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=1, ymin=mean_perc_cu-sem_perc_cu, ymax=mean_perc_cu + sem_perc_cu, group=grp, fill=grp), alpha=.5) +
   geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10() 
   
 ```
