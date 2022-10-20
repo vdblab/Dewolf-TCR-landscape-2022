@@ -27,7 +27,7 @@ s2_theme <- theme_classic() + theme(
 s2diversity = tcr_sample_metadata %>% 
   select(sample_name : indv_tissue_label, -sample_amount_ng) %>% 
   left_join(read.csv("tables/st4.csv")) %>%
-  left_join(read.csv("data/patient_attributes.csv") %>%
+  left_join(read.csv("data/patient_attributes.csv",  na.strings=c("n/a")) %>%
               mutate(subject=paste("Patient", subject)), by=c("indv_label" = "subject")) %>%
   left_join(tissue_annotations, by="tissue")
 
@@ -97,5 +97,5 @@ ggsave(plot=S2_A ,height=5,width=14, filename=file.path(figures_path, "S2A_by_gr
 ggsave(plot=S2_B ,height=5,width=14, filename=file.path(figures_path, "S2A_by_CMV.pdf"))
 ggsave(plot=S2_C ,height=5,width=14, filename=file.path(figures_path, "S2A_by_GVHD.pdf"))
 
-
+write.csv(msk_uc_corrs,"JSD_public_comparisons.csv")
 ```

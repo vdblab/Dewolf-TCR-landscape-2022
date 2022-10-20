@@ -298,4 +298,47 @@ write.csv(bind_rows(supp_data_file_list), file = "tables/stX-topclone-IDs.csv")
 ```
   
   
+## cumulative rank abundance plot
+```{R}
+
+p_ <- tcr_raw %>% filter(sample_name == "PtC_stomach_TCRB") %>% 
+  group_by(sample_name) %>% 
+  arrange(desc(productive_frequency)) %>% 
+  mutate(clone_rank = rank(desc(productive_frequency)),
+         cumu_templates = cumsum(templates),) %>%
+  group_by(sample_name, clone_rank, productive_templates) %>%
+  summarize(max_cumulative_tempaltes_at_clone_rank = max(cumu_templates),
+            perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100) %>% 
+  ggplot(aes(x=clone_rank, y=perc_cu)) + geom_point() +
+  geom_vline(xintercept = 10, linetype="dotted", color="gray")
+p_
+p_ + coord_cartesian(xlim=c(0, 50))
+p_ + scale_x_log10() 
+
+
+
+abundance_summary_data <-  tcr_raw %>% 
+  group_by(sample_name) %>% 
+  arrange(desc(productive_frequency)) %>% 
+  mutate(clone_rank = rank(desc(productive_frequency), ties.method = "first"),
+         cumu_templates = cumsum(templates),) %>%
+  group_by(sample_name, org, gvhd, samp_type , clone_rank, productive_templates) %>%
+  summarize(max_cumulative_tempaltes_at_clone_rank = max(cumu_templates),
+            perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100) %>% 
+   ungroup()
+
+abundance_summary_data_grouped_summaries <- abundance_summary_data %>% 
+   group_by(org, gvhd, clone_rank ) %>% 
+  summarize(
+    grp=paste0(org, "-", gvhd),
+    mean_perc_cu = mean(perc_cu)) %>% distinct() %>% ungroup() 
   
+ ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) + geom_line(alpha=.02) +
+   geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10() 
+
+ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) +
+  geom_line(alpha=.05) +
+  geom_smooth(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=mean_perc_cu, group=grp), alpha=.7) +
+  geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10() 
+  
+```

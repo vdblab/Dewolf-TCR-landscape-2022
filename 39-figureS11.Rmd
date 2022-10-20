@@ -343,8 +343,11 @@ for(i in  unique(tcr_corrs_anno$indv_label.x)){
              filter(tissue.y != "mLN")%>%
              filter(tissue.y != "heart")%>%
              filter(tissue.y != "kidney") %>%
-             filter(tissue.y != "pretx_blood") %>% 
-             left_join(tissue_annotations, by=c("tissue.y"="tissue")) , aes(x=indv_label.x, y=JSD)) + 
+             filter(tissue.y != "pretx_blood") %>%  
+             left_join(read.csv("data/patient_attributes.csv", na.strings=c("n/a")) %>%
+              mutate(subject=paste("Patient", subject)), by=c("indv_label.x" = "subject")) %>%
+             left_join(tissue_annotations, by=c("tissue.y"="tissue"))%>%
+             mutate(indv_label.x = reorder(indv_label.x, GVHD_severity)), aes(x=indv_label.x, GVHD_severity, y=JSD)) +
     geom_violin() + 
     geom_jitter(aes(color=tissue_label_fig1.y) , width = .2, height = 0, size=3)  +
     scale_color_manual(values=tissue_annotations$new_col, breaks=tissue_annotations$tissue_label_fig1) +

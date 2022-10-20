@@ -91,6 +91,31 @@ fig1R <- ggplot(msk_uc_corrs%>%
 
 ggsave(plot=fig1R ,height=4,width=6, filename=file.path(figures_path, "Revision_fig1R.pdf"))
 
+#plot with the data from Teichmann et al . as well (JSD calculated separately)
+
+msk_uc_corrs2 = read.csv("JSD_public_comparisons.csv")
+
+theselimits = sort(unique(msk_uc_corrs2$xgroup))
+theselimits <- theselimits[c(1,5,6,3,4,2)]
+
+JSD_public <- ggplot(msk_uc_corrs2%>%
+         rename(metic= all_of(thismetric)) %>%
+         select(indv_label.x, xgroup, metic, tissue.x, tissue.y) %>% distinct() %>% 
+         filter(!indv_label.x %in% c("P01", "P08")), aes(x=xgroup, y=metic, fill = xgroup)) + geom_boxplot(alpha = .3) +  
+  geom_jitter(width = .1, height = 0, color = "black", alpha = .5, size = 1) +
+   scale_fill_brewer(palette="Set1") +
+  scale_x_discrete(limits=theselimits) + theme_classic() + theme(legend.position = "none") +
+  scale_y_continuous(limits = c(0, 1)) +
+  labs(
+    title = paste("Blood-tissue pair", thismetric),
+    x="",
+    y=thismetric)
+
+JSD_public
+
+
+ggsave(plot=JSD_public ,height=4,width=5, filename=file.path(figures_path, "Revision_JSD_public.pdf"))
+
 ```
 
 
