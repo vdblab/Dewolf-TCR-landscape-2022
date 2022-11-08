@@ -20,6 +20,7 @@ theme_set(theme_classic())
 if (interactive()) load("tcr_objects.Rdata")
 boxdir <- file.path("figures", "boxplot_comparisons")
 dir.create(boxdir, showWarnings = FALSE)
+figures_path <- file.path("figures", "boxplot_comparisons")
 
 ```
 
@@ -126,7 +127,7 @@ p_between_within <- ggplot(thisdata, aes(x=grp, color=grp, group=grp, y=value)) 
   geom_point(position = position_jitterdodge(jitter.height = 0, jitter.width = .1 )) + 
   labs(x="System", y="JSD", color="Comparisons") + 
   facet_grid(stype~between_within_groups.x, scales = "free", space = "free_x") +
-  scale_color_manual(values = c("navy", "firebrick4"), breaks = c("Between", "Within"), labels=c("Between systems", "Within systems")) + 
+  scale_color_manual(values = c("#3949AB", "#64B5F6"), breaks = c("Between", "Within"), labels=c("Between systems", "Within systems")) + 
   theme(legend.position = "bottom") + 
  scale_x_discrete(position = "top") +
 stat_pvalue_manual(
@@ -247,6 +248,7 @@ for (si in 1:length(sets_of_comparisons)){
   
   intestinal_comparison_data <-  pt_comp_df_all %>% 
     filter(stype=="GvHD") %>% 
+    filter(between_within_groups.x %in% s | between_within_groups.y %in% s) %>% 
     mutate(intestinal = ifelse(between_within_groups.x %in% s & between_within_groups.y %in% s, "Within", "Between"))
   
   stat.test.intestinal <- intestinal_comparison_data %>%
@@ -260,7 +262,7 @@ for (si in 1:length(sets_of_comparisons)){
     geom_point(position = position_jitterdodge(jitter.height = 0, jitter.width = .1 )) + 
     labs(x="System", y="JSD", title = str_glue("JSD within {sname} tissues")) + 
     facet_grid(org~., scales = "free", space = "free_x") +
-    scale_color_manual(values = c("purple", "gold"), breaks = c( "Between", "Within"), labels=c(str_glue("Between {sname} tissues"), str_glue("Within {sname} tissues")), guide="none") + 
+    scale_color_manual(values = c("#3949AB", "#64B5F6"), breaks = c( "Between", "Within"), labels=c(str_glue("Between {sname} tissues"), str_glue("Within {sname} tissues")), guide="none") + 
     theme(legend.position = "bottom") + 
     stat_pvalue_manual(stat.test.intestinal, label = "Wilcox adj. p {p}", tip.length = 0) + scale_y_continuous(limits=c(0, 1.1), expand=c(0, 0))
   
@@ -304,7 +306,7 @@ for (si in 1:length(sets_of_comparisons)){
   
   
   
-  ggsave(p_between_within_intestine + p_shuff_intestinal_summary + plot_layout(ncol=1, heights = c(.8, .3)) , filename = file.path(boxdir, str_glue("mouse_human_between_within_{sname}.pdf")), width = 8, height = 8)
+  ggsave(p_between_within_intestine + p_shuff_intestinal_summary + plot_layout(ncol=1, heights = c(.8, .3)) , filename = file.path(boxdir, str_glue("mouse_human_between_within_{sname}.pdf")), width = 4, height = 8)
   
 }
 ```
@@ -357,6 +359,8 @@ for(i in  unique(tcr_corrs_anno$indv_label.x)){
     scale_y_continuous(limits=c(0, 1))
 
 tmp_gvhd
+
+ggsave(plot=tmp_gvhd ,height=4,width=5, filename=file.path(figures_path, "GVHD_seversity_JSD.pdf"))
 
 #mean, median, standard deviation for blood/GVHD comparisons
 data.frame(tmp_gvhd$data  %>% group_by(sample1)  %>%

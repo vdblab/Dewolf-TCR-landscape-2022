@@ -14,8 +14,8 @@ library(ggpolypath)
 
 if (interactive()) load("tcr_objects.Rdata")
 
-figures_path <- file.path("figures", "alluvials")
-dir.create(figures_path, showWarnings = FALSE)
+alluvial_figures_path <- file.path("figures", "alluvials")
+dir.create(alluvial_figures_path, showWarnings = FALSE)
 
 
 get_top_clones_data <-  function(df, topn=10){
@@ -155,9 +155,38 @@ for (i in seq_along(plots_to_make)){
   
   
   ggsave(plot=thisdata$p_ ,height=5,width=10,dpi=200, 
-         filename=file.path(figures_path, paste0(thing["f"],"_", names(plots_to_make)[i], ".pdf")), 
+         filename=file.path(alluvial_figures_path, paste0(thing["f"],"_", names(plots_to_make)[i], ".pdf")), 
          useDingbats=FALSE)
 }
+
+ptF_alluvial <- make_alluvial_dataset(tcr_raw, ref_org = "Human", ref_pt = "Patient F", ref_tissue = "ascending_colon", tcr_sample_metadata = tcr_sample_metadata, tissue_metadata = tissue_annotations, topn = 5)
+
+top5colors <- data.frame(
+  key=1:5, 
+  stratacol=c("blue","red2", "mediumseagreen", "yellow","#996633"))
+p_ptF_alluvial_A <- ggplot(ptF_alluvial$plot_data %>% 
+                             left_join(top5colors),
+                aes(x = reorder(tissue_label, anatomic_order), stratum = frequency_nudged, y=frequency_nudged, alluvium = key,
+                    fill = ifelse(key < 6, stratacol, "gray75"))) +
+      labs(x="", y="", fill = "Nucleotide ID", title="") +
+      geom_flow(stat = "alluvium", curve_type = "sigmoid", color = "gray45", size = .3) +
+      geom_stratum(alpha = 1) +
+      geom_text(aes(y=tissue_total *1.1, label=thislabel), size=15) +
+  # consider , color=NA) + 
+      scale_fill_identity() +
+      theme_classic() +
+      theme(
+        axis.text.y = element_text(size = 15, color = "black"),
+        legend.position = "right",
+        axis.text.x = element_text(size = 15, angle = -30, color = "black", hjust = 0),
+        plot.margin = margin(r=80) #
+      ) +
+      scale_y_continuous(expand = c(0,0)) 
+ggsave(plot=p_ptF_alluvial_A ,height=5,width=10,dpi=200, 
+         filename=file.path(alluvial_figures_path, "S4A_PtF_multicolor.pdf"), 
+         useDingbats=FALSE)
+
+
 ```
 
 
@@ -193,7 +222,6 @@ for (i in seq_along(mouse_plots_to_make)){
 figures_path_s5 <- file.path("figures", "S5")
 dir.create(figures_path_s5, showWarnings = FALSE)
 
-# remake to exlude graft in the top
 
 
 tissues_to_completely_exclude = c("heart", "kidney", "Heart", "Kidney")
@@ -209,21 +237,24 @@ for (pat in tcr_sample_metadata %>% filter(org == "Human") %>% pull(indv_label) 
     thisdata$top_n_data  <- thisdata$top_n_data %>% filter(tissue != "graft_blood") 
   }
 
-  #n_distinct(thisdata$top_n_data$rearrangement)
-  
-  #top_n_data %>% select(sample_name, productive_frequency, orig_tissue_clone_rank)
-  
-  
-  
+
   hmap_data_pre  <- thisdata$top_n_data %>% left_join(tissue_annotations) %>% arrange(anatomic_order)  %>% 
     select(rearrangement, amino_acid, rearrangement_trunc, v_gene, j_gene,  tissue, tissue_label, orig_tissue_clone_rank) %>% 
     select(-tissue) %>% 
     pivot_wider(names_from = tissue_label, values_from = orig_tissue_clone_rank) 
+  
+  # we have the ranks, but we need the template count in order to label cells
+  hmap_data_labels  <- thisdata$top_n_data %>% left_join(tissue_annotations) %>% arrange(anatomic_order)  %>% 
+    select(rearrangement, amino_acid, rearrangement_trunc, v_gene, j_gene,  tissue, tissue_label, templates) %>% 
+    select(-tissue) %>% 
+    pivot_wider(names_from = tissue_label, values_from = templates) %>% select(-v_gene, -j_gene, -rearrangement_trunc)
   hmap_data <- hmap_data_pre %>% select(-v_gene, -j_gene, -rearrangement_trunc)
+  
   # add pseudoranks for absent clones
   tmphmap_data_for_ordering <- hmap_data[,!colnames(hmap_data) %in% cols_to_exclude_from_ranking]
   tmphmap_data_for_ordering <- hmap_data %>% select(-rearrangement, -amino_acid)
   
+  # give a pseudorank as 1.5x the max rank considered
   pseudorank = round(max(na.rm = TRUE, tmphmap_data_for_ordering) * 1.5)
   tmphmap_data_for_ordering[is.na(tmphmap_data_for_ordering)] <- pseudorank
   
@@ -244,6 +275,16 @@ for (pat in tcr_sample_metadata %>% filter(org == "Human") %>% pull(indv_label) 
   rownames(mat) <- gsub("^(.{10}).*", "\\1", ordered_hmap_data$rearrangement)
   rownames(mat) <- ordered_hmap_data$amino_acid
   
+  # clean up the label matrix with the actual template counts
+  hmap_data_labels_clean <- hmap_data_labels[
+    match(ordered_hmap_data$rearrangement, hmap_data_labels$rearrangement) ,
+    colnames(ordered_hmap_data)] %>% select(-amino_acid)%>% select(-rearrangement) %>% as.matrix()
+  # this converts to 
+  hmap_data_labels_clean[is.na(hmap_data_labels_clean)] <- ""
+  # the use of ordered_hmap_data here is intentional; we already matched up the rearrangement order above
+  rownames(hmap_data_labels_clean) <- gsub("^(.{10}).*", "\\1", ordered_hmap_data$rearrangement)
+   
+  
   tmp <- data.frame(tissue=unique(thisdata$top_n_data$tissue)) %>% left_join(tissue_annotations) %>% mutate(rn=tissue_label) %>% column_to_rownames("rn")
   mat_colors=list(tissue_label=tmp %>% pull(S5_colors))
   names(mat_colors$tissue_label) <- rownames(tmp)
@@ -261,39 +302,18 @@ for (pat in tcr_sample_metadata %>% filter(org == "Human") %>% pull(indv_label) 
     annotation_col    = tmp %>% select(tissue_label),
     annotation_colors = mat_colors,
     breaks            = seq(1,55,1),
-    # annotation_row    = clone_group,
-    # annotation_clors  = row_color,
+    display_numbers = hmap_data_labels_clean,
+    number_color = "white",
     drop_levels       = TRUE,
     fontsize_row = 4,
     angle_col = 315, 
-      
     cluster_rows = F,
     cluster_cols = F,
     fontsize          = 8,
-    # main              = paste(paste(pt_ind, num, sep = "_"), "heatmap", sep = "_")
   )
   dev.off()
-  # pdf(file=file.path(figures_path_s5, paste0(pat, "_clean.pdf")))
-  # pheatmap::pheatmap(
-  #   mat               = mat ,
-  #   color             = topo.colors(50),
-  #   border_color      = "black",
-  #   show_colnames     = FALSE,
-  #   show_rownames     = FALSE,
-  #   annotation_col    = tmp %>% select(tissue),
-  #   annotation_colors = mat_colors,
-  #   breaks            = seq(1,50,1),
-  #   # annotation_row    = clone_group,
-  #   # annotation_clors  = row_color,
-  #   drop_levels       = TRUE,
-  #   cluster_rows = F,
-  #   cluster_cols = F,
-  #   fontsize          = 10,
-  #   # main              = paste(paste(pt_ind, num, sep = "_"), "heatmap", sep = "_")
-  # )
-  # dev.off()
   supp_data_file_list[[pat]]  <- hmap_data_pre %>% select(-rearrangement) %>% select(2,1,3,4) %>% mutate(patient=pat)
-  }
+}
 write.csv(bind_rows(supp_data_file_list), file = "tables/stX-topclone-IDs.csv")
 ```
   
@@ -362,5 +382,160 @@ ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) 
   geom_line(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=mean_perc_cu, group=grp), alpha=.7) +
   geom_ribbon(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=1, ymin=mean_perc_cu-sem_perc_cu, ymax=mean_perc_cu + sem_perc_cu, group=grp, fill=grp), alpha=.5) +
   geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10() 
-  
+
+#just the human data, stratifying by group
+abundance_summary_data <-  tcr_raw %>% 
+  group_by(sample_name) %>% 
+  filter(org != "Mouse") %>%
+  arrange(desc(productive_frequency)) %>% 
+  mutate(
+    clone_rank = rank(desc(productive_frequency), ties.method = "min"),
+    clone_rank_ave = rank(desc(productive_frequency), ties.method = "average"),
+         cumu_templates = cumsum(templates)) %>%
+  group_by(sample_name, gvhd, samp_type , clone_rank, productive_templates) %>%
+  summarize(max_cumulative_tempaltes_at_clone_rank = max(cumu_templates),
+            perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100) %>% 
+  distinct() %>% 
+  ungroup()
+
+
+all_combos <- expand.grid(
+  sample_name=unique(abundance_summary_data$sample_name),
+  clone_rank = 1:max(abundance_summary_data$clone_rank))
+
+abundance_summary_data_grouped_summaries <- abundance_summary_data %>%
+    full_join(all_combos) %>% 
+  arrange(sample_name, clone_rank) %>% 
+  fill(everything(), .direction = "down") %>% 
+   group_by(gvhd, clone_rank) %>%
+  summarize(
+    grp=paste0(org, "-", gvhd),
+    mean_perc_cu = mean(perc_cu),
+    min_perc_cu = min(perc_cu),
+    max_perc_cu = max(perc_cu),
+    sem_perc_cu = sqrt(var(perc_cu)/n()),
+    sd_perc_cu = sd(perc_cu),
+    ) %>% 
+  distinct() %>%
+  ungroup() 
+
+
+
+ ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) + geom_line(alpha=.02) +
+   geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10() 
+
+ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) +
+  geom_line(alpha=.05) +
+  geom_line(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=mean_perc_cu, group=grp), alpha=.7) +
+  xlab("clone rank ") + 
+  ylab("cumulative reads (%)") +
+  geom_ribbon(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=1, ymin=mean_perc_cu-sem_perc_cu, ymax=mean_perc_cu + sem_perc_cu, group=grp, fill=grp), alpha=.5) +
+  geom_vline(xintercept = 10, linetype="dotted", color="gray4", size = .8) + scale_x_log10() + scale_fill_manual(values = c("#6495ED", "#9FE2BF")) + scale_color_manual(values = c("#6495ED", "#9FE2BF")) + labs(fill = "Group") + labs(color = "Group")
+
+#filtering out samples not included in the alluvials (donor pt A, kidney, heart, and marrow pt D)
+ tcr_raw2 <- tcr_raw %>% filter(sample_name != "PtA_donor_TCRB") %>% filter(sample_name != "PtD_autopsy_marrow_TCRB") %>% filter(sample_name != "PtD_kidney_TCRB") %>% filter(sample_name != "PtD_donor_TCRB") %>% filter(org != "Mouse")  
+   
+#just the human data, all patients
+abundance_summary_data <-  tcr_raw2 %>% 
+  group_by(sample_name) %>% 
+  arrange(desc(productive_frequency)) %>% 
+  mutate(
+    clone_rank = rank(desc(productive_frequency), ties.method = "min"),
+    clone_rank_ave = rank(desc(productive_frequency), ties.method = "average"),
+         cumu_templates = cumsum(templates)) %>%
+  group_by(sample_name,samp_type , clone_rank, productive_templates) %>%
+  summarize(max_cumulative_tempaltes_at_clone_rank = max(cumu_templates),
+            perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100) %>% 
+  distinct() %>% 
+  ungroup()
+
+
+all_combos <- expand.grid(
+  sample_name=unique(abundance_summary_data$sample_name),
+  clone_rank = 1:max(abundance_summary_data$clone_rank))
+
+abundance_summary_data_grouped_summaries <- abundance_summary_data %>%
+    full_join(all_combos) %>% 
+  arrange(sample_name, clone_rank) %>% 
+  fill(everything(), .direction = "down") %>% 
+   group_by(clone_rank) %>%
+  summarize(
+    grp=paste0("Human"),
+    mean_perc_cu = mean(perc_cu),
+    min_perc_cu = min(perc_cu),
+    max_perc_cu = max(perc_cu),
+    sem_perc_cu = sqrt(var(perc_cu)/n()),
+    sd_perc_cu = sd(perc_cu),
+    ) %>% 
+  distinct() %>%
+  ungroup() 
+
+
+
+ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) + geom_line(alpha=.02) +
+   geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10() 
+
+human_cumulative = ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) +
+  geom_line(alpha=.05) +
+  geom_line(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=mean_perc_cu, group=grp), alpha=.7) +
+  xlab("clone rank ") + 
+  ylab("cumulative frequency (%)") +
+  geom_ribbon(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=1, ymin=mean_perc_cu-sem_perc_cu, ymax=mean_perc_cu + sem_perc_cu, group=grp, fill=grp), alpha=.5) +
+  geom_vline(xintercept = 10, linetype="dotted", color="gray4", size = .8) + scale_x_log10() + scale_fill_manual(values = c("#6495ED")) + scale_color_manual(values = c("#6495ED")) + labs(fill = "Group") + labs(color = "Group")
+
+ggsave(plot=human_cumulative ,height=4,width=5, filename=file.path(alluvial_figures_path, "human_cumulative.pdf"))
+
+
+#just the mouse, GVHD only
+mouse_abundance_summary_data <-  tcr_raw %>% 
+  group_by(sample_name) %>% 
+  filter(org != "Human") %>% filter(samp_type == "Recipient") %>%
+  arrange(desc(productive_frequency)) %>% 
+  mutate(
+    clone_rank = rank(desc(productive_frequency), ties.method = "min"),
+    clone_rank_ave = rank(desc(productive_frequency), ties.method = "average"),
+         cumu_templates = cumsum(templates)) %>%
+  group_by(sample_name, gvhd, samp_type , clone_rank, productive_templates) %>%
+  summarize(max_cumulative_tempaltes_at_clone_rank = max(cumu_templates),
+            perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100) %>% 
+  distinct() %>% 
+  ungroup()
+
+
+mouse_all_combos <- expand.grid(
+  sample_name=unique(mouse_abundance_summary_data$sample_name),
+  clone_rank = 1:max(mouse_abundance_summary_data$clone_rank))
+
+mouse_abundance_summary_data_grouped_summaries <- mouse_abundance_summary_data %>%
+    full_join(mouse_all_combos) %>% 
+  arrange(sample_name, clone_rank) %>% 
+  fill(everything(), .direction = "down") %>% 
+   group_by(clone_rank) %>%
+  summarize(
+    grp=paste0("Mouse"),
+    mean_perc_cu = mean(perc_cu),
+    min_perc_cu = min(perc_cu),
+    max_perc_cu = max(perc_cu),
+    sem_perc_cu = sqrt(var(perc_cu)/n()),
+    sd_perc_cu = sd(perc_cu),
+    ) %>% 
+  distinct() %>%
+  ungroup() 
+
+
+
+ggplot(mouse_abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) + geom_line(alpha=.02) +
+   geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10() 
+
+mouse_cumulative = ggplot(mouse_abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) +
+  geom_line(alpha=.05) +
+  geom_line(data=mouse_abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=mean_perc_cu, group=grp), alpha=.7) +
+  xlab("clone rank ") + 
+  ylab("cumulative frequency (%)") +
+  geom_ribbon(data=mouse_abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=1, ymin=mean_perc_cu-sem_perc_cu, ymax=mean_perc_cu + sem_perc_cu, group=grp, fill=grp), alpha=.5) +
+  geom_vline(xintercept = 10, linetype="dotted", color="gray4", size = .8) + scale_x_log10() + scale_fill_manual(values = c("#9FE2BF")) + scale_color_manual(values = c("#9FE2BF")) + labs(fill = "Group") + labs(color = "Group")
+
+ggsave(plot=mouse_cumulative ,height=4,width=5, filename=file.path(alluvial_figures_path, "mouse_cumulative.pdf"))
+
+
 ```
