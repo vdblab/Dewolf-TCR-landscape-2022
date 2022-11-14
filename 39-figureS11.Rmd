@@ -247,6 +247,7 @@ for (si in 1:length(sets_of_comparisons)){
   
   intestinal_comparison_data <-  pt_comp_df_all %>% 
     filter(stype=="GvHD") %>% 
+    filter(between_within_groups.x %in% s | between_within_groups.y %in% s) %>% 
     mutate(intestinal = ifelse(between_within_groups.x %in% s & between_within_groups.y %in% s, "Within", "Between"))
   
   stat.test.intestinal <- intestinal_comparison_data %>%
@@ -446,6 +447,7 @@ for (gr in c("GvHD", "noGvHD")){
     samples_ordered <- hclust(as.dist(tcr_agg_mice), method = "single")$labels[c( hclust(as.dist(tcr_agg_mice), method = "single")$order)]
     
     tcr_agg_mice_ordered <- tcr_agg_mice[samples_ordered, samples_ordered]
+    
     # get the clean, ordered sampleids
     samples_ordered_df <- left_join(data.frame(tissue=samples_ordered), tissue_annotations, by="tissue")
     if (!all(samples_ordered == samples_ordered_df$sample_name)) {stop("Error assigning clean name to ordered tissues")}
