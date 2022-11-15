@@ -18,9 +18,13 @@ library(rstatix)
 
 theme_set(theme_classic())
 if (interactive()) load("tcr_objects.Rdata")
+if (interactive()) load("GTEx/gtex_objects.RData")
 boxdir <- file.path("figures", "boxplot_comparisons")
 dir.create(boxdir, showWarnings = FALSE)
 figures_path <- file.path("figures", "boxplot_comparisons")
+tcr_corrs_anno <- tcr_corrs %>% 
+  left_join(tcr_sample_metadata %>% select(sample_name:species), by=c("sample1" = "sample_name")) %>% 
+  left_join(tcr_sample_metadata %>% select(sample_name:species), by=c("sample2" = "sample_name")) 
 
 ```
 
@@ -380,7 +384,7 @@ data.frame(tmp_gvhd$data  %>% group_by(sample1)  %>%
 
 ```{r 39-figureS11-8 }
 tcr_corrs_anno_mouse <- tcr_corrs_anno %>% 
-  filter(pair_is_unique == TRUE) %>% 
+  #filter(pair_is_unique == TRUE) %>% 
   filter(org.x=="Mouse") %>% filter(org.y=="Mouse") %>% 
   filter(indv_label.x==indv_label.y) %>% 
 #  filter(gvhd.x == "GvHD" & gvhd.y == "GvHD") %>% 
