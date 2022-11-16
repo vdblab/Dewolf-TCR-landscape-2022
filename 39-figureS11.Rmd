@@ -384,16 +384,15 @@ data.frame(tmp_gvhd$data  %>% group_by(sample1)  %>%
 
 ```{r 39-figureS11-8 }
 tcr_corrs_anno_mouse <- tcr_corrs_anno %>% 
-  #filter(pair_is_unique == TRUE) %>% 
+  filter(pair_is_unique == TRUE) %>% 
   filter(org.x=="Mouse") %>% filter(org.y=="Mouse") %>% 
   filter(indv_label.x==indv_label.y) %>% 
-#  filter(gvhd.x == "GvHD" & gvhd.y == "GvHD") %>% 
-  #filter(tissue.x != tissue.y) %>%
   select(JSD, tissue.x, tissue.y, gvhd.x, collection_day.x ) %>%
-  #select(-sample1, -sample2, -org.x, -org.y, -indv_label.x, -indv_label.y, -samp_type.x, -samp_type.y, -exp_rep.x, -exp_rep.y, -indv_tissue_label.x, -indv_tissue_label.y, -indv_id.x, -indv_id.y  ) %>%
   group_by(across(c(-JSD))) %>% 
   mutate(
     n=n(),
+    JSD_min = min(JSD),
+    JSD_max = max(JSD),
     JSD_mean = mean(JSD),
     JSD_median = median(JSD),
     JSD_var = var(JSD),
@@ -401,7 +400,6 @@ tcr_corrs_anno_mouse <- tcr_corrs_anno %>%
   select(tissue.x, tissue.y, everything()) %>% 
   ungroup() 
 
-tcr_corrs_anno_mouse_summary <- tcr_corrs_anno_mouse %>% select(-JSD) %>% distinct()
 
 p_mouse_variance <- ggplot(tcr_corrs_anno_mouse %>% 
                              filter(gvhd.x == "GvHD") %>% 
@@ -429,6 +427,16 @@ filter(gvhd.x == "GvHD") %>% filter(collection_day.x==14), aes(x=reorder(interac
 
 
 ggsave(filename = file.path(boxdir, "mouse_JSD_variance.pdf"), plot = p_mouse_variance, width = 9, height=6)
+
+
+# To reorder the heatmap columns according to anatomic order, we want to add back
+# in the redundant pairs we intentionally excluded above.  We do that by binding in
+# the data with the reversed labels.
+tcr_corrs_anno_mouse_summary <- bind_rows(
+  tcr_corrs_anno_mouse %>% select(-JSD) %>% distinct(),
+  tcr_corrs_anno_mouse %>% select(-JSD) %>% distinct()  %>% rename(tmp=tissue.x) %>% rename("tissue.x" ="tissue.y", "tissue.y"="tmp")
+  )
+
 
 mouse_summary_plist <- list()
 for (gr in c("GvHD", "noGvHD")){
