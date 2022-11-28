@@ -1,0 +1,93 @@
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# VECTRA Data 
+
+```{r}
+library(tidyverse)
+vectra_figs_dir <- file.path("figures", "vectra")
+# TODO: fix these paths
+#first we merge together the CD8, CD4, and Treg populations so we can graph together (this is the output from Nick Socci, after being run through a pipeline based on the original Halo output files)
+CD8 <- read_csv("/Volumes/vandenBrinkLab/Susan/Human GVHD/VECTRA/5_2021/results 2/2021-06-20/dewolfs_Proj01_5.5.1_20210620__Tcell_CD8_pos__TABLES.csv")
+CD4 <- read_csv("/Volumes/vandenBrinkLab/Susan/Human GVHD/VECTRA/5_2021/results 2/2021-06-20/dewolfs_Proj01_5.5.1_20210620__Tcell_CD8_neg__TABLES.csv")
+Treg <- read_csv("/Volumes/vandenBrinkLab/Susan/Human GVHD/VECTRA/5_2021/results 2/2021-06-20/dewolfs_Proj01_5.5.1_20210620__Treg__TABLES.csv")
+T_cells <- read_csv("/Volumes/vandenBrinkLab/Susan/Human GVHD/VECTRA/5_2021/results 2/2021-06-20/dewolfs_Proj01_5.5.1_20210620__T_cell__TABLES.csv")
+spatial_Tcells <- read_csv("~/Downloads/dewolfS_SpatialByPop_2021-09-24/dewolfs_Proj01_SpatialProfiles_5.5.1_Pop__T_cell___TABLES.csv")
+
+
+
+
+Tcells_subsets = bind_rows(CD4, CD8, Treg)
+
+CD69 = Tcells_subsets %>%
+  filter(MarkerPos == "CD69")
+
+Ki67 = Tcells_subsets %>%
+  filter(MarkerPos == "KI67")
+
+Tcells = Tcells_subsets %>%
+  filter(MarkerPos != "FOXP3")
+
+Vectra <-ggplot(Tcells, aes(x = Population, y = PCT))
+
+VectraPlot  <- Vectra + geom_point(size = 7, position=position_dodge(0.2), aes (fill = Sample), shape=21, color="black") +
+  facet_grid(Classifier_Label ~ MarkerPos) +
+  theme_light() + theme(strip.background = element_rect (fill = "white"), strip.text = element_text(colour = "black")) +
+  ylab("fraction of cells positive for the indicated marker") + xlab("") +
+  stat_summary(fun = median, fun.min = median, fun.max = median,
+               geom = "crossbar", width = 0.2, size = .2) +
+  scale_fill_manual(name = "Tissues", labels = c("skin", "transverse colon", "duodenum", "ascending colon", "ileum", "jejunum"), values = c("springgreen4", "palevioletred2", "mediumpurple", "hotpink1", "slateblue1", "slateblue3")) +
+  theme(legend.position="bottom") +
+  theme(axis.text.x = element_text(angle = 30, vjust=.6, size = 8, color = "black"), axis.text.y = element_text(color = "black", size = 8))
+
+ggsave(plot=VectraPlot ,height=8,width=6,dpi=200,
+       filename=file.path(vectra_figs_dir, "VectraPlot.pdf"),
+       useDingbats=FALSE)
+
+write.csv(CD69, "CD69_byTcells_5_2021.csv")
+
+#this is for looking at the breakdown of all T cell populations
+
+
+T_cells_justsubsets = T_cells %>%
+  filter(MarkerPos != "CD69") %>%
+  filter(MarkerPos != "KI67")
+
+Vectra_subsets <-ggplot(T_cells_justsubsets, aes(x = Population, y = PCT))
+
+
+VectraPlot_subsets = Vectra_subsets + geom_point(size = 6, position=position_dodge(width = 0.2), aes (fill = Sample), shape=21) +
+  facet_grid(Classifier_Label ~ MarkerPos) +
+  theme_light() + theme(strip.background = element_rect (fill = "white"), strip.text = element_text(colour = "black")) +
+  ylab("fraction of cells positive for the indicated marker") + 
+  xlab("T cells") +
+  stat_summary(fun = median, fun.min = median, fun.max = median,
+               geom = "crossbar", width = 0.2, size = .2) +
+  scale_fill_manual(name = "Tissues", labels = c("skin", "transverse colon", "duodenum", "ascending colon", "ileum", "jejunum"), values = c("springgreen4", "palevioletred2", "mediumpurple", "hotpink1", "slateblue1", "slateblue3")) +
+  theme(legend.position="bottom") +
+  theme(axis.text.x = element_text(angle = 30, vjust=.6, size = 8, color = "black"), axis.text.y = element_text(color = "black", size = 8))
+
+VectraPlot_subsets
+
+ggsave(plot=VectraPlot_subsets ,height=8,width=6,dpi=200,
+       filename=file.path(vectra_figs_dir, "VectraPlot_subsets.pdf"),
+       useDingbats=FALSE)
+
+#Vectra spatial plot
+
+
+Vectra_spatial <-ggplot(spatial_Tcells, aes(x = dBins, y = PCT))
+
+Vectra_spatial_plot = Vectra_spatial + geom_bar(stat='identity', aes(fill=Sample)) +
+  facet_grid(~Sample) + scale_fill_manual(values = c("hotpink1",  "palevioletred2", "mediumpurple", "slateblue1", "slateblue3", "springgreen4")) +
+  theme_light() + theme(strip.background = element_rect (fill = "white"), strip.text = element_text(colour = "black")) +
+  ylab("fraction CD69 positive T cells") + xlab("um from panCK+ cell") +
+  theme(axis.text.x = element_text(angle = 30, vjust=.6, size = 8, color = "black"), axis.text.y = element_text(color = "black", size = 8)) + theme(legend.position = "none")
+
+Vectra_spatial_plot
+
+ggsave(plot=Vectra_spatial_plot ,height=3,width=6,dpi=200,
+       filename=file.path(vectra_figs_dir, "Vectra_spatial_plot.pdf"),
+       useDingbats=FALSE)
+```
