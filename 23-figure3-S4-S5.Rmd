@@ -303,7 +303,7 @@ for (pat in tcr_sample_metadata %>% filter(org == "Human") %>% pull(indv_label) 
     annotation_colors = mat_colors,
     breaks            = seq(1,55,1),
     display_numbers = hmap_data_labels_clean,
-    number_color = "white",
+    number_color = "black",
     drop_levels       = TRUE,
     fontsize_row = 4,
     angle_col = 315, 
@@ -448,6 +448,19 @@ abundance_summary_data <-  tcr_raw2 %>%
             perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100) %>% 
   distinct() %>% 
   ungroup()
+
+summary_data_for_yuval <-  tcr_raw2 %>% 
+  group_by(sample_name) %>% 
+  arrange(desc(productive_frequency)) %>% 
+  mutate(
+    clone_rank = rank(desc(productive_frequency), ties.method = "min"),
+    clone_rank_ave = rank(desc(productive_frequency), ties.method = "average"),
+         cumu_templates = cumsum(templates)) %>%
+  select(sample_name, productive_templates, productive_frequency, rearrangement, amino_acid, indv_type, gvhd, indv_id, tissue, indv_label, clone_rank) %>%
+  distinct() %>% 
+  ungroup()
+
+write.csv(summary_data_for_yuval, "summary_data_for_yuval.csv")
 
 
 all_combos <- expand.grid(

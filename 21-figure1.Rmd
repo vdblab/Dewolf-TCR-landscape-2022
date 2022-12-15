@@ -190,25 +190,20 @@ ggsave(patchwork::plot_spacer()  + fig1b + fig1c + fig1d + fig1e + plot_layout(w
 div_base_mouse <- ggplot(diversity %>% filter(org != "Human", gvhd=="GvHD" | samp_type == "Donor" ),
                            aes(y=reorder(tissue_label_fig1, desc(anatomic_order))))
 
-#mouse_patient_colors <- c("mediumblue", "navy", "red", "yellow", "green4", "lightskyblue", "saddlebrown", "gray75", "gray45", "gray 85")
-#names(human_patient_colors) <- paste("Patient", LETTERS[1:10])
 
-
-(mouse_fig1g = div_base_mouse +
-  #geom_point( aes(x=len, fill = indv_label), size=4, shape=21, alpha = .9, position = jitter) +
-  geom_point( aes(x=len), size=4, shape=21, alpha = .9, position = jitter, fill="black") + scale_x_log10(
+(mouse_fig1i = div_base_mouse + 
+  geom_point( aes(x=len), size=5, shape=21, alpha = .7, position = jitter, fill="gray", color = "black") + scale_x_log10(
       breaks = c(1 %o% 10^(-6:6)),
       labels = scales::trans_format("log10", scales::math_format(10^.x))
     ) +
   theme_classic()  +
-  labs(x="unique clones", y="") +
+  labs(x="unique clones", y="") + geom_boxplot(aes(x=len),  alpha=0, width = .5, outlier.color = NA, size = .3,) +
   theme(legend.position = "right") + 
-#  scale_y_discrete(breaks=tissue_annotations$tissue, labels=tissue_annotations$tissue_label) +
   theme(axis.text.y = element_text(size = 10, face = "bold")) +  
   theme(axis.text.x = element_text(size = 8, angle = 0, hjust = 0, face = "bold")))
 
-ggsave(plot=mouse_fig1g ,height=4.5,width=5,dpi=200, 
-       filename=file.path(figures_path, "mouse_fig1g.pdf"), 
+ggsave(plot=mouse_fig1i ,height=4.5,width=5,dpi=200, 
+       filename=file.path(figures_path, "mouse_fig1i.pdf"), 
        useDingbats=FALSE)
 
 (mouse_fig1h = div_base_mouse +
@@ -224,52 +219,54 @@ ggsave(plot=mouse_fig1h ,height=4.5,width=5,dpi=200,
        filename=file.path(figures_path, "mouse_fig1h.pdf"), 
        useDingbats=FALSE)
 
-(mouse_fig1i = div_base_mouse +
-  geom_point( aes(x=clonality), size=4, shape=21, alpha = .9, position = jitter, fill="black") +
-  theme_classic()  +
+(mouse_fig1h = div_base_mouse + 
+  geom_point( aes(x=clonality), size=5, shape=21, alpha = .7, position = jitter, fill="gray", color = "black") +
+  theme_classic()  + geom_boxplot(aes(x=clonality),  alpha=0, width = .5, size = .2, outlier.color = NA) +
   labs(x="clonality", y="") +
   theme(legend.position = "right") + 
-#  scale_y_discrete(breaks=tissue_annotations$tissue, labels=tissue_annotations$tissue_label) +
   theme(axis.text.y = element_text(size = 10, face = "bold")) +  
   theme(axis.text.x = element_text(size = 8, angle = 0, hjust = 0, face = "bold")))
 
-ggsave(plot=mouse_fig1i ,height=4.5,width=5,dpi=200, 
-       filename=file.path(figures_path, "mouse_fig1i.pdf"), 
+ggsave(plot=mouse_fig1h ,height=4.5,width=5,dpi=200, 
+       filename=file.path(figures_path, "mouse_fig1h.pdf"), 
        useDingbats=FALSE)
 
-(mouse_fig1j = div_base_mouse +
-  geom_point( aes(x=productive_templates), size=5, shape=21, alpha = .5, position = jitter, fill="black") + scale_x_log10(
+(mouse_fig1g = div_base_mouse + 
+  geom_point(aes(x=productive_templates), size=5, shape=21, alpha = .7, position = jitter, fill = "gray", color = "black") + 
+    scale_x_log10(
       breaks = c(1 %o% 10^(-6:6)),
       labels = scales::trans_format("log10", scales::math_format(10^.x))
-    ) +
+    ) + geom_boxplot(aes(x=productive_templates),  alpha=0, width = .5, size = .2, outlier.color = NA) +
   theme_classic()  +
   labs(x="templates", y="") +
-  theme(legend.position = "right") + 
+  theme(legend.position = "none") + 
 #  scale_y_discrete(breaks=tissue_annotations$tissue, labels=tissue_annotations$tissue_label) +
   theme(axis.text.y = element_text(size = 10, face = "bold")) +  
   theme(axis.text.x = element_text(size = 8, angle = 0, hjust = 0, face = "bold")))
 
-ggsave(plot=mouse_fig1j ,height=4.5,width=5,dpi=200, 
-       filename=file.path(figures_path, "mouse_fig1j.pdf"), 
+ggsave(plot=mouse_fig1g ,height=4.5,width=5,dpi=200, 
+       filename=file.path(figures_path, "mouse_fig1g.pdf"), 
        useDingbats=FALSE)
 
-nb.cols <- 16
+nb.cols <- 19
 mouse_colors <- colorRampPalette(brewer.pal(8, "Pastel1"))(nb.cols)
+jitter_mouse <- position_jitter(width = 0.05, height = 0.06)
 
-(fig1g <- ggplot(data.frame(nclones=sapply(clones_per_pt, n_distinct)) %>% rownames_to_column("indv_label") %>% 
+(fig1f_mouse <- ggplot(data.frame(nclones=sapply(clones_per_pt, n_distinct)) %>% rownames_to_column("indv_label") %>% 
                    filter(grepl("Recipient", indv_label )),
-                 aes(y=indv_label,x=nclones, fill=indv_label)) +
-    geom_bar( stat="identity", orientation = "y", alpha=.9, width = .6) + 
-    scale_x_log10(
+                 aes(y=0,x=nclones)) +
+    geom_point(aes(fill=indv_label), size=4, shape=21, alpha = .5, position = jitter_mouse, fill = "gray") +
+    scale_x_log10(limits=c(500, 100000),
       expand=c(0,0),
       breaks = c(1 %o% 10^(-6:6)),
       labels = scales::trans_format("log10", scales::math_format(10^.x))
-    ) +
-    scale_y_discrete(limits=rev, name="") +
-    theme_classic() + theme(legend.position = "none") + 
-    scale_fill_manual(values = mouse_colors)) 
+    ) + geom_boxplot(orientation = "y", alpha=0, width = .2, size = .3, outlier.color = NA) + 
+    scale_y_continuous(limits = c(-.5,.5)) + 
+    theme_classic() + theme(legend.position = "none", axis.title.x = element_blank(), axis.ticks.x = element_blank(), axis.text.x = element_blank()) + coord_flip())
 
-ggsave(plot=fig1g ,height=6,width=5, filename=file.path(figures_path, "fig1g.pdf"))
+
+
+ggsave(plot=fig1f_mouse ,height=3,width=2, filename=file.path(figures_path, "fig1f_mouse.pdf"))
 
 ```
 
