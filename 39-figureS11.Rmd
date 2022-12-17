@@ -337,7 +337,7 @@ for(i in  unique(tcr_corrs_anno$indv_label.x)){
     ggsave(plot = tmp_p, filename = file.path(boxdir, str_glue("TCR_raw_comparisons_{i}.pdf")), width = 9, height = 6)
 }
 
-#formatting individual graph to focus on comparisons with blood (Figure R1)
+#formatting individual graph to focus on comparisons with blood (Figure R1) --> this is just for the letter 
   tmp_gvhd <- ggplot(tcr_corrs_anno %>% 
            filter(indv_label.x == indv_label.y) %>%
              filter(indv_label.x %in% c("Patient A", "Patient D", "Patient F", "Patient G"))  %>% 

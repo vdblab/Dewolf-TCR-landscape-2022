@@ -77,7 +77,7 @@ slope_CMV = cc +
 
 S2_B = clonality_CMV + slope_CMV + plot_layout(guides = "collect")
 
-#this plot colors by grade of GVHD peri-autopsy (acute GVHD
+#this plot colors by grade of GVHD peri-autopsy (acute GVHD)
 clonality_GVHD = cc + 
   geom_point(aes(y=clonality, fill = as.factor(GVHD_severity)), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) + s2_theme + labs(fill="GVHD \nseverity") + xlab("") + scale_fill_brewer(palette = "Set2")
 
@@ -87,6 +87,43 @@ slope_GVHD = cc +
   s2_theme + scale_fill_brewer(palette = "Set2") + xlab("") + labs(fill="GVHD \nseverity")
 
 S2_C = clonality_GVHD + slope_GVHD + plot_layout(guides = "collect")
+
+
+#this plot colors by grade of age of patient
+clonality_age = cc + 
+  geom_point(aes(y=clonality, fill = as.factor(Pt_age_cat)), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) + s2_theme + labs(fill="Pt_age_cat") + xlab("") + scale_fill_brewer(palette = "Set2")
+
+
+#this plot colors by age of patient
+slope_age = cc + 
+  geom_point(aes(y=slope, fill = as.factor(Pt_age_cat)), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) +
+  s2_theme + scale_fill_brewer(palette = "Set2") + xlab("") + labs(fill="Pt_age_cat")
+
+S2_age = clonality_age + slope_age + plot_layout(guides = "collect")
+
+#this plot colors by grade of age of donor
+clonality_donor = cc + 
+  geom_point(aes(y=clonality, fill = as.factor(Donor_age_cat)), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) + s2_theme + labs(fill="Donor_age_cat") + xlab("") + scale_fill_brewer(palette = "Set2")
+
+
+#this plot colors by age of donor
+slope_donor = cc + 
+  geom_point(aes(y=slope, fill = as.factor(Pt_age_cat)), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) +
+  s2_theme + scale_fill_brewer(palette = "Set2") + xlab("") + labs(fill="Pt_age_cat")
+
+S2_donor = clonality_donor + slope_donor + plot_layout(guides = "collect")
+
+#this plot colors by ALC
+clonality_ALC = cc + 
+  geom_point(aes(y=clonality, fill = as.factor(ALC)), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) + s2_theme + labs(fill="ALC") + xlab("") + scale_fill_brewer(palette = "Set2")
+
+
+#this plot colors by ALC
+slope_ALC = cc + 
+  geom_point(aes(y=slope, fill = as.factor(ALC)), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) +
+  s2_theme + scale_fill_brewer(palette = "Set2") + xlab("") + labs(fill="ALC")
+
+S2_ALC = clonality_ALC + slope_ALC + plot_layout(guides = "collect")
 
 
 
