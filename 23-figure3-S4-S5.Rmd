@@ -118,17 +118,17 @@ plots_to_make <- list(
   "Patient H" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="S4H"),
   "Patient I" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="3D"),
   "Patient J" = c(org="Human", topn=10, ref_tissue="jejunum", ref_color="mediumpurple", f="S4G"),
-  "Patient A" = c(org="Human", topn=10, ref_tissue="autopsy_blood", ref_color="mediumpurple", f="S4I"),
-  "Patient D" = c(org="Human", topn=10, ref_tissue="autopsy_blood", ref_color="mediumpurple", f="3E"),
-  "Patient F" = c(org="Human", topn=10, ref_tissue="autopsy_blood", ref_color="mediumpurple", f="S4J"),
-  "Patient G" = c(org="Human", topn=10, ref_tissue="autopsy_blood", ref_color="mediumpurple", f="S4K"),
+  "Patient A" = c(org="Human", topn=10, ref_tissue="autopsy_blood", ref_color="#cc3333", f="S4I"),
+  "Patient D" = c(org="Human", topn=10, ref_tissue="autopsy_blood", ref_color="#cc3333", f="3E"),
+  "Patient F" = c(org="Human", topn=10, ref_tissue="autopsy_blood", ref_color="#cc3333", f="S4J"),
+  "Patient G" = c(org="Human", topn=10, ref_tissue="autopsy_blood", ref_color="#cc3333", f="S4K"),
   "Recipient 7, rep2, day 14" = c(org="Mouse", ref_tissue="skin", topn=10, ref_color="forestgreen", f="S4A"),
-   "Patient B" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="navy", f="S4L"), 
-  "Patient C" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="navy", f="S4M"), 
-  "Patient D" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="navy", f="S4N"), 
-  "Patient E" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="navy", f="S4O"), 
-  "Patient F" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="navy", f="S4P"),
-  "Patient G" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="navy", f="S4Q")
+   "Patient B" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="blue", f="S4L"), 
+  "Patient C" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="blue", f="S4M"), 
+  "Patient D" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="blue", f="S4N"), 
+  "Patient E" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="blue", f="S4O"), 
+  "Patient F" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="blue", f="S4P"),
+  "Patient G" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="blue", f="S4Q")
 )
 
   

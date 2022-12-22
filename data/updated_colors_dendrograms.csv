@@ -5,7 +5,7 @@ autopsy_marrow,Bone Marrow,Blood,#D13B32,,Bone Marrow,bone marrow,#cc3333,2,bone
 Tcells,T-cells,Blood,#D13B32,Whole.Blood,T-cells,,#A60000,3,donor,30,,,
 A_blood,PBSCs,Blood,#D13B32,Whole.Blood,PBSCs,blood,#cc3333,1,PBMCs,28,,red,
 A_marrow,Bone Marrow,Lymphatic,#D13B32,,Bone Marrow,bone marrow,#cc3333,2,bone marrow,25,,red4,
-pretx_blood,pre-tx PBMCs,Blood,#D13B32,Whole.Blood,pre-tx PBMCs,pre-tx blood,#cc3333,1,pre-tx (host) PBMCs,29,,yellow,
+pretx_blood,pre-tx PBMCs,Blood,#D13B32,Whole.Blood,pre-tx PBMCs,pre-tx blood,#cc3333,4,pre-tx (host) PBMCs,29,,yellow,
 ascending_colon,Ascending Colon,Lower GI,#C084B3,,Large Intestine,Large Intestine,#cc99cc,16,ascending colon,8,Large Intestine,hotpink1,Large Intestine
 colon,Colon,Lower GI,#C084B3,,Large Intestine,Large Intestine,#cc99cc,16,ascending colon,9,Large Intestine,hotpink1,Large Intestine
 right_colon,Ascending Colon,Lower GI,#C084B3,Colon...Sigmoid,Large Intestine,Large Intestine,#cc99cc,16,ascending colon,10,Large Intestine,hotpink1,Large Intestine

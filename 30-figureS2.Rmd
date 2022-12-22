@@ -108,8 +108,8 @@ clonality_donor = cc +
 
 #this plot colors by age of donor
 slope_donor = cc + 
-  geom_point(aes(y=slope, fill = as.factor(Pt_age_cat)), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) +
-  s2_theme + scale_fill_brewer(palette = "Set2") + xlab("") + labs(fill="Pt_age_cat")
+  geom_point(aes(y=slope, fill = as.factor(Donor_age_cat)), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) +
+  s2_theme + scale_fill_brewer(palette = "Set2") + xlab("") + labs(fill="Donor_age_cat")
 
 S2_donor = clonality_donor + slope_donor + plot_layout(guides = "collect")
 
@@ -125,11 +125,12 @@ slope_ALC = cc +
 
 S2_ALC = clonality_ALC + slope_ALC + plot_layout(guides = "collect")
 
-
-
 ggsave(plot=S2_A ,height=5,width=14, filename=file.path(figures_path, "S2A_by_graft.pdf"))
-ggsave(plot=S2_B ,height=5,width=14, filename=file.path(figures_path, "S2A_by_CMV.pdf"))
-ggsave(plot=S2_C ,height=5,width=14, filename=file.path(figures_path, "S2A_by_GVHD.pdf"))
+ggsave(plot=S2_B ,height=5,width=14, filename=file.path(figures_path, "S2B_by_CMV.pdf"))
+ggsave(plot=S2_C ,height=5,width=14, filename=file.path(figures_path, "S2C_by_GVHD.pdf"))
+ggsave(plot=S2_age ,height=5,width=14, filename=file.path(figures_path, "S2D_by_pt_age.pdf"))
+ggsave(plot=S2_donor ,height=5,width=14, filename=file.path(figures_path, "S2E_by_donor_age.pdf"))
+ggsave(plot=S2_ALC ,height=5,width=14, filename=file.path(figures_path, "S2F_by_ALC.pdf"))
 
 write.csv(msk_uc_corrs,"JSD_public_comparisons.csv")
 ```

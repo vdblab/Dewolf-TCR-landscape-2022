@@ -206,17 +206,16 @@ ggsave(plot=mouse_fig1i ,height=4.5,width=5,dpi=200,
        filename=file.path(figures_path, "mouse_fig1i.pdf"), 
        useDingbats=FALSE)
 
-(mouse_fig1h = div_base_mouse +
-  geom_point( aes(x=max_productive_frequency), size=6, shape=21, alpha = .5, position = jitter, fill="black") +
-  theme_classic()  +
+(mouse_figS1e = div_base_mouse +
+  geom_point( aes(x=max_productive_frequency), size=6, shape=21, alpha = .7, color = "black", position = jitter, fill="gray") +
+  theme_classic()  + geom_boxplot(aes(x=max_productive_frequency),  alpha=0, width = .5, size = .2, outlier.color = NA) +
   labs(x="clone frequency (%)", y="") +
   theme(legend.position = "right") + 
-#  scale_y_discrete(breaks=tissue_annotations$tissue, labels=tissue_annotations$tissue_label) +
   theme(axis.text.y = element_text(size = 10, face = "bold")) +  
   theme(axis.text.x = element_text(size = 8, angle = 0, hjust = 0, face = "bold")))
 
-ggsave(plot=mouse_fig1h ,height=4.5,width=5,dpi=200, 
-       filename=file.path(figures_path, "mouse_fig1h.pdf"), 
+ggsave(plot=mouse_figS1e ,height=4.5,width=5,dpi=200, 
+       filename=file.path(figures_path, "mouse_figS1e.pdf"), 
        useDingbats=FALSE)
 
 (mouse_fig1h = div_base_mouse + 
@@ -248,8 +247,6 @@ ggsave(plot=mouse_fig1g ,height=4.5,width=5,dpi=200,
        filename=file.path(figures_path, "mouse_fig1g.pdf"), 
        useDingbats=FALSE)
 
-nb.cols <- 19
-mouse_colors <- colorRampPalette(brewer.pal(8, "Pastel1"))(nb.cols)
 jitter_mouse <- position_jitter(width = 0.05, height = 0.06)
 
 (fig1f_mouse <- ggplot(data.frame(nclones=sapply(clones_per_pt, n_distinct)) %>% rownames_to_column("indv_label") %>% 

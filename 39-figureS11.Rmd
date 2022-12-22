@@ -327,14 +327,14 @@ for(i in  unique(tcr_corrs_anno$indv_label.x)){
            filter(indv_label.x == indv_label.y) %>% filter(indv_label.x==i)  %>%  
              left_join(tissue_annotations, by=c("tissue.x"="tissue")) %>%
              filter(tissue.x != tissue.y) %>%
-           left_join(tissue_annotations, by=c("tissue.y"="tissue")) , aes(x=tissue.x, y=JSD, shape=tissue.y, color=tissue.y)) + 
-    geom_jitter(width = .2, height = 0, size=3)  + 
+           left_join(tissue_annotations, by=c("tissue.y"="tissue")), aes(x=reorder(tissue.x, anatomic_order.x), y=JSD, shape=tissue.y, color=tissue.y)) + 
+    geom_jitter(width = .2, height = 0, size=5)  + 
     scale_color_manual(values=tissue_annotations$new_col, breaks=tissue_annotations$tissue) +
     scale_shape_manual(values=tissue_annotations$shape, breaks=tissue_annotations$tissue) +
     labs(x="Tissue", shape="Tissue", subtitle=i, color="Tissue") +
     theme_classic()   + theme(axis.text.x = element_text(angle=45, hjust=1)) + 
     scale_y_continuous(limits=c(0, 1))
-    ggsave(plot = tmp_p, filename = file.path(boxdir, str_glue("TCR_raw_comparisons_{i}.pdf")), width = 9, height = 6)
+    ggsave(plot = tmp_p, filename = file.path(boxdir, str_glue("TCR_raw_comparisons_{i}.pdf")), width = 6, height = 6)
 }
 
 #formatting individual graph to focus on comparisons with blood (Figure R1) --> this is just for the letter 
