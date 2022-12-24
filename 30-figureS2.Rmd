@@ -7,7 +7,7 @@ editor_options:
 # Supplementary figures
 ## S2
 
-analysis of divesity metrics across clinical variables: these are the plots for supplemental figure 2 looking at diversity metrics across different clinical variables
+analysis of diversity metrics across clinical variables: these are the plots for supplemental figure 2 looking at diversity metrics across different clinical variables
 
 ```{R 30-figureS2-1 }
 if (interactive()) load("./tcr_objects.Rdata")
@@ -31,7 +31,7 @@ s2diversity = tcr_sample_metadata %>%
               mutate(subject=paste("Patient", subject)), by=c("indv_label" = "subject")) %>%
   left_join(tissue_annotations, by="tissue")
 
-jitter2 <- position_jitter(width = 0.15, height = 0.0)
+jitter2 <- position_jitter(width = 0.15, height = 0.0, seed = 12345)
 
 GI = s2diversity %>%
   filter(!tissue_label %in% c("PBSCs", "Bone Marrow", "pre-tx PBMCs", "Heart", "Kidney", "mLN")) %>%
@@ -59,6 +59,31 @@ slope_graft = basep +
 
 S2_A = clonality_graft + slope_graft + plot_layout(guides = "collect")
 
+get_group_stats <- function(df, xcol, ycol){
+  thisdf <- df %>%
+    rename("x"=xcol,
+           "y"=ycol) %>% as.data.frame() %>% 
+    filter(!is.na(x))
+  if (nrow(thisdf) < nrow(df)){
+    warning(paste("Rows removed with NAs in column", xcol))
+  }
+  these_comparisons <- combn(unique(thisdf[, "x"]), m = 2, simplify = FALSE)
+  
+  stat.test <- thisdf %>%
+    wilcox_test(y ~ x, comparisons = these_comparisons) %>%
+    adjust_pvalue() %>%
+    add_significance("p.adj") %>% 
+    add_y_position()
+  
+  p_ <- ggplot(thisdf, aes(x=as.character(x), y=y, fill = as.character(x))) +
+    geom_violin() + 
+    geom_jitter() +
+    stat_pvalue_manual(stat.test, label = "p.adj")+
+    labs(x=xcol)
+  #  stat_compare_means(comparisons = these_comparisons)
+  return(list(plot=p_, stats=stat.test))
+}
+get_group_stats(df=GI, xcol="allograft", ycol="clonality")
 
 
 
@@ -77,6 +102,11 @@ slope_CMV = cc +
 
 S2_B = clonality_CMV + slope_CMV + plot_layout(guides = "collect")
 
+get_group_stats(df=GI_GVHD, xcol="CMV.reactivation", ycol="clonality")
+
+
+
+
 #this plot colors by grade of GVHD peri-autopsy (acute GVHD)
 clonality_GVHD = cc + 
   geom_point(aes(y=clonality, fill = as.factor(GVHD_severity)), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) + s2_theme + labs(fill="GVHD \nseverity") + xlab("") + scale_fill_brewer(palette = "Set2")
@@ -87,6 +117,10 @@ slope_GVHD = cc +
   s2_theme + scale_fill_brewer(palette = "Set2") + xlab("") + labs(fill="GVHD \nseverity")
 
 S2_C = clonality_GVHD + slope_GVHD + plot_layout(guides = "collect")
+
+
+get_group_stats(df=GI_GVHD, xcol="GVHD_severity", ycol="clonality")
+
 
 
 #this plot colors by grade of age of patient
@@ -101,6 +135,12 @@ slope_age = cc +
 
 S2_age = clonality_age + slope_age + plot_layout(guides = "collect")
 
+get_group_stats(df=GI_GVHD, xcol="Pt_age_cat", ycol="clonality")
+
+
+
+
+
 #this plot colors by grade of age of donor
 clonality_donor = cc + 
   geom_point(aes(y=clonality, fill = as.factor(Donor_age_cat)), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) + s2_theme + labs(fill="Donor_age_cat") + xlab("") + scale_fill_brewer(palette = "Set2")
@@ -112,6 +152,10 @@ slope_donor = cc +
   s2_theme + scale_fill_brewer(palette = "Set2") + xlab("") + labs(fill="Donor_age_cat")
 
 S2_donor = clonality_donor + slope_donor + plot_layout(guides = "collect")
+
+get_group_stats(df=GI_GVHD, xcol="Donor_age_cat", ycol="clonality")
+
+
 
 #this plot colors by ALC
 clonality_ALC = cc + 
