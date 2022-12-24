@@ -147,6 +147,9 @@ if(!file.exists(tcr_objects_path)){
   AA_by_patient = clone_freq_by_pt %>% 
     select(patient_name, amino_acid, productive_frequency) %>%
     pivot_wider(names_from = patient_name, values_from = productive_frequency, values_fill =  0, values_fn = sum ) 
+ bioid_by_patient = clone_freq_by_pt %>% 
+    select(patient_name, bio_identity, productive_frequency) %>%
+    pivot_wider(names_from = patient_name, values_from = productive_frequency, values_fill =  0, values_fn = sum ) 
   
   paired_patients = expand.grid(pt_x = unique(clone_freq_by_pt$patient_name), pt_y = unique(clone_freq_by_pt$patient_name)) %>% 
     filter(pt_x != pt_y)
@@ -157,6 +160,10 @@ if(!file.exists(tcr_objects_path)){
   }) 
   list_of_paired_patient_aa = apply(paired_patients, 1, function(row){
     AA_by_patient %>%
+      select(all_of(c(row[["pt_x"]],row[["pt_y"]])))
+  }) 
+  list_of_paired_patient_bioid = apply(paired_patients, 1, function(row){
+    bioid_by_patient %>%
       select(all_of(c(row[["pt_x"]],row[["pt_y"]])))
   }) 
   
@@ -175,8 +182,13 @@ if(!file.exists(tcr_objects_path)){
     map(~num_overlap_clones2(.)) %>% 
     unlist(.)
   
+  num_shared_bioid = list_of_paired_patient_bioid %>% 
+    map(~num_overlap_clones2(.)) %>% 
+    unlist(.)
+  
   paired_patients$num_shared_clones = num_shared_clone
   paired_patients$num_shared_aa = num_shared_aa
+  paired_patients$num_shared_bioid = num_shared_bioid
   
   shared_clones <- paired_patients
   
@@ -192,6 +204,11 @@ if(!file.exists(tcr_objects_path)){
     clone_freq_by_pt %>% filter(patient_name == x) %>% 
       filter(productive_frequency > 0) %>%
       pull(amino_acid) %>% unique()
+  })
+  bioid_per_pt <- lapply(setNames(indvs, indvs), function(x) {
+    clone_freq_by_pt %>% filter(patient_name == x) %>% 
+      filter(productive_frequency > 0) %>%
+      pull(bio_identity) %>% unique()
   })
   
   new_tcr_corrs <- read.csv(sep = "\t", "data/2022-08-29-tcr-correlations.tsv", header=FALSE, col.names = strsplit("fileA\tfileB\tsizeA\tsizeB\tnorm_sizeA\tnorm_sizeB\tJSD\tjsd_nt_norm\tjsd_aa_raw\tjsd_aa_norm\tmorisita_nt_raw\toverlapping_clones\toverlapping_aa", split = "\t")[[1]], na.strings = c("nan"))
@@ -218,6 +235,7 @@ if(!file.exists(tcr_objects_path)){
       #"shared_clones",
       "clones_per_pt",
       "aa_per_pt",
+      "bioid_per_pt",
       "tcr_raw"), 
     file = tcr_objects_path  )
   

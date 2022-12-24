@@ -152,3 +152,137 @@ ggsave(plot=JSD_public ,height=4,width=5, filename=file.path(figures_path, "Revi
 
 
 ```
+
+## Assessing shared clonotypes between patients among the two cohorts:
+
+```{r}
+raw_files <- sort(dir("data/UC_raw_TCR_data/", pattern = "*.tsv", full.names = TRUE))
+
+UC_tcr_raw <- purrr::map(raw_files, .f=function(x){
+    read.csv(x, sep = "\t") %>% mutate(sample_name=gsub("\\.tsv", "", basename(x))) 
+  }) %>% bind_rows()  %>% left_join(uc_metadata, by=c("sample_name"="raw"))
+  
+# merge our and the UC paper's raw tcr data, and filter out bioidentities only found once
+common_bio_identities <- bind_rows(
+    tcr_raw %>% filter(frame_type == "In") %>% mutate(cohort= "GvHD") %>% 
+      filter(sample_name %in% (tcr_sample_metadata %>% filter(org == "Human", gvhd == "GvHD", tissue != "graft_blood") %>% pull(sample_name))) %>% 
+      select(sample_name, tissue, indv_label, cohort, productive_frequency, productive_templates, templates, bio_identity, rearrangement), 
+    UC_tcr_raw%>% filter(frame_type == "In") %>%  mutate(cohort= "UC") %>% 
+      filter(tissue !="blood", disease!="control") %>% 
+      select(sample_name, tissue, indv_label, cohort, productive_frequency,  productive_templates, templates, bio_identity, rearrangement)
+    ) %>% 
+    arrange(bio_identity) %>% 
+    group_by(bio_identity) %>% 
+    filter(n() > 1) 
+
+# filter to retain bioidentities found in both cohorts
+by_pt_cross_cohort_common_bio_identities <- common_bio_identities %>% group_by(bio_identity) %>% filter( n_distinct(cohort) > 1)
+# filter to retain bioidentities found in both cohorts, ignoring singletons
+by_pt_cross_cohort_common_bio_identities_gt1 <- common_bio_identities %>% filter(templates > 1) %>% group_by(bio_identity) %>% filter(n_distinct(cohort) > 1)
+
+ 
+
+# library(ggalluvial)
+
+
+# only human
+# no comparators
+# relative abundance
+# block by pt rather than tissue
+# 
+
+# dat <-by_pt_cross_cohort_common_bio_identities %>% 
+#   mutate(tissue_clean = ifelse(grepl("blood", tissue, ignore.case = TRUE), "blood", tissue)) %>%
+#   filter(tissue_clean %in% c("blood", "rectum")) %>%
+#   group_by(cohort, tissue_clean,  bio_identity) %>% summarize(templates=sum(templates)) %>% 
+#   ungroup() %>%
+#   group_by(bio_identity, tissue_clean) %>%
+#   filter(n_distinct(cohort) > 1 , n() > 1) %>%
+#    as.data.frame()
+# is_alluvia_form(dat, weight = templates)
+# ggplot(dat,
+#                 aes(x = cohort, stratum = tissue_clean, y=templates, fill=tissue_clean, alluvium = bio_identity)) +
+#       geom_flow(stat = "alluvium", curve_type = "sigmoid", color = "gray45", size = .3) +
+#       geom_stratum(alpha = 1) +
+#   #    geom_text(aes(y=tissue_total *1.1, label=thislabel), size=15) +
+#   # consider , color=NA) + 
+#     scale_fill_discrete(guide="none") +
+#     geom_label(stat = "stratum", aes(label = after_stat(stratum))) +
+#       theme_classic() +
+#       theme(
+#         axis.text.y = element_text(size = 15, color = "black"),
+#         legend.position = "right",
+#         axis.text.x = element_text(size = 15, angle = -30, color = "black", hjust = 0),
+#         plot.margin = margin(r=80) #
+#       ) +
+#       scale_y_continuous(expand = c(0,0)) 
+# 
+# ggplot(by_pt_cross_cohort_common_bio_identities %>% 
+#          filter(cohort=="GvHD") %>%
+#          filter(grepl("^Pt", sample_name)) %>% 
+#          group_by(sample_name) %>% 
+#          summarize(shared_total_perc =100* sum(productive_frequency)), aes(y=sample_name, x= shared_total_perc)) + 
+#   geom_bar(stat="identity")
+# 
+# # sanity check
+# by_pt_cross_cohort_common_bio_identities %>% filter(sample_name == "PtC_pretx_blood_TCRB") %>% pull(templates) %>% sum()
+# 
+# 
+# 
+# by_msk_pr <- purrr::map(unique(by_pt_cross_cohort_common_bio_identities$indv_label), .f = function(pt){
+#   if (pt %in% uc_metadata$indv_label){
+#     return(data.frame())
+#   }
+#   thisdat <- by_pt_cross_cohort_common_bio_identities %>% group_by(bio_identity) %>% filter(pt %in%indv_label) %>% 
+#     ungroup()
+#   our_abund <-  thisdat %>% filter(indv_label == pt) %>% group_by(tissue) %>% summarize(cohort="MSK", indv_label=unique(tissue), total_abund = sum(productive_frequency))
+# 
+#   their_abund <- purrr::map(thisdat %>% filter(cohort=="GvHD", pt == indv_label) %>% pull("sample_name") %>% unique(),  .f = function(samp){
+#     thistissdat <-   thisdat %>% group_by(bio_identity) %>% filter(samp %in% sample_name) %>% filter(cohort=="UC") %>% ungroup() %>% group_by(indv_label) %>%  summarize(cohort="UC", total_abund = sum(productive_frequency))  %>% mutate(tissue=tcr_sample_metadata[tcr_sample_metadata$sample_name == samp,] %>% pull("tissue"))  })  %>%  bind_rows()
+#   bind_rows(our_abund, their_abund) %>% mutate( group = pt)
+#   
+# }) %>%  bind_rows()
+# 
+# ggplot(by_msk_pr, aes(x=total_abund, y=indv_label, fill=ifelse(indv_label==group, "grey", indv_label))) + 
+#   geom_bar(stat="identity") + 
+#     facet_grid(group~cohort, scales="free") + 
+#   scale_fill_discrete()
+# 
+# 
+# ggplot(by_msk_pr %>% filter(cohort == "MSK"), aes(x=total_abund, y=tissue)) + 
+#   geom_bar(stat="identity") + 
+#     facet_grid(group~., scales="free") + 
+#   scale_fill_discrete() + 
+# ggplot(by_msk_pr %>% filter(cohort == "UC"), aes(x=total_abund, y=tissue, fill=indv_label)) + 
+#   geom_bar(stat="identity") + 
+#     facet_grid(group~., scales="free") + 
+#   scale_fill_discrete()
+
+
+# final? 
+# For each individual
+by_msk_pt <- purrr::map(unique(by_pt_cross_cohort_common_bio_identities$indv_label), .f = function(pt){
+  # ignore the UC individuals - we are counting per MSK patient
+  if (pt %in% uc_metadata$indv_label){
+    return(data.frame())
+  }
+  # select the bioidentities found in that patient
+    thispatdat <- by_pt_cross_cohort_common_bio_identities %>% group_by(bio_identity) %>% filter(pt %in%indv_label) %>% 
+    ungroup()
+    # For each tissue
+    purrr::map(thispatdat %>% filter(cohort=="GvHD", pt == indv_label) %>% pull("sample_name") %>% unique(),  .f = function(samp){
+      # count the unique bioidentities found in the UC cohort
+      thispatdat %>% group_by(bio_identity) %>% filter(samp %in%sample_name) %>% 
+        ungroup() %>% filter(cohort == "UC") %>% summarize(samp=samp, n=n_distinct(bio_identity))
+    }) %>%  bind_rows()
+}) %>%  bind_rows()
+
+
+ggplot(by_msk_pt %>% left_join(tcr_sample_metadata, by=c("samp"="sample_name")), aes(x=n, y=gsub("_TCRB", "", samp))) + 
+  geom_bar(stat="identity") + 
+    facet_grid(indv_label~., scales="free", space="free") + 
+  scale_fill_discrete()   + 
+  labs(x="Number of unique clones (bio-identity) found in UC study's tissues", y= "Sample")+
+  scale_x_continuous(expand=c(0, 0))
+
+```
