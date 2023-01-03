@@ -1,11 +1,11 @@
-,subject,allograft,CMV reactivation,chronic GVHD,GVHD_severity,ALC (k/mcl),Pt_age_cat,Donor_age_cat
-1,A,TCD,no,no,4,0.4,20-44,20-44
-2,B,Unmodified,no,no,0,0.4,45-64,20-44
-3,C,Unmodified,no,yes,1,0,45-64,20-44
-4,D,TCD,no,no,3,0.1,45-64,45-64
-5,E,TCD,no,no,4,0.1,45-64,45-64
-6,F,Unmodified,yes,no,2,0.4,>65,20-44
-7,G,Unmodified,no,no,4,0.4,>65,20-44
-8,H,Comparator,n/a,n/a,n/a,0.6,>65,
-9,I,Comparator,n/a,n/a,n/a,0.76,20-44,
-10,J,Comparator,n/a,n/a,n/a,0.3,>65,
+,subject,allograft,CMV reactivation,chronic GVHD,GVHD_severity,Pt_age_cat,Donor_age_cat
+1,A,TCD,no,no,4,20-44,20-44
+2,B,Unmodified,no,no,0,45-64,20-44
+3,C,Unmodified,no,yes,1,45-64,20-44
+4,D,TCD,no,no,3,45-64,45-64
+5,E,TCD,no,no,4,45-64,45-64
+6,F,Unmodified,yes,no,2,>65,20-44
+7,G,Unmodified,no,no,4,>65,20-44
+8,H,Comparator,n/a,n/a,n/a,>65,
+9,I,Comparator,n/a,n/a,n/a,20-44,
+10,J,Comparator,n/a,n/a,n/a,>65,
