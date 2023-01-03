@@ -61,14 +61,21 @@ slopes <- tcr_raw %>%
 
 
 (tab_sample_summary <- tcr_raw %>% 
-#  group_by(sample_name, productive_templates, productive_rearrangements, sample_amount_ng, max_productive_frequency, productive_clonality) %>% 
-  group_by(sample_name, productive_templates, productive_rearrangements, sample_amount_ng, max_productive_frequency) %>% 
+  group_by(sample_name, species, productive_templates, productive_rearrangements, sample_amount_ng, max_productive_frequency) %>% 
   summarize(
     entropy = -sum(log2(productive_frequency)*productive_frequency),
     len = n(), 
     clonality = 1- entropy/(log2(len))) %>% 
   left_join(slopes) %>%
-  mutate (slope = abs(slope))
+  mutate (slope = abs(slope),
+          max_productive_frequency = round(max_productive_frequency*100, 2)) %>% 
+  rename(`Sample name` = sample_name, 
+         `productive templates` = productive_templates,
+         `unique productive clones` = productive_rearrangements,
+         `gDNA (ng)` = sample_amount_ng,
+         `Max frequency` = max_productive_frequency) %>% 
+    arrange(species, `Sample name`) %>% 
+    select(-len)
 )
 
 write.csv(tab_sample_summary, row.names = FALSE, file = file.path(tab_dir, "st4.csv"))
@@ -76,5 +83,32 @@ write.csv(tab_sample_summary, row.names = FALSE, file = file.path(tab_dir, "st4.
 
 ```
 
+## table S6 and S11
+
+```{r}
+tcr_corrs_anno <- tcr_corrs %>% 
+  left_join(tcr_sample_metadata %>% select(sample_name:species), by=c("sample1" = "sample_name")) %>% 
+  left_join(tcr_sample_metadata %>% select(sample_name:species), by=c("sample2" = "sample_name"))
+
+thisround <- function(x){round(x, 3)}
+write.csv(tcr_corrs_anno   %>% filter(grepl("^Pt", sample1) & grepl("^Pt", sample2)) %>% 
+            filter(indv_label.x == indv_label.y) %>% 
+            select(sample1, sample2, JSD, jsd_aa_raw, morisita_nt_raw) %>% 
+            rename(
+              `JSD (nucleotide)`=JSD,
+              `JSD (amino acid)` = jsd_aa_raw, 
+                   `Morisita (nucleotide)`= morisita_nt_raw) %>% 
+             mutate_if(is.numeric, thisround), row.names = FALSE, file = file.path(tab_dir, "st6-human-tcr-comparisons.csv"))
+
+write.csv(tcr_corrs_anno   %>% filter(!grepl("^Pt", sample1) & !grepl("^Pt", sample2)) %>% 
+            filter(indv_label.x == indv_label.y) %>% 
+            select(sample1, sample2, JSD, jsd_aa_raw, morisita_nt_raw) %>% 
+            rename(
+              `JSD (nucleotide)`=JSD,
+              `JSD (amino acid)` = jsd_aa_raw, 
+                   `Morisita (nucleotide)`= morisita_nt_raw) %>% 
+             mutate_if(is.numeric, thisround), row.names = FALSE, file = file.path(tab_dir, "st11-mouse-tcr-comparisons.csv"))
+
+```
 
 

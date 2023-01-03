@@ -35,8 +35,8 @@ get_top_clones_data <-  function(df, topn=10){
     filter(rearrangement %in% top_clones$rearrangement) 
   return(list(top_clones = top_clones, top_n_data=top_n_data))
 }
-make_alluvial_dataset <- function(tcr_data, tcr_sample_metadata, tissue_metadata, ref_org="Human", ref_pt="Patient B", ref_tissue="duodenum", topn=10, ref_color="mediumpurple"){
-  metadata_of_interest <- tcr_sample_metadata %>%
+make_alluvial_dataset <- function(tcr_data, thistcr_sample_metadata, tissue_metadata, ref_org="Human", ref_pt="Patient B", ref_tissue="duodenum", topn=10, ref_color="mediumpurple"){
+  metadata_of_interest <- thistcr_sample_metadata %>%
     filter(
       org==ref_org,
       indv_label == ref_pt
@@ -60,14 +60,21 @@ make_alluvial_dataset <- function(tcr_data, tcr_sample_metadata, tissue_metadata
   top_10_ascending = top_n_data_wide %>%
     arrange(desc(get(ref_tissue))) %>% 
     data.frame() %>%
-    mutate(key=row_number())
+    #mutate(key=row_number())
+    mutate(key=row_number(),
+           true_rank=rank(desc(get(ref_tissue)), ties.method = "min"))
+  
+  # alluviual plots need to have a unique  key per entry, and ties mess that up
+  # so, in order to include the ties, we calcualted both the key (based on row numbers, could also use rank  ties.method="first")
+  # and the rank with ties.method = "min". Even though the function requires a topn arg, we adjust that here to include all keys under the requested true rank
+  this_topn = max(top_10_ascending[top_10_ascending$true_rank <= topn, "key"])
   
   #now that we have the dataframe with just the clones we want and their frequencies in all the tissues, we will re-format the data for alluvium
   # top_10_ascending = data.frame(top_10_ascending)
   # top_10_ascending$key = 1:nrow(top_10_ascending) #this adds a "key" or "NT ID" to each row 
   # top_10_ascending$key #this is the number of rows
-  
   plot_data <- top_10_ascending %>% 
+    select(-true_rank) %>% 
     pivot_longer(cols = -key, names_to = "tissue", values_to="freq") %>%
     mutate(frequency_nudged = freq + rnorm(n=n(),  mean = 10E-7, sd = 10E-9)) %>% 
     data.frame() %>% 
@@ -78,7 +85,7 @@ make_alluvial_dataset <- function(tcr_data, tcr_sample_metadata, tissue_metadata
   
   p_ <- ggplot(plot_data,
                 aes(x = reorder(tissue_label, anatomic_order), stratum = frequency_nudged, y=frequency_nudged, alluvium = key,
-                    fill = ifelse(key%in%1:topn, ref_color, "gray75"))) +
+                    fill = ifelse(key%in%1:this_topn, ref_color, "gray75"))) +
       labs(x="", y="", fill = "Nucleotide ID", title="") +
       geom_flow(stat = "alluvium", curve_type = "sigmoid", color = "gray45", size = .3) +
       geom_stratum(alpha = 1) +
@@ -102,7 +109,7 @@ make_alluvial_dataset <- function(tcr_data, tcr_sample_metadata, tissue_metadata
               p_=p_))
 }
 
-thisdata <- make_alluvial_dataset(tcr_raw, ref_org = "Human", ref_pt = "Patient D", ref_tissue = "duodenum", tcr_sample_metadata = tcr_sample_metadata, tissue_metadata = tissue_annotations, topn = 10)
+thisdata <- make_alluvial_dataset(tcr_raw, ref_org = "Human", ref_pt = "Patient D", ref_tissue = "duodenum", thistcr_sample_metadata = tcr_sample_metadata, tissue_metadata = tissue_annotations, topn = 10)
 
 
 
@@ -147,7 +154,7 @@ for (i in seq_along(plots_to_make)){
       filter(!tissue %in% c("graft_blood") )
   }
   thisdata <- make_alluvial_dataset(
-    tcr_raw, tcr_sample_metadata=thistcr_sample_metadata, ref_org=thing["org"],
+    tcr_raw, thistcr_sample_metadata=thistcr_sample_metadata, ref_org=thing["org"],
     ref_tissue = thing["ref_tissue"], 
     ref_color = thing["ref_color"],
     tissue_metadata = tissue_annotations,
@@ -159,7 +166,7 @@ for (i in seq_along(plots_to_make)){
          useDingbats=FALSE)
 }
 
-ptF_alluvial <- make_alluvial_dataset(tcr_raw, ref_org = "Human", ref_pt = "Patient F", ref_tissue = "ascending_colon", tcr_sample_metadata = tcr_sample_metadata, tissue_metadata = tissue_annotations, topn = 5)
+ptF_alluvial <- make_alluvial_dataset(tcr_raw, ref_org = "Human", ref_pt = "Patient F", ref_tissue = "ascending_colon", thistcr_sample_metadata = tcr_sample_metadata, tissue_metadata = tissue_annotations, topn = 5)
 
 top5colors <- data.frame(
   key=1:5, 
@@ -314,7 +321,7 @@ for (pat in tcr_sample_metadata %>% filter(org == "Human") %>% pull(indv_label) 
   dev.off()
   supp_data_file_list[[pat]]  <- hmap_data_pre %>% select(-rearrangement) %>% select(2,1,3,4) %>% mutate(patient=pat)
 }
-write.csv(bind_rows(supp_data_file_list), file = "tables/stX-topclone-IDs.csv")
+write.csv(bind_rows(supp_data_file_list), row.names = FALSE,  file = "tables/st7-topclone-IDs.csv")
 ```
   
   

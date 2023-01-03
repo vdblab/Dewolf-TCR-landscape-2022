@@ -59,31 +59,42 @@ slope_graft = basep +
 
 S2_A = clonality_graft + slope_graft + plot_layout(guides = "collect")
 
-get_group_stats <- function(df, xcol, ycol){
+check_group_stats <- function(df, xcol, ycol){
+  # require(ggpubr)
+  # require(rstatix)
   thisdf <- df %>%
     rename("x"=xcol,
            "y"=ycol) %>% as.data.frame() %>% 
-    filter(!is.na(x))
-  if (nrow(thisdf) < nrow(df)){
-    warning(paste("Rows removed with NAs in column", xcol))
-  }
-  these_comparisons <- combn(unique(thisdf[, "x"]), m = 2, simplify = FALSE)
+    filter(!is.na(x)) 
   
-  stat.test <- thisdf %>%
-    wilcox_test(y ~ x, comparisons = these_comparisons) %>%
-    adjust_pvalue() %>%
-    add_significance("p.adj") %>% 
-    add_y_position()
+  test_output <- lmerTest::lmer(y ~ x + tissue + (1|indv_label), data=thisdf)
+  test_output_summary <- summary(test_output)
+  # slice gets rid of intercept
+  sig_test <- test_output_summary$coefficients %>% 
+    as.data.frame() %>% slice(-1) %>% 
+    mutate(p.adj = p.adjust(`Pr(>|t|)`)) %>% filter(p.adj <= .05)
   
-  p_ <- ggplot(thisdf, aes(x=as.character(x), y=y, fill = as.character(x))) +
-    geom_violin() + 
-    geom_jitter() +
-    stat_pvalue_manual(stat.test, label = "p.adj")+
-    labs(x=xcol)
-  #  stat_compare_means(comparisons = these_comparisons)
-  return(list(plot=p_, stats=stat.test))
+  # if (nrow(thisdf) < nrow(df)){
+  #   warning(paste("Rows removed with NAs in column", xcol))
+  # }
+  # these_comparisons <- combn(unique(thisdf[, "x"]), m = 2, simplify = FALSE)
+  # 
+  # stat.test <- thisdf %>%
+  #   wilcox_test(y ~ x, comparisons = these_comparisons) %>%
+  #   adjust_pvalue() %>%
+  #   add_significance("p.adj") %>% 
+  #   add_y_position()
+  
+  # p_ <- ggplot(thisdf, aes(x=as.character(x), y=y, fill = as.character(x))) +
+  #   geom_violin() + 
+  #   geom_jitter() +
+  #  stat_pvalue_manual(stat.test, label = "p.adj")+
+  #   labs(x=xcol)
+  # return(list(plot=p_, stats=sig_test))
+  if (nrow(sig_test) > 0){ stop(paste("significant association between", xcol, "and", ycol, "found!"))}
 }
-get_group_stats(df=GI, xcol="allograft", ycol="clonality")
+check_group_stats(df=GI, xcol="allograft", ycol="clonality")
+check_group_stats(df=GI, xcol="allograft", ycol="slope")
 
 
 
@@ -102,8 +113,8 @@ slope_CMV = cc +
 
 S2_B = clonality_CMV + slope_CMV + plot_layout(guides = "collect")
 
-get_group_stats(df=GI_GVHD, xcol="CMV.reactivation", ycol="clonality")
-
+check_group_stats(df=GI_GVHD, xcol="CMV.reactivation", ycol="clonality")
+check_group_stats(df=GI_GVHD, xcol="CMV.reactivation", ycol="slope")
 
 
 
@@ -119,7 +130,12 @@ slope_GVHD = cc +
 S2_C = clonality_GVHD + slope_GVHD + plot_layout(guides = "collect")
 
 
-get_group_stats(df=GI_GVHD, xcol="GVHD_severity", ycol="clonality")
+check_group_stats(df=GI_GVHD, xcol="GVHD_severity", ycol="clonality")
+check_group_stats(df=GI_GVHD, xcol="GVHD_severity", ycol="slope")
+
+
+check_group_stats(df=GI, xcol="gvhd", ycol="clonality")
+check_group_stats(df=GI, xcol="gvhd", ycol="slope")
 
 
 
@@ -135,7 +151,8 @@ slope_age = cc +
 
 S2_age = clonality_age + slope_age + plot_layout(guides = "collect")
 
-get_group_stats(df=GI_GVHD, xcol="Pt_age_cat", ycol="clonality")
+check_group_stats(df=GI_GVHD, xcol="Pt_age_cat", ycol="clonality")
+check_group_stats(df=GI_GVHD, xcol="Pt_age_cat", ycol="slope")
 
 
 
@@ -153,7 +170,8 @@ slope_donor = cc +
 
 S2_donor = clonality_donor + slope_donor + plot_layout(guides = "collect")
 
-get_group_stats(df=GI_GVHD, xcol="Donor_age_cat", ycol="clonality")
+check_group_stats(df=GI_GVHD, xcol="Donor_age_cat", ycol="clonality")
+check_group_stats(df=GI_GVHD, xcol="Donor_age_cat", ycol="slope")
 
 
 
@@ -177,4 +195,9 @@ ggsave(plot=S2_donor ,height=5,width=14, filename=file.path(figures_path, "S2E_b
 ggsave(plot=S2_ALC ,height=5,width=14, filename=file.path(figures_path, "S2F_by_ALC.pdf"))
 
 write.csv(msk_uc_corrs,"JSD_public_comparisons.csv")
+
+
+
+
+
 ```
