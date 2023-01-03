@@ -130,7 +130,7 @@ ggsave(plot=fig1b ,height=6,width=5, filename=file.path(figures_path, "fig1b.pdf
 
 ggsave(plot=fig1c ,height=4.5,width=5, filename=file.path(figures_path, "fig1c.pdf"))
 
-(fig1f <- div_base +
+(figS1D <- div_base +
     geom_point(aes(x=productive_templates, fill = indv_label), size = 6, shape=21, alpha = .9, position = jitter) +
     theme_classic()  +
     scale_x_log10(
@@ -145,7 +145,7 @@ ggsave(plot=fig1c ,height=4.5,width=5, filename=file.path(figures_path, "fig1c.p
     theme(axis.text.x = element_text(size = 8, hjust = 0, face = "bold")))
 
 
-ggsave(plot=fig1f ,height=4.5,width=5, filename=file.path(figures_path, "fig1f.pdf"))
+ggsave(plot=figS1D ,height=4.5,width=5, filename=file.path(figures_path, "figS1D.pdf"))
 
 (fig1d = div_base +
   geom_point( aes(x=max_productive_frequency, fill = indv_label), size=6, shape=21, alpha = .9, position = jitter) +
