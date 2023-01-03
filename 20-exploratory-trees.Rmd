@@ -195,7 +195,6 @@ for (metri in c("jsd")){
       scale_shape_manual(values=1:13)+
       scale_color_brewer(palette = "Paired") + 
       geom_segment(y=0, yend=0, x=min(ticks$x), xend=max(ticks$x)) + 
-  #    geom_vline(xintercept = max(tmp$edge.length)) +
       theme(legend.position = c(.2, .6))+
       annotate(geom="text",        x=ticks$x, y=-.5, label=ticks$lab )   + 
       geom_segment(data=ticks, aes(y=-yend, yend=0, x=x, xend=x )) 

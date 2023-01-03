@@ -226,7 +226,8 @@ perm_test <- shuff_summary %>%
     geom_point(data=stat.test.allhuman, aes(x=p.adj, y=between_within_groups.x, color=between_within_groups.x), shape=8, size=3, stroke=2) + 
     scale_color_brewer(palette = "Dark2", guide="none") +
     geom_text(data=perm_test, aes(x=ifelse(true_p.adj > .1, true_p.adj, .1), y=between_within_groups.x, color=between_within_groups.x, label=permuted_p_text), nudge_y = -.25)  +
-    labs(x="P-value", y="System",  title="System Permutations", caption=str_wrap("Asterisks show adjusted p-value of true system labels; black points points and violin outline show non-adjusted p-values of permutated system labels. Colored text shows number of tests equal to or less than the adjusted p-value for 1000 permutations.", width = 70)))
+    labs(x="P-value", y="System",  title="System Permutations", caption=str_wrap("Asterisks show adjusted p-value of true system labels; black points points and violin outline show non-adjusted p-values of permutated system labels. Colored text shows number of tests equal to or less than the adjusted p-value for 1000 permutations.", width = 70)) + 
+    scale_x_log10()) 
 
 
 ggsave(p_shuff_summary, filename = file.path(boxdir, "shuffles_between_within_summary.pdf"), width = 5, height=5)

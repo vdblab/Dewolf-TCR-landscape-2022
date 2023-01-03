@@ -286,3 +286,12 @@ ggplot(by_msk_pt %>% left_join(tcr_sample_metadata, by=c("samp"="sample_name")),
   scale_x_continuous(expand=c(0, 0))
 
 ```
+
+## 
+
+make a table of UC clones (x) by sample_name, acc count of n tissues detected.  Disregard original rank
+
+```{r}
+
+
+```

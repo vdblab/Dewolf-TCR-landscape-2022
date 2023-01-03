@@ -93,6 +93,7 @@ tcr_corrs_anno <- tcr_corrs %>%
 thisround <- function(x){round(x, 3)}
 write.csv(tcr_corrs_anno   %>% filter(grepl("^Pt", sample1) & grepl("^Pt", sample2)) %>% 
             filter(indv_label.x == indv_label.y) %>% 
+            filter(sample1 != sample2) %>% 
             select(sample1, sample2, JSD, jsd_aa_raw, morisita_nt_raw) %>% 
             rename(
               `JSD (nucleotide)`=JSD,
@@ -102,6 +103,7 @@ write.csv(tcr_corrs_anno   %>% filter(grepl("^Pt", sample1) & grepl("^Pt", sampl
 
 write.csv(tcr_corrs_anno   %>% filter(!grepl("^Pt", sample1) & !grepl("^Pt", sample2)) %>% 
             filter(indv_label.x == indv_label.y) %>% 
+            filter(sample1 != sample2) %>% 
             select(sample1, sample2, JSD, jsd_aa_raw, morisita_nt_raw) %>% 
             rename(
               `JSD (nucleotide)`=JSD,
