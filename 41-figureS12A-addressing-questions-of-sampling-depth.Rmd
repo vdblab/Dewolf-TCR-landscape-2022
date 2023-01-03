@@ -1,0 +1,237 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+##  Predicting the full TCR diversity
+
+> Tsoni Peled and  Nick Waters
+
+## References
+- https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4885658/
+- also used here https://www.nature.com/articles/nprot.2018.021?&ref=https://githubhelp.com#:~:text=the%20amount%20of%20unique%[…]d%20lines)%20from%20observed%20UMIs
+- https://cran.r-project.org/web/packages/preseqR/index.html
+- http://smithlabresearch.org/software/preseq/
+- https://github.com/smithlabcode/preseqR
+- Tutorial: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4885658/bin/NIHMS785236-supplement-Supplemental.pdf
+
+## Packages
+We used preseqR v1.2.1 due to the documentation available for that version of the package.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(tidyverse)
+library(patchwork)
+# devtools::install_version("preseqR", version = "1.2.1", repos = "http://cran.us.r-project.org")
+library(preseqR)
+# load("../Dewolf-TCR-landscape-2022/tcr_objects.Rdata")
+
+tcr_counts_gvh <- tcr_raw %>% select(sample_name, rearrangement,templates )
+tcr_counts_gvh %>% glimpse()
+tcr_counts_gvh %>% head()
+tcr_counts_gvh %>%
+  count(rearrangement) %>% nrow()
+duplicated(tcr_counts_gvh$rearrangement) %>% table()
+tcr_counts_gvh %>% count(sample_name) %>% print(n = 400)
+
+theme_set(theme_classic())
+# The  input here, (Tsoni writing this) is the dataframe overallTCR.hist
+# which has two columns, and I believe the first column here is misnamed n.
+# it should be j
+#The first column is meant to be ascending sorted counts j = 1,2 ... (but not necessarily sequential)
+# The second column is meant to n_j, the frequency count of j.
+# "one example is the word frequencies in Shakepssear's known works,
+# where n_j is the number of words appeared exactly j times.
+
+# The input data one downloads from the Smith lab look like this; which is why
+# Tsoni says the first column should be j, not n!
+
+# j	n_j
+# =======
+# 1	603776
+# 2	73628
+# 3	14113
+# 4	3691
+# 5	2446
+# 6	1612
+# 7	1148
+
+set.seed(123456)
+# To produce the "histogram" input table, need to perform count() on the templates column
+tcr_hist <- tcr_counts_gvh %>%
+  group_by(sample_name) %>%
+  count(templates) %>%
+  rename(j = templates,
+         n_j = n) %>%
+  arrange(sample_name, j) %>%
+  ungroup()
+
+tcr_hist %>% glimpse()
+# dat <- tcr_hist %>%filter(sample_name == "Balb-c_1_blood")
+```
+
+We set a fold increase target of 10x the original depth sampled, per sample (eg if a sample originally yielded 20k templates, we extrapolated library diversity at 200k templates).
+
+```{R}
+
+tcr_increase_results <- map(unique(tcr_hist$sample_name), .f = function(x){
+  # set a target depth fold change
+  target_depth = 10
+  # get only this sample's data
+  dat <- tcr_hist[tcr_hist$sample_name == x, ]  %>%
+    select(j, n_j)
+  # get the actual target depth (total of each line of histograms' product)
+  total_depth = sum(dat$j*dat$n_j)
+  # get the library complexity estimates
+  overallTCR.preseqR <- preseqR.rfa.species.accum.curve(
+    as.matrix(dat), 
+    ss=total_depth,
+    max.extrapolation=total_depth*target_depth, 
+    bootstrap.times = 10)
+  # reformat
+  data.frame(overallTCR.preseqR) %>%
+    mutate(sample_name=x,
+           total=total_depth,
+           target=total_depth*target_depth)
+}) %>% bind_rows()
+
+p_preseq_extrap_by_tissue <-  ggplot(tcr_increase_results %>% group_by(sample_name) %>%
+         summarize(perc_increase=max(yield.estimate)/min(yield.estimate)) %>%
+         left_join(tcr_sample_metadata %>% select(sample_name, indv_label, tissue, org, gvhd)) %>%
+         left_join(tissue_annotations) ,
+       aes(x=reorder(tissue_label, anatomic_order), y=perc_increase, color=new_col)) +
+  geom_boxplot(outlier.colour = NA) +
+  geom_jitter() +
+  scale_color_identity() +
+  facet_grid(org~gvhd, scales="free_x", space="free") +
+  scale_y_continuous(limits = c(1, 10), expand = c(0,0)) +
+  theme(axis.text.x = element_text(angle=45, hjust=1)) +
+  geom_hline(yintercept = 1) +
+  labs(x="Tissue", y="Preseq predicted fold change of unique TCRs \nwith 10x sequencing depth")
+
+
+p_preseq_select_tissues_curves <- ggplot(tcr_increase_results %>%
+         left_join(tcr_sample_metadata %>% select(sample_name, indv_label, tissue, org, gvhd)) %>%
+         filter(tissue %in% c("graft_blood", "duodenum", "skin", "stomatch", "descending_colon")) %>%
+         left_join(tissue_annotations) %>%
+       filter(org == "Human"), aes(x=sample.size, y=yield.estimate, color=indv_label)) +
+       geom_line() +
+  facet_wrap(gvhd + org~tissue) +
+  geom_abline(intercept = 0, slope = 1) + coord_equal()
+
+
+
+
+
+tcr_preseq_increase <- tcr_increase_results %>% group_by(sample_name) %>%
+  summarize(perc_increase=max(yield.estimate)/min(yield.estimate)) %>%
+  left_join(tcr_sample_metadata %>% select(sample_name, indv_label, tissue, org, gvhd)) %>%
+  filter(!grepl("[Dd]onor", sample_name)) %>% 
+  filter("PtD_autopsy_marrow_TCRB" != sample_name) %>%  
+  mutate(gr = ifelse(grepl("blood", tissue), tissue, "non-blood")) %>%
+  group_by(gr, org) %>% do(x=broom::tidy(summary(.$perc_increase))) %>% unnest(x) %>%
+  arrange(org, gr) %>% mutate(across(.cols = minimum:maximum, round, 2)) %>% rename(`Tissue Type`=gr, `Species`=org)
+
+```
+
+
+## Rarefaction
+
+```{r}
+
+tmp_long <- tcr_raw %>% 
+  filter(sample_name %in% c("PtF_jejunum_TCRB", "PtF_pretx_blood_TCRB")) %>% 
+  select(sample_name, templates, rearrangement) 
+tmp <- tmp_long %>% pivot_wider(names_from = sample_name, values_from=templates, values_fill = 0) %>%
+  column_to_rownames("rearrangement")
+vegan::rarecurve(t(tmp), step = 10, ylab = "Rearrangements", col =  data.frame(sample_name=colnames(tmp)) %>% left_join(tcr_sample_metadata %>% select(sample_name, tissue)) %>%
+  left_join(tissue_annotations) %>% pull(new_col)
+)
+
+tmpdf <- map(seq(1,  max(colSums(tmp)), 10), .f = function(x){
+  data.frame(Rearrangements=vegan::rarefy(t(tmp), sample = x, se = FALSE, )) %>% rownames_to_column("sample_name") %>% mutate(`Sample Size` = x) 
+}) %>% 
+  bind_rows() %>% 
+  left_join(data.frame(total=colSums(tmp), sample_name=names(colSums(tmp)))) %>% 
+  group_by(sample_name) %>% 
+  filter(`Sample Size` <= total) %>%
+  mutate(lab = ifelse(`Sample Size` == max(`Sample Size`), sample_name, ""))
+
+tmp_tcr_hist <- tmp_long %>%
+  group_by(sample_name) %>%
+  count(templates) %>%
+  rename(j = templates,
+         n_j = n) %>%
+  arrange(sample_name, j) %>%
+  ungroup()
+
+# make exemplar preseq curves out to 10x
+these_preseq <- map(unique(tmp_tcr_hist$sample_name), .f=function(x){
+  target_depth = 10
+  dat <- tmp_tcr_hist[tmp_tcr_hist$sample_name == x, ]  %>%
+    select(j, n_j)
+  # get the actual target depth (total of each line of histograms' product)
+  total_depth = sum(dat$j*dat$n_j)
+  # get the library complexity estimates
+  overallTCR.preseqR <- preseqR.rfa.species.accum.curve(
+    as.matrix(dat), 
+    ss=total_depth*target_depth/10,
+    max.extrapolation=total_depth*target_depth, 
+    bootstrap.times = 100)
+  # reformat
+  data.frame(overallTCR.preseqR) %>%
+    mutate(sample_name=x,
+           total=total_depth,
+           target=total_depth*target_depth)
+}) %>% bind_rows()
+
+# why is this requiring me such an increase in max.overlaps? I have no idea...
+p_rare <- ggplot(tmpdf, aes(x=`Sample Size`, y=Rearrangements, color=sample_name)) +
+  geom_abline(slope = 1, intercept = 0, linetype="dotted", color="grey20")  + 
+  geom_line(size=.7) +  
+  scale_color_manual(values=c("red", "purple"), guide="none") + 
+  geom_line(data=these_preseq, aes(x=sample.size, y=yield.estimate), linetype="dashed", size=.2) +  
+  geom_segment(data=these_preseq %>% group_by(sample_name) %>% filter(sample.size == max(sample.size)) %>% 
+                 left_join(tmpdf %>% group_by(sample_name) %>%  filter(`Sample Size` == max(`Sample Size`))), aes(x=sample.size, y=yield.estimate, xend=sample.size, yend=Rearrangements), color="grey") +
+  scale_x_continuous(limits = c(0, max(these_preseq$sample.size)*1.05)) +
+  scale_y_continuous(limits = c(0, max(these_preseq$sample.size)*1.05)) +
+  geom_text(data=these_preseq %>% group_by(sample_name) %>% mutate(lab=ifelse(sample.size == max(sample.size), sample_name, "")), 
+            aes(x=sample.size, y=yield.estimate, label=lab), nudge_y = 10000,  nudge_x = -30000) + 
+  coord_equal() + 
+  labs(x="Total Depth", y="Unique TCRs")+ 
+       #caption="Dotted black line indicates diagonal\nSolid lines are species accumulation curves.\nDashed lines indicate preseq extrapolations.\nGray vertical lines show predicted increase \n of unique species at 10X current sequencing depth")+
+  theme(plot.caption = element_text(hjust=0), text = element_text(size=15))
+
+# p_rare_inset <- ggplot(tmpdf %>% filter(`Sample Size` <= min(colSums(tmp))*1.1),
+#                        aes(x=`Sample Size`, y=Rearrangements, color=sample_name)) + geom_line() +  
+#   scale_color_manual(values=c("red", "purple"), guide="none") + 
+#   scale_y_continuous(expand=c(0, 0)) + 
+#   scale_x_continuous(expand=c(0, 0)) + 
+#   geom_abline(slope = 1, intercept = 0, linetype="dotted", color="grey40") + coord_equal() + labs(x="", y="")
+
+ggsave(p_rare,
+  filename = paste("exemplar_rarefaction_curves-", paste0(names(tmp), collapse="__"), ".pdf"), width = 8, height=8
+  # p_rare + inset_element(p_rare_inset, left = .1, bottom = 0.7, right = .5, top = 1)
+)
+ggsave(p_rare,
+  filename = paste("exemplar_rarefaction_curves-", paste0(names(tmp), collapse="__"), ".png"), width = 8, height=8
+  # p_rare + inset_element(p_rare_inset, left = .1, bottom = 0.7, right = .5, top = 1)
+)
+
+
+tt2 <- gridExtra::ttheme_minimal(core=list(fg_params=list(hjust=1, x=0.9)),
+                      rowhead=list(fg_params=list(hjust=1, x=0.95)))
+fold_increase_tab <-gridExtra::tableGrob(tcr_preseq_increase, theme=tt2, rows = NULL)
+combined_fold_increase_plot <- p_rare + fold_increase_tab + plot_layout(nrow=2, heights = c(.8, .1))
+#ggview::ggview(combined_fold_increase_plot, device = "png", width = 7, height=9)
+
+ggsave(combined_fold_increase_plot,
+  filename = paste("SX-exemplar_rarefaction_curves-", paste0(names(tmp), collapse="__"), ".png"), width = 7, height=9
+)
+ggsave(combined_fold_increase_plot,
+  filename = paste("SX-exemplar_rarefaction_curves-", paste0(names(tmp), collapse="__"), ".pdf"), width = 7, height=9
+)
+```    
+

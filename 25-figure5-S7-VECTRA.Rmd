@@ -4,11 +4,14 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # VECTRA Data 
 
-```{r}
+```{r, eval=FALSE}
 library(tidyverse)
 vectra_figs_dir <- file.path("figures", "vectra")
-# TODO: fix these paths
+# Note: if you would like access to the HALO data refereced below, please send us a message.
+
+
 #first we merge together the CD8, CD4, and Treg populations so we can graph together (this is the output from Nick Socci, after being run through a pipeline based on the original Halo output files)
+
 CD8 <- read_csv("/Volumes/vandenBrinkLab/Susan/Human GVHD/VECTRA/5_2021/results 2/2021-06-20/dewolfs_Proj01_5.5.1_20210620__Tcell_CD8_pos__TABLES.csv")
 CD4 <- read_csv("/Volumes/vandenBrinkLab/Susan/Human GVHD/VECTRA/5_2021/results 2/2021-06-20/dewolfs_Proj01_5.5.1_20210620__Tcell_CD8_neg__TABLES.csv")
 Treg <- read_csv("/Volumes/vandenBrinkLab/Susan/Human GVHD/VECTRA/5_2021/results 2/2021-06-20/dewolfs_Proj01_5.5.1_20210620__Treg__TABLES.csv")
