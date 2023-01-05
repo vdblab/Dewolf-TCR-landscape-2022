@@ -10,6 +10,7 @@ library(patchwork)  # for combining figures
 ```
 
 # Summary Tables
+Supplementary table 4 contains the per-sample summary metrics. 
 ```{r 10-tables-2 }
 tcr_objects_path <- "tcr_objects.Rdata"
 load(tcr_objects_path)
@@ -17,6 +18,7 @@ tab_dir <- "tables"
 dir.create(tab_dir, showWarnings = FALSE)
 
 getslope <- function(vals){
+  # get the slope of the abundance plots a la https://insight.jci.org/articles/view/121256
   vals = vals[vals$Included == "Yes",]
   slope = coef(lm(log(vals$n)~log(vals$productive_frequency)))[[2]]
   sample_name = unique(vals$sample_name)
@@ -53,7 +55,6 @@ slope_clean_low_frequency_clone<-function(vals)
 slopes <- tcr_raw %>% 
   group_by(sample_name) %>%
   count(productive_frequency) %>% 
-  #filter(n > sort(n)[2])
   group_split(.) %>% 
   map(~slope_clean_low_frequency_clone(.)) %>%
   map(~getslope(.)) %>% 
@@ -83,8 +84,8 @@ write.csv(tab_sample_summary, row.names = FALSE, file = file.path(tab_dir, "st4.
 
 ```
 
-## table S6 and S12
-
+## Table S6 and S12
+Tables S6 and S12 are the human and mouse sample pair correlation metrics (respectively).  
 ```{r}
 tcr_corrs_anno <- tcr_corrs %>% 
   left_join(tcr_sample_metadata %>% select(sample_name:species), by=c("sample1" = "sample_name")) %>% 
@@ -94,22 +95,24 @@ thisround <- function(x){round(x, 3)}
 write.csv(tcr_corrs_anno   %>% filter(grepl("^Pt", sample1) & grepl("^Pt", sample2)) %>% 
             filter(indv_label.x == indv_label.y) %>% 
             filter(sample1 != sample2) %>% 
-            select(sample1, sample2, JSD, jsd_aa_raw, morisita_nt_raw) %>% 
+            select(sample1, sample2, JSD, jsd_aa_raw, morisita_nt_raw, overlapping_clones ) %>% 
             rename(
               `JSD (nucleotide)`=JSD,
               `JSD (amino acid)` = jsd_aa_raw, 
                    `Morisita (nucleotide)`= morisita_nt_raw) %>% 
-             mutate_if(is.numeric, thisround), row.names = FALSE, file = file.path(tab_dir, "st6-human-tcr-comparisons.csv"))
+             mutate_if(is.numeric, thisround), 
+          row.names = FALSE, file = file.path(tab_dir, "st6-human-tcr-comparisons.csv"))
 
 write.csv(tcr_corrs_anno   %>% filter(!grepl("^Pt", sample1) & !grepl("^Pt", sample2)) %>% 
             filter(indv_label.x == indv_label.y) %>% 
             filter(sample1 != sample2) %>% 
-            select(sample1, sample2, JSD, jsd_aa_raw, morisita_nt_raw) %>% 
+            select(sample1, sample2, JSD, jsd_aa_raw, morisita_nt_raw, overlapping_clones ) %>% 
             rename(
               `JSD (nucleotide)`=JSD,
               `JSD (amino acid)` = jsd_aa_raw, 
                    `Morisita (nucleotide)`= morisita_nt_raw) %>% 
-             mutate_if(is.numeric, thisround), row.names = FALSE, file = file.path(tab_dir, "st12-mouse-tcr-comparisons.csv"))
+             mutate_if(is.numeric, thisround), 
+          row.names = FALSE, file = file.path(tab_dir, "st12-mouse-tcr-comparisons.csv"))
 
 ```
 

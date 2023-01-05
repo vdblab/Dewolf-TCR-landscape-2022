@@ -456,7 +456,7 @@ clonotype_data <- uc_msk_joined_clonotype_data  %>%
          mutate(per_sample_rank = rank(desc(templates), ties.method = "min")) %>% 
          group_by(tissue_label_fig1, indv_label, sample_name, cohort, Pathology, Category) %>% 
          summarize(n_clonotypes =n_distinct(cdr3_amino_acid),
-                   max_cdr3_relab = max(total_cdr3_productive_frequency),
+                   max_cdr3_perc = round(100*max(total_cdr3_productive_frequency), 3),
                    median_rank = median(per_sample_rank)) %>% 
          ungroup() %>% 
          filter(!is.na(Pathology) & !is.na(Category)) %>% 
@@ -464,22 +464,28 @@ clonotype_data <- uc_msk_joined_clonotype_data  %>%
          mutate(yorder=median(n_clonotypes)) %>% 
            ungroup() %>% 
            mutate(relab_abundance_cat = case_when(
-             max_cdr3_relab >= .05 ~ ">= .05",
-             max_cdr3_relab >= .01 ~ "(.05 - .01]",
-             max_cdr3_relab >= .005 ~ "(.01 - .005]",
-             TRUE ~ "< .005",
+             max_cdr3_perc >= 5 ~ ">= 5%",
+             max_cdr3_perc >= 1 ~ "(5% - 1%]",
+             max_cdr3_perc >= .5 ~ "(1% - 0.5%]",
+             TRUE ~ "< 0.5%",
              ))
 p_clonotyes_by_tissue_heatmap_by_rank <- ggplot(clonotype_data %>% filter(Pathology != "Unknown", Pathology != "Encounter for immunization") , 
-       aes(x=tissue_label_fig1, y=reorder(str_wrap(Pathology, 45), yorder), color = reorder(relab_abundance_cat, max_cdr3_relab))) +
+       aes(x=tissue_label_fig1, y=reorder(str_wrap(Pathology, 45), yorder), color = reorder(relab_abundance_cat, max_cdr3_perc))) +
   geom_point() + 
   scale_color_manual(values=c("grey90", "grey60", "navy", "lightblue")) + 
   facet_grid(Category  ~ cohort+indv_label, space="free", scales = "free") +
   theme(text = element_text(size=6), axis.text.x = element_text(angle=45, hjust=1), strip.text = element_text(size=6),
         strip.background = element_rect(color="grey80"), 
            legend.position = "bottom", legend.direction = "horizontal") + 
-  labs(x="Tissue", y="Associated Pathology Category \n (Pagliuca, et al. 2021)", color="Maximum Relative\nAbundance")
-ggsave(p_clonotyes_by_tissue_heatmap_by_rank, filename = "figures/UC/Revision_clonotypes_by_tissue_heatmap_by_rank.pdf",
+  labs(x="Tissue", y="Associated Pathology Category \n (Pagliuca, et al. 2021)", color="Maximum Percent\nAbundance")
+ggsave(p_clonotyes_by_tissue_heatmap_by_rank, filename = "figures/UC/Revision_clonotypes_by_tissue_heatmap_by_perc.pdf",
        width=10, height = 7)
-write.csv(clonotype_data, "tables/st5-annotated-clones.csv", row.names = FALSE)
+
+
+write.csv(uc_msk_joined_clonotype_data %>% filter(cohort != "UC") %>% 
+            filter(!is.na(Category), !is.na(Pathology)) %>%
+            mutate(total_cdr3_perc = round(100*total_cdr3_productive_frequency, 3)) %>% 
+            select(cdr3_amino_acid, sample_name, Category, Pathology, Antigen.protein, Epitope.peptide, HLA, total_cdr3_perc) %>% 
+            pivot_wider(names_from=sample_name, values_from=total_cdr3_perc, values_fill = 0) %>% arrange(Category, Pathology), "tables/st5-annotated-clones.csv", row.names = FALSE)
 
 ```

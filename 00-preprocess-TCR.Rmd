@@ -120,7 +120,7 @@ parallel -a human_mouse_file_pairs.tsv --bar --progress --colsep "\t" ~/minicond
 ```
 ### Parsing and processing the TCR Data
 
-The following chunk serves two purposes: reading in the TCR data, and calculating the JSD correlations based on the TCR profiles.  This takes a while, so the results are saved in an object called `tcr_objects.Rdata`. If this object is not found, it will create it. 
+The following chunk serves two purposes: reading in the TCR data, and calculating the JSD correlations based on the TCR profiles.  This takes a while, so the results are saved in an object called `tcr_objects.Rdata`. If this object is not found, it will create it. Don't take the md5 warnings too seriously:  data downloaded on different machines can be reordered, which kinda breaks the point of this validation step.
 
 
 ```{R 00-preprocess-TCR-3}
@@ -137,21 +137,18 @@ if(!file.exists(tcr_objects_path)){
     distinct()
 
 
-  clone_freq_by_pt = tcr_raw %>% 
-    rename(patient_name=indv_label )
-
-  NT_by_patient = clone_freq_by_pt %>% 
-    select(patient_name, rearrangement, productive_frequency) %>%
-    pivot_wider(names_from = patient_name, values_from = productive_frequency, values_fill = 0, values_fn = sum ) 
+  NT_by_patient = tcr_raw %>% 
+    select(indv_label, rearrangement, productive_frequency) %>%
+    pivot_wider(names_from = indv_label, values_from = productive_frequency, values_fill = 0, values_fn = sum ) 
   
-  AA_by_patient = clone_freq_by_pt %>% 
-    select(patient_name, amino_acid, productive_frequency) %>%
-    pivot_wider(names_from = patient_name, values_from = productive_frequency, values_fill =  0, values_fn = sum ) 
- bioid_by_patient = clone_freq_by_pt %>% 
-    select(patient_name, bio_identity, productive_frequency) %>%
-    pivot_wider(names_from = patient_name, values_from = productive_frequency, values_fill =  0, values_fn = sum ) 
+  AA_by_patient = tcr_raw %>% 
+    select(indv_label, amino_acid, productive_frequency) %>%
+    pivot_wider(names_from = indv_label, values_from = productive_frequency, values_fill =  0, values_fn = sum ) 
+ bioid_by_patient = tcr_raw %>% 
+    select(indv_label, bio_identity, productive_frequency) %>%
+    pivot_wider(names_from = indv_label, values_from = productive_frequency, values_fill =  0, values_fn = sum ) 
   
-  paired_patients = expand.grid(pt_x = unique(clone_freq_by_pt$patient_name), pt_y = unique(clone_freq_by_pt$patient_name)) %>% 
+  paired_patients = expand.grid(pt_x = unique(tcr_raw$indv_label), pt_y = unique(tcr_raw$indv_label)) %>% 
     filter(pt_x != pt_y)
   
   list_of_paired_patient_nt = apply(paired_patients, 1, function(row){
@@ -194,23 +191,23 @@ if(!file.exists(tcr_objects_path)){
   
   ##to draw the venn diagram, we need to create a different format
   ##the format is a list of vector, each vector containing the clone names present in each patient
-  indvs <- unique(clone_freq_by_pt$patient_name)
+  indvs <- unique(tcr_raw$indv_label)
   clones_per_pt <- lapply(setNames(indvs, indvs), function(x) {
-    clone_freq_by_pt %>% filter(patient_name == x) %>% 
+    tcr_raw %>% filter(indv_label == x) %>% 
       filter(productive_frequency > 0) %>%
       pull(rearrangement) %>% unique()
   }) 
   aa_per_pt <- lapply(setNames(indvs, indvs), function(x) {
-    clone_freq_by_pt %>% filter(patient_name == x) %>% 
+    tcr_raw %>% filter(indv_label == x) %>% 
       filter(productive_frequency > 0) %>%
       pull(amino_acid) %>% unique()
   })
   bioid_per_pt <- lapply(setNames(indvs, indvs), function(x) {
-    clone_freq_by_pt %>% filter(patient_name == x) %>% 
+    tcr_raw %>% filter(indv_label == x) %>% 
       filter(productive_frequency > 0) %>%
       pull(bio_identity) %>% unique()
   })
-  
+  # this is the result from the AB-correlations.py script described above
   new_tcr_corrs <- read.csv(sep = "\t", "data/2022-08-29-tcr-correlations.tsv", header=FALSE, col.names = strsplit("fileA\tfileB\tsizeA\tsizeB\tnorm_sizeA\tnorm_sizeB\tJSD\tjsd_nt_norm\tjsd_aa_raw\tjsd_aa_norm\tmorisita_nt_raw\toverlapping_clones\toverlapping_aa", split = "\t")[[1]], na.strings = c("nan"))
   #do a double join to get all (non-unique combinations)
   tcr_corrs <- rbind(
@@ -232,7 +229,6 @@ if(!file.exists(tcr_objects_path)){
       "tcr_sample_metadata", 
       "tcr_corrs",
       "tissue_annotations",
-      #"shared_clones",
       "clones_per_pt",
       "aa_per_pt",
       "bioid_per_pt",
