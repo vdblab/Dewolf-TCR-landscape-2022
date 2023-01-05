@@ -83,7 +83,7 @@ write.csv(tab_sample_summary, row.names = FALSE, file = file.path(tab_dir, "st4.
 
 ```
 
-## table S6 and S11
+## table S6 and S12
 
 ```{r}
 tcr_corrs_anno <- tcr_corrs %>% 
@@ -109,7 +109,7 @@ write.csv(tcr_corrs_anno   %>% filter(!grepl("^Pt", sample1) & !grepl("^Pt", sam
               `JSD (nucleotide)`=JSD,
               `JSD (amino acid)` = jsd_aa_raw, 
                    `Morisita (nucleotide)`= morisita_nt_raw) %>% 
-             mutate_if(is.numeric, thisround), row.names = FALSE, file = file.path(tab_dir, "st11-mouse-tcr-comparisons.csv"))
+             mutate_if(is.numeric, thisround), row.names = FALSE, file = file.path(tab_dir, "st12-mouse-tcr-comparisons.csv"))
 
 ```
 
