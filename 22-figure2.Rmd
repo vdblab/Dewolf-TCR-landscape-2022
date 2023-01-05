@@ -42,7 +42,7 @@ Scatter <- tcr_raw %>%
   coord_fixed() + theme_classic() 
 ) 
   
-ggsave(file = file.path(fig2_figs_path, "scatterplot_ascending_descending.pdf"), plot = scatterplot_ascending_descending, device = "pdf", height = 2, width = 2, units = "in")
+ggsave(file = file.path(fig2_figs_path, "2Ba-scatterplot_ascending_descending.pdf"), plot = scatterplot_ascending_descending, device = "pdf", height = 2, width = 2, units = "in")
 
  
 (scatterplot_ascending_skin =
@@ -75,8 +75,8 @@ ggsave(file = file.path(fig2_figs_path, "scatterplot_ascending_descending.pdf"),
 
 
       
-ggsave(file = file.path(fig2_figs_path, "scatterplot_ascending_skin.pdf"), plot = scatterplot_ascending_skin, device = "pdf", height = 2, width = 2, units = "in")
-ggsave(file = file.path(fig2_figs_path, "scatterplot_ascending_duodenum.pdf"), plot = scatterplot_ascending_duodenum, device = "pdf", height = 2, width = 2, units = "in")
+ggsave(file = file.path(fig2_figs_path, "2Bb-scatterplot_ascending_skin.pdf"), plot = scatterplot_ascending_skin, device = "pdf", height = 2, width = 2, units = "in")
+ggsave(file = file.path(fig2_figs_path, "2Bc-scatterplot_ascending_duodenum.pdf"), plot = scatterplot_ascending_duodenum, device = "pdf", height = 2, width = 2, units = "in")
 
 scatterplot_ascending_descending + scatterplot_ascending_skin + scatterplot_ascending_duodenum
 
@@ -86,11 +86,8 @@ scatterplot_ascending_descending + scatterplot_ascending_skin + scatterplot_asce
 
 
 ```{r 22-figure2-3 }
-# load("tcr_objects.Rdata")
-# load("tcr_graphic_objects.RData")
 
 tcr_corrs_anno <- tcr_corrs %>% 
-#  select(-sample1_tissue, -sample2_tissue, -sample1_clean, -sample2_clean) %>% 
   left_join(tcr_sample_metadata %>% select(sample_name:species), by=c("sample1" = "sample_name")) %>% 
   left_join(tcr_sample_metadata %>% select(sample_name:species), by=c("sample2" = "sample_name")) 
 
@@ -208,7 +205,6 @@ gtex <- jsd_individuals_dist_list[["All"]][[2]] %>% as.data.frame() %>% rownames
   select(-from) %>% rename(from="TissueTCR") %>% 
   inner_join(., tissue_key %>% select(Tissue, TissueTCR), by=c("to"="Tissue")) %>% filter(TissueTCR != "")  %>% 
   select(-to) %>% rename(to="TissueTCR")
-#   X1 X2 key
 
 
 
@@ -253,10 +249,6 @@ corr_df_raw <- tcr %>%
   left_join(specific_tissue_key %>% select(BroadTissueTCR, TissueTCR) %>% rename(From=BroadTissueTCR), by=c(from="TissueTCR")) %>%
   left_join(specific_tissue_key %>% select(Tissue, BroadTissueTCR) %>% rename(ToB=Tissue), by=c(To="BroadTissueTCR")) %>% 
   left_join(specific_tissue_key %>% select(Tissue, BroadTissueTCR) %>% rename(FromB=Tissue), by=c(From="BroadTissueTCR")) %>%
-  # filter(ToB %in% cluster_order$Tissue) %>% 
-  # filter(FromB %in% cluster_order$Tissue) %>% 
-#  group_by(to, from) %>%
- # distinct(from, to, .keep_all = TRUE) %>%
   group_by(ToB, FromB) %>%
   dplyr::summarize(tcr=median(tcr)) %>% 
   pivot_wider(names_from="ToB", values_from="tcr") %>% 
@@ -264,7 +256,6 @@ corr_df_raw <- tcr %>%
  as.matrix() 
 
 corr_df_raw <- corr_df_raw[, rownames(corr_df_raw)]
-#corr_df[upper.tri(corr_df)] <- NA
 cluster_order <- cluster_order %>% filter(Tissue %in%rownames(corr_df_raw) )
 corr_df <- corr_df_raw[cluster_order$Tissue, cluster_order$Tissue]
 
@@ -291,7 +282,7 @@ ticks <- make_ticks_df(dendr = dend2,dofilter =  TRUE, tick_pos = seq(0, 1, .05)
 this_anno <- left_join(tissue_annotations, specific_tissue_key %>% select(-col), c("tissue" ="TissueTCR")) %>% select(Tissue, everything())
 (p_gtex_spec_tissue <- ggtree(tmp)  %<+% this_anno +
     xlim(min(ticks$x), .4) +
-    geom_tiplab(aes(color=col, label=label), 
+    geom_tiplab(aes(color=new_col, label=label), 
                 offset = 0.01, 
                 align = T, linetype = NA, fontface="bold") +
     geom_tippoint() +
@@ -424,7 +415,7 @@ corr_df_no_tri[upper.tri(corr_df_no_tri)] <- NA
   labs(fill="JSD") + theme(axis.text = element_text(size=3)) + ylim(c(-1, 16)) + xlim(-.09, 1.04) )
   
 
-ggsave(p_gtex_spec_tissue, filename = file.path(fig2_figs_path, "GTEx_PtD_tissues.pdf"), height=5, width=4)
+ggsave(p_gtex_spec_tissue, filename = file.path(fig2_figs_path, "2C-GTEx_PtD_tissues.pdf"), height=5, width=4)
 ggsave(p_tree_and_heatmap, filename = file.path(fig2_figs_path, "GTEx_PtD_tissues_with_heatmap.pdf"), height=5, width=9)
 
 ```

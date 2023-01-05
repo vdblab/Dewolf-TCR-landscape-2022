@@ -19,7 +19,7 @@ editor_options:
 ## Packages
 We used preseqR v1.2.1 due to the documentation available for that version of the package.
 
-```{r setup, include=FALSE}
+```{r setup-41, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 
 library(tidyverse)

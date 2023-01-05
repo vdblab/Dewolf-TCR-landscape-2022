@@ -109,7 +109,6 @@ make_alluvial_dataset <- function(tcr_data, thistcr_sample_metadata, tissue_meta
               p_=p_))
 }
 
-thisdata <- make_alluvial_dataset(tcr_raw, ref_org = "Human", ref_pt = "Patient D", ref_tissue = "duodenum", thistcr_sample_metadata = tcr_sample_metadata, tissue_metadata = tissue_annotations, topn = 10)
 
 
 
@@ -239,7 +238,7 @@ supp_data_file_list <- list()
 for (pat in tcr_sample_metadata %>% filter(org == "Human") %>% pull(indv_label) %>% unique){
   thisdata <- get_top_clones_data(df=tcr_raw %>% filter(indv_label == all_of(pat), !tissue %in% tissues_to_completely_exclude), topn = 10)
   
-  # Patient A's donor sample consists almost entirely of singltons. We do not plot that for this sample
+  # Patient A's donor sample consists almost entirely of singletons. We do not plot that for this sample
   if (pat == "Patient A"){
     thisdata$top_n_data  <- thisdata$top_n_data %>% filter(tissue != "graft_blood") 
   }
