@@ -194,9 +194,9 @@ msk_overlapping_bioidentities <- tcr_raw %>% filter(frame_type == "In") %>%
   summarize(relab=round(100*sum(productive_frequency), 2)) %>%
   ungroup()  
     
-table_sx <- msk_overlapping_bioidentities %>% filter(gvhd=="GvHD") %>% select(sample_name, v_gene, j_gene, cdr3_amino_acid, n_samples, relab) %>%   pivot_wider(id_cols = c(v_gene,  cdr3_amino_acid, j_gene, n_samples), names_from=sample_name, values_from=relab, values_fill = 0)
+table_sx <- msk_overlapping_bioidentities %>% select(sample_name, v_gene, j_gene, cdr3_amino_acid, n_samples, relab) %>%   pivot_wider(id_cols = c(v_gene,  cdr3_amino_acid, j_gene, n_samples), names_from=sample_name, values_from=relab, values_fill = 0)
  
-write.csv(table_sx, "tables/st7-uc-clones-in-gvhd-samples.csv", row.names = FALSE)
+write.csv(table_sx, "tables/st5-uc-clones-in-msk-samples.csv", row.names = FALSE)
 
 
 
@@ -313,14 +313,173 @@ ggplot(by_msk_pt %>% left_join(tcr_sample_metadata, by=c("samp"="sample_name")),
 
 ```{r}
 download.file("https://df6sxcketz7bb.cloudfront.net/manuscripts/149000/149080/jci.insight.149080.sdt8.xlsx", "data/jci.insight.149080.sdt8.xlsx")
-clonotypes <- readxl::read_xlsx("data/jci.insight.149080.sdt8.xlsx", skip = 1)
+clonotypes <- readxl::read_xlsx("data/jci.insight.149080.sdt8.xlsx", skip = 1) %>%
+  mutate(Pathology=ifelse(Pathology == "Coeliac disease", "Celiac disease", Pathology)) %>% 
+  mutate(Pathology=ifelse(Pathology == "-", "Unknown", Pathology)) %>% 
+  mutate(Pathology=ifelse(Pathology == "COVID-19", "SARS-CoV-2", Pathology)) %>% 
+  mutate(Pathology=ifelse(Pathology == "HTLV-I-Associated Myelopathy/Tropical Spastic Paraparesis (HAM/TSP)", "HAM/TSP", Pathology))
 
 
-ggplot(left_join(msk_overlapping_bioidentities, clonotypes, by=c("cdr3_amino_acid"="CDR3.aa")), 
-#       aes(x=relab, y= paste0(Pathology, "\n", Antigen.protein), size=n_samples, fill=Category )) +
-       aes(x=relab, y=str_wrap(Pathology), size=n_samples, fill=Category )) +
+
+uc_msk_joined_clonotype_data <- bind_rows(
+    tcr_raw %>% filter(frame_type == "In") %>% mutate(cohort= gvhd) %>% 
+      filter(sample_name %in% (tcr_sample_metadata %>% filter(org == "Human", tissue != "graft_blood") %>% pull(sample_name))) %>% 
+      select(sample_name, tissue, indv_label, cohort, productive_frequency, productive_templates, templates, bio_identity, cdr3_amino_acid, rearrangement),
+    UC_tcr_raw%>% filter(frame_type == "In") %>%  mutate(cohort= "UC") %>% 
+      filter(tissue !="blood", disease!="control") %>% 
+      select(sample_name, tissue, indv_label, cohort, productive_frequency,  productive_templates, templates, bio_identity, cdr3_amino_acid, rearrangement)
+    ) %>% 
+  group_by(sample_name, tissue,  indv_label, cohort, cdr3_amino_acid) %>% 
+  summarize(templates = sum(templates, na.rm = TRUE),
+            total_cdr3_productive_frequency = sum(productive_frequency, na.rm = TRUE)) %>% 
+  ungroup() %>% 
+  group_by(indv_label, cdr3_amino_acid) %>% 
+  mutate(indv_median_templates =median(templates)) %>% ungroup() %>% 
+  left_join(clonotypes, by=c("cdr3_amino_acid"="CDR3.aa")) %>%
+  left_join(tissue_annotations %>% select(tissue, tissue_label_fig1, new_col))
+
+
+
+
+# by sample
+ggplot(uc_msk_joined_clonotype_data, 
+       aes(x=templates, y=str_wrap(Pathology), fill=Category )) +
   geom_point(shape=21) + 
-  facet_grid(Category  ~ gvhd, space="free", scales = "free_y")
+  facet_grid(Category  ~ cohort, space="free", scales = "free_y")
 
+# by pt median
+uc_msk_joined_clonotype_data_by_pt <- uc_msk_joined_clonotype_data %>%
+         select(indv_label, cdr3_amino_acid, total_cdr3_productive_frequency, Pathology, Category, cohort) %>% distinct() %>% 
+         group_by(indv_label,cohort, Pathology, Category) %>% 
+         summarize(n_clonotypes = ifelse(all(is.na(Pathology) & is.na(Category)), 1, n_distinct(cdr3_amino_acid)),
+                   median_relab = median(total_cdr3_productive_frequency))
+ggplot(uc_msk_joined_clonotype_data_by_pt, 
+       aes(x=n_clonotypes, y=str_wrap(Pathology), fill=Category, size=median_relab)) +
+  geom_point(shape=21) + 
+  facet_grid(Category  ~ cohort, space="free", scales = "free_y")
+
+# by tissue
+p_clonotyes_by_tissue <- ggplot(uc_msk_joined_clonotype_data  %>% 
+         filter(cohort != "UC") %>% 
+         filter(!is.na(Pathology) & !is.na(Category)) %>% 
+         group_by(tissue_label_fig1, indv_label, sample_name, cohort, Pathology, Category) %>% 
+         summarize(n_clonotypes =n_distinct(cdr3_amino_acid),
+                   median_relab = median(total_cdr3_productive_frequency)) %>% 
+         ungroup() %>% 
+         group_by(Pathology) %>%
+         mutate(yorder=median(n_clonotypes)), 
+       aes(x=n_clonotypes, y=reorder(Pathology, yorder), color=indv_label, shape=tissue_label_fig1,  size=median_relab )) +
+  geom_jitter(width = 0, height=.2) + 
+  scale_shape_manual(values=c(1:21)) + 
+  facet_grid(Category  ~ cohort, space="free", scales = "free_y") 
+p_relab_by_tissue <- ggplot(uc_msk_joined_clonotype_data  %>% 
+         filter(cohort != "UC") %>% 
+         filter(!is.na(Pathology) & !is.na(Category)) %>% 
+         group_by(tissue_label_fig1, indv_label, sample_name, cohort, Pathology, Category) %>% 
+         summarize(n_clonotypes =n_distinct(cdr3_amino_acid),
+                   median_relab = median(total_cdr3_productive_frequency)) %>% 
+         ungroup() %>% 
+         group_by(Pathology) %>%
+         mutate(yorder=median(n_clonotypes)), 
+       aes(x=n_clonotypes, y=reorder(Pathology, yorder), color=indv_label, shape=median_relab,  size=median_relab )) +
+  geom_jitter(width = 0, height=.2) + 
+  scale_shape_manual(values=c(1:21)) + 
+  facet_grid(Category  ~ cohort, space="free", scales = "free_y") 
+
+p_clonotyes_by_tissue_diff <- ggplot(uc_msk_joined_clonotype_data  %>% 
+         filter(cohort != "UC") %>% 
+         filter(!is.na(Pathology) & !is.na(Category)) %>% 
+         group_by(tissue_label_fig1, indv_label, sample_name, cohort, Pathology, Category) %>% 
+         summarize(n_clonotypes =n_distinct(cdr3_amino_acid),
+                   median_relab = median(total_cdr3_productive_frequency)) %>% 
+         ungroup() %>% 
+         group_by(Pathology) %>%
+         mutate(yorder=median(n_clonotypes)) %>%
+          select(-sample_name, -indv_label) %>% 
+         pivot_wider(names_from=cohort, values_from=median_relab, values_fn = median) %>% 
+        filter(!is.na(GvHD), !is.na(noGvHD)) %>%  
+         mutate(xdiff = noGvHD - GvHD),
+       aes(x=xdiff, y=reorder(Pathology, yorder), color=xdiff > 0, shape=tissue_label_fig1 )) +
+  geom_point() + 
+  scale_shape_manual(values=c(1:21)) + 
+  facet_grid(Category ~. , space="free", scales = "free_y")  
+  #scale_y_continuous(limits = c(-max(abs(xdiff), max(abs(xdiff))))) 
+  # labs(x= "Median relative abundance difference in GvHD relative to no GvHD\n(more abundant in GvHD                  more abundant in no GvHD")
+
+ggsave(p_clonotyes_by_tissue + p_clonotyes_by_tissue_diff + plot_layout( widths = c(.7, .3) ), filename = "figures/UC/Revision_clonotypes.pdf",
+       width=20, height = 12)
+ggsave(p_clonotyes_by_tissue , filename = "figures/UC/Revision_clonotypes_by_tissue.pdf",
+       width=16, height = 12)
+
+
+
+p_clonotyes_by_tissue_heatmap <- ggplot(uc_msk_joined_clonotype_data  %>% 
+         filter(cohort != "UC") %>% 
+         filter(!is.na(Pathology) & !is.na(Category)) %>% 
+         group_by(tissue_label_fig1, indv_label, sample_name, cohort, Pathology, Category) %>% 
+         summarize(n_clonotypes =n_distinct(cdr3_amino_acid),
+                   median_relab = median(total_cdr3_productive_frequency)) %>% 
+         ungroup() %>% 
+         group_by(Pathology) %>%
+         mutate(yorder=median(n_clonotypes)), 
+       aes(x=tissue_label_fig1, y=reorder(str_wrap(Pathology, 30), yorder), color=log10(n_clonotypes), size=median_relab )) +
+  geom_point() + 
+  scale_color_viridis_c()+
+  facet_grid(Category  ~ cohort+indv_label, space="free", scales = "free") +
+  theme(text = element_text(size=5), axis.text.x = element_text(angle=45, hjust=1))
+ggsave(p_clonotyes_by_tissue_heatmap , filename = "figures/UC/Revision_clonotypes_by_tissue_heatmap.pdf",
+       width=15, height = 9)
+
+
+# p_clonotyes_by_tissue_heatmap_by_rank <- ggplot(uc_msk_joined_clonotype_data  %>% 
+#          filter(cohort != "UC") %>% 
+#          group_by(sample_name) %>% 
+#          mutate(per_sample_rank = rank(desc(templates), ties.method = "min")) %>% 
+#          group_by(tissue_label_fig1, indv_label, sample_name, cohort, Pathology, Category) %>% 
+#          summarize(n_clonotypes =n_distinct(cdr3_amino_acid),
+#                    median_relab = median(total_cdr3_productive_frequency),
+#                    median_rank = median(per_sample_rank)) %>% 
+#          ungroup() %>% 
+#          filter(!is.na(Pathology) & !is.na(Category)) %>% 
+#          group_by(Pathology) %>%
+#          mutate(yorder=median(n_clonotypes)), 
+#        aes(x=tissue_label_fig1, y=reorder(str_wrap(Pathology, 30), yorder), color=log10(n_clonotypes), size=median_rank)) +
+#   geom_point() + 
+#   scale_color_viridis_c()+
+#   # scale_size(range = c(.01, 3), trans = 'reverse', limits=c(7715, 1), breaks=c(7715, 1)) +
+#   scale_size(range = c(3, .001), limits=c(1, 7715), breaks=rev(c(7715, 100, 10, 1))) +
+#   facet_grid(Category  ~ cohort+indv_label, space="free", scales = "free") +
+#   theme(text = element_text(size=5), axis.text.x = element_text(angle=45, hjust=1))
+clonotype_data <- uc_msk_joined_clonotype_data  %>% 
+         filter(cohort != "UC") %>% 
+         group_by(sample_name) %>% 
+         mutate(per_sample_rank = rank(desc(templates), ties.method = "min")) %>% 
+         group_by(tissue_label_fig1, indv_label, sample_name, cohort, Pathology, Category) %>% 
+         summarize(n_clonotypes =n_distinct(cdr3_amino_acid),
+                   max_cdr3_relab = max(total_cdr3_productive_frequency),
+                   median_rank = median(per_sample_rank)) %>% 
+         ungroup() %>% 
+         filter(!is.na(Pathology) & !is.na(Category)) %>% 
+         group_by(Pathology) %>%
+         mutate(yorder=median(n_clonotypes)) %>% 
+           ungroup() %>% 
+           mutate(relab_abundance_cat = case_when(
+             max_cdr3_relab >= .05 ~ ">= .05",
+             max_cdr3_relab >= .01 ~ "(.05 - .01]",
+             max_cdr3_relab >= .005 ~ "(.01 - .005]",
+             TRUE ~ "< .005",
+             ))
+p_clonotyes_by_tissue_heatmap_by_rank <- ggplot(clonotype_data %>% filter(Pathology != "Unknown", Pathology != "Encounter for immunization") , 
+       aes(x=tissue_label_fig1, y=reorder(str_wrap(Pathology, 45), yorder), color = reorder(relab_abundance_cat, max_cdr3_relab))) +
+  geom_point() + 
+  scale_color_manual(values=c("grey90", "grey60", "navy", "lightblue")) + 
+  facet_grid(Category  ~ cohort+indv_label, space="free", scales = "free") +
+  theme(text = element_text(size=6), axis.text.x = element_text(angle=45, hjust=1), strip.text = element_text(size=6),
+        strip.background = element_rect(color="grey80"), 
+           legend.position = "bottom", legend.direction = "horizontal") + 
+  labs(x="Tissue", y="Associated Pathology Category \n (Pagliuca, et al. 2021)", color="Maximum Relative\nAbundance")
+ggsave(p_clonotyes_by_tissue_heatmap_by_rank, filename = "figures/UC/Revision_clonotypes_by_tissue_heatmap_by_rank.pdf",
+       width=10, height = 7)
+write.csv(clonotype_data, "tables/st5-annotated-clones.csv", row.names = FALSE)
 
 ```
