@@ -29,4 +29,4 @@ liver,Liver,Liver,#3A7E46,,Liver,Liver,#663333,12,liver,20,,tan4,Liver
 mLN,mLN,Lymphatic,#475CA4,,mLN,mLN,#ff9933,18,mLN,17,,limegreen,
 spleen,Spleen,Lymphatic,#475CA4,,Spleen,Spleen,#ff9933,11,spleen,21,,orange,Spleen
 terminalileum,Ileum,Lower GI,#67B357,Small.Intestine...Terminal.Ileum,Small Intestine,Small Intestine,#666699,24,ileum,6,Small Intestine,,Small Intestine
-graft_blood,Graft/Blood,Donor,#FFC0CB,,donor,,#FFC0CB,8,donor,31,,#1E2F96,
+graft_blood,Graft/Blood,Donor,#FFC0CB,,donor,,#333366,8,donor,31,,#1E2F96,
