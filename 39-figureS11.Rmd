@@ -28,7 +28,7 @@ tcr_corrs_anno <- tcr_corrs %>%
 
 ```
 
-## Validating Trees
+# Validating JSD trees
 
 ## Quantifying within vs between system distances
 

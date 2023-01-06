@@ -35,7 +35,7 @@ get_top_clones_data <-  function(df, topn=10){
     filter(rearrangement %in% top_clones$rearrangement) 
   return(list(top_clones = top_clones, top_n_data=top_n_data))
 }
-make_alluvial_dataset <- function(tcr_data, thistcr_sample_metadata, tissue_metadata, ref_org="Human", ref_pt="Patient B", ref_tissue="duodenum", topn=10, ref_color="mediumpurple"){
+make_alluvial_dataset <- function(tcr_data, thistcr_sample_metadata, tissue_metadata, ref_org="Human", ref_pt="Patient B", ref_tissue="duodenum", topn=10, ref_color="mediumpurple", label_jsd=FALSE){
   metadata_of_interest <- thistcr_sample_metadata %>%
     filter(
       org==ref_org,
@@ -55,7 +55,16 @@ make_alluvial_dataset <- function(tcr_data, thistcr_sample_metadata, tissue_meta
     pivot_wider(id_cols = rearrangement, names_from=tissue, values_from=productive_frequency, values_fill = 0) %>% 
     column_to_rownames("rearrangement")
   
-  
+  # JSD Annotation 
+  jsd_anno <- tcr_corrs_anno %>% 
+        filter(sample1 %in% metadata_of_interest$sample_name, 
+               sample2 %in% metadata_of_interest$sample_name) %>% 
+        filter(tissue.y == ref_tissue) %>% select(sample1, sample2, tissue.x, tissue.y, JSD)
+  # 
+  # top_n_data %>% 
+  #   left_join(
+  #     ,
+  #     by=c("sample_name" = "sample1")) %>% select(sample_name, sample2, JSD)
   
   top_10_ascending = top_n_data_wide %>%
     arrange(desc(get(ref_tissue))) %>% 
@@ -79,8 +88,10 @@ make_alluvial_dataset <- function(tcr_data, thistcr_sample_metadata, tissue_meta
     mutate(frequency_nudged = freq + rnorm(n=n(),  mean = 10E-7, sd = 10E-9)) %>% 
     data.frame() %>% 
     left_join(tissue_metadata) %>% 
+    left_join(jsd_anno %>% select(tissue.x, JSD) %>% filter(tissue.x != ref_tissue ) %>% rename(tissue=tissue.x)) %>%
     group_by(tissue) %>%
     mutate(tissue_total = sum(freq),
+           jsd_label = ifelse(tissue != ref_tissue &row_number() == 1, round(JSD, 2), ""),
            thislabel=ifelse(tissue == ref_tissue & row_number()==1, "*", ""))
   
   p_ <- ggplot(plot_data,
@@ -101,7 +112,10 @@ make_alluvial_dataset <- function(tcr_data, thistcr_sample_metadata, tissue_meta
       ) +
       scale_y_continuous(expand = c(0,0)) 
   
+  if (label_jsd){
+    p_ <- p_ +  geom_text(aes(y=tissue_total *1.05, label=jsd_label), size=3)
 
+  }
   return(list(top_n_data=top_n_data,
               top_clones=top_clones,
               top_n_data_wide=top_n_data_wide,
@@ -152,11 +166,14 @@ for (i in seq_along(plots_to_make)){
     thistcr_sample_metadata <- thistcr_sample_metadata %>% 
       filter(!tissue %in% c("graft_blood") )
   }
+
   thisdata <- make_alluvial_dataset(
     tcr_raw, thistcr_sample_metadata=thistcr_sample_metadata, ref_org=thing["org"],
     ref_tissue = thing["ref_tissue"], 
     ref_color = thing["ref_color"],
     tissue_metadata = tissue_annotations,
+    # label_jsd=!grepl("^S", thing["f"]),
+    label_jsd=TRUE,
     ref_pt=names(plots_to_make)[i], topn=as.numeric(thing["topn"]))
   
   
@@ -189,7 +206,7 @@ p_ptF_alluvial_A <- ggplot(ptF_alluvial$plot_data %>%
       ) +
       scale_y_continuous(expand = c(0,0)) 
 ggsave(plot=p_ptF_alluvial_A ,height=5,width=10,dpi=200, 
-         filename=file.path(alluvial_figures_path, "S4A_PtF_multicolor.pdf"), 
+         filename=file.path(alluvial_figures_path, "3B_PtF_multicolor.pdf"), 
          useDingbats=FALSE)
 
 

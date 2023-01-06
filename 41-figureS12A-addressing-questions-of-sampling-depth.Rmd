@@ -4,7 +4,7 @@ editor_options:
   chunk_output_type: console
 ---
 
-##  Predicting the full TCR diversity
+#  Rarefaction and predicting the full TCR diversity via Preseq
 
 > Tsoni Peled and  Nick Waters
 
@@ -21,21 +21,14 @@ We used preseqR v1.2.1 due to the documentation available for that version of th
 
 ```{r setup-41, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-
+depth_dir <- file.path("figures/depth/")
+dir.create(depth_dir, showWarnings = FALSE)
 library(tidyverse)
 library(patchwork)
 # devtools::install_version("preseqR", version = "1.2.1", repos = "http://cran.us.r-project.org")
 library(preseqR)
-# load("../Dewolf-TCR-landscape-2022/tcr_objects.Rdata")
 
 tcr_counts_gvh <- tcr_raw %>% select(sample_name, rearrangement,templates )
-tcr_counts_gvh %>% glimpse()
-tcr_counts_gvh %>% head()
-tcr_counts_gvh %>%
-  count(rearrangement) %>% nrow()
-duplicated(tcr_counts_gvh$rearrangement) %>% table()
-tcr_counts_gvh %>% count(sample_name) %>% print(n = 400)
-
 theme_set(theme_classic())
 # The  input here, (Tsoni writing this) is the dataframe overallTCR.hist
 # which has two columns, and I believe the first column here is misnamed n.
@@ -69,12 +62,19 @@ tcr_hist <- tcr_counts_gvh %>%
   ungroup()
 
 tcr_hist %>% glimpse()
-# dat <- tcr_hist %>%filter(sample_name == "Balb-c_1_blood")
 ```
 
 We set a fold increase target of 10x the original depth sampled, per sample (eg if a sample originally yielded 20k templates, we extrapolated library diversity at 200k templates).
 
 ```{R 41-figureS12A-addressing-questions-of-sampling-depth-1}
+preseq_predictions <- "preseq_data.rds"
+if(file.exists(preseq_predictions)){
+  tcr_increase_results<- readRDS(preseq_predictions)
+} else{
+   # NOTE: this generates lots of warnings:
+  # - max count before zero is les than min required count (4), sample not sufficiently deep or duplicates removed
+  # that seems to happen for very diverse libraries, where it appears to be deduplicated and preseq cant run
+  # 
 
 tcr_increase_results <- map(unique(tcr_hist$sample_name), .f = function(x){
   # set a target depth fold change
@@ -96,7 +96,8 @@ tcr_increase_results <- map(unique(tcr_hist$sample_name), .f = function(x){
            total=total_depth,
            target=total_depth*target_depth)
 }) %>% bind_rows()
-
+saveRDS(tcr_increase_results, file = preseq_predictions )
+}
 p_preseq_extrap_by_tissue <-  ggplot(tcr_increase_results %>% group_by(sample_name) %>%
          summarize(perc_increase=max(yield.estimate)/min(yield.estimate)) %>%
          left_join(tcr_sample_metadata %>% select(sample_name, indv_label, tissue, org, gvhd)) %>%
@@ -212,11 +213,11 @@ p_rare <- ggplot(tmpdf, aes(x=`Sample Size`, y=Rearrangements, color=sample_name
 #   geom_abline(slope = 1, intercept = 0, linetype="dotted", color="grey40") + coord_equal() + labs(x="", y="")
 
 ggsave(p_rare,
-  filename = paste("exemplar_rarefaction_curves-", paste0(names(tmp), collapse="__"), ".pdf"), width = 8, height=8
+  filename = file.path(depth_dir, paste0("exemplar_rarefaction_curves-", paste0(names(tmp), collapse="__"), ".pdf")), width = 8, height=8
   # p_rare + inset_element(p_rare_inset, left = .1, bottom = 0.7, right = .5, top = 1)
 )
 ggsave(p_rare,
-  filename = paste("exemplar_rarefaction_curves-", paste0(names(tmp), collapse="__"), ".png"), width = 8, height=8
+  filename = file.path(depth_dir, paste0("exemplar_rarefaction_curves-", paste0(names(tmp), collapse="__"), ".png")), width = 8, height=8
   # p_rare + inset_element(p_rare_inset, left = .1, bottom = 0.7, right = .5, top = 1)
 )
 
@@ -228,10 +229,10 @@ combined_fold_increase_plot <- p_rare + fold_increase_tab + plot_layout(nrow=2, 
 #ggview::ggview(combined_fold_increase_plot, device = "png", width = 7, height=9)
 
 ggsave(combined_fold_increase_plot,
-  filename = paste("SX-exemplar_rarefaction_curves-", paste0(names(tmp), collapse="__"), ".png"), width = 7, height=9
+  filename = file.path(depth_dir, paste0("S12-exemplar_rarefaction_curves-", paste0(names(tmp), collapse="__"), ".png")), width = 7, height=9
 )
 ggsave(combined_fold_increase_plot,
-  filename = paste("SX-exemplar_rarefaction_curves-", paste0(names(tmp), collapse="__"), ".pdf"), width = 7, height=9
+  filename = file.path(depth_dir, paste0("S12-exemplar_rarefaction_curves-", paste0(names(tmp), collapse="__"), ".pdf")), width = 7, height=9
 )
 ```    
 
