@@ -74,7 +74,7 @@ tcr_hist %>% glimpse()
 
 We set a fold increase target of 10x the original depth sampled, per sample (eg if a sample originally yielded 20k templates, we extrapolated library diversity at 200k templates).
 
-```{R}
+```{R 41-figureS12A-addressing-questions-of-sampling-depth-1}
 
 tcr_increase_results <- map(unique(tcr_hist$sample_name), .f = function(x){
   # set a target depth fold change
@@ -139,7 +139,7 @@ tcr_preseq_increase <- tcr_increase_results %>% group_by(sample_name) %>%
 
 ## Rarefaction
 
-```{r}
+```{r 41-figureS12A-addressing-questions-of-sampling-depth-2}
 
 tmp_long <- tcr_raw %>% 
   filter(sample_name %in% c("PtF_jejunum_TCRB", "PtF_pretx_blood_TCRB")) %>% 

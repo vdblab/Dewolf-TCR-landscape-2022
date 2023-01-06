@@ -24,9 +24,13 @@ figures_path <- file.path("figures", "fig1")
 dir.create(figures_path, showWarnings = FALSE, recursive = TRUE)
 
 diversity <- read.csv("tables/st4.csv") %>% 
+  rename(sample_name=Sample.name,
+         productive_templates=productive.templates,
+         max_productive_frequency=Max.frequency,
+         len=unique.productive.clones) %>% 
   left_join(tcr_sample_metadata %>% select(-sample_amount_ng) %>% 
               select(sample_name:species)) %>%
-  left_join(tissue_annotations, by="tissue")
+  left_join(tissue_annotations, by="tissue") 
 
 indvs <- unique(tcr_raw$indv_label)
 
@@ -83,7 +87,7 @@ tcr_raw %>%
 ```
 
 
-```{r}
+```{r 21-figure1-1-bis}
 
 human_patient_colors <- c("mediumblue", "navy", "red", "yellow", "green4", "lightskyblue", "saddlebrown", "gray75", "gray45", "gray 85")
 names(human_patient_colors) <- paste("Patient", LETTERS[1:10])

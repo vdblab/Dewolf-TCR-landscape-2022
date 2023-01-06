@@ -197,7 +197,7 @@ ggsave(plot=p_ptF_alluvial_A ,height=5,width=10,dpi=200,
 
 
 ### Mouse Alluvials
-```{r}
+```{r 23-figure3-S4-S5-1}
 mouse_plots_to_make <- list(
   "Recipient 7, rep2, day 14" = c(org="Mouse", ref_tissue="skin", topn=10, ref_color="forestgreen", f="S4A")
 )
@@ -325,7 +325,7 @@ write.csv(bind_rows(supp_data_file_list), row.names = FALSE,  file = "tables/st7
   
   
 ## cumulative rank abundance plot
-```{R}
+```{R 23-figure3-S4-S5-2}
 
 p_ <- tcr_raw %>% filter(sample_name == "PtC_stomach_TCRB") %>% 
   group_by(sample_name) %>% 
@@ -337,13 +337,14 @@ p_ <- tcr_raw %>% filter(sample_name == "PtC_stomach_TCRB") %>%
             perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100) %>% 
   ggplot(aes(x=clone_rank, y=perc_cu)) + geom_point() +
   geom_vline(xintercept = 10, linetype="dotted", color="gray")
-p_
+# p_
 p_ + coord_cartesian(xlim=c(0, 50))
 p_ + scale_x_log10() 
 
 
 
 abundance_summary_data <-  tcr_raw %>% 
+  filter(sample_name != "PtA_donor_TCRB") %>% filter(sample_name != "PtD_autopsy_marrow_TCRB") %>% filter(sample_name != "PtD_kidney_TCRB") %>% filter(sample_name != "PtD_donor_TCRB") %>% filter(gvhd == "GvHD")  %>% 
   group_by(sample_name) %>% 
   arrange(desc(productive_frequency)) %>% 
   mutate(
@@ -378,84 +379,89 @@ abundance_summary_data_grouped_summaries <- abundance_summary_data %>%
   ungroup() 
 
 
-# ggplot() +   geom_line(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=mean_perc_cu, group=grp), alpha=.7) 
 
- ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) + geom_line(alpha=.02) +
-   geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10() 
+# clone_rank_plot <- ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) + geom_line(alpha=.02) +
+#    geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10() 
 
-ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) +
+p_mouse_human_cumu <- ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) +
   geom_line(alpha=.05) +
-  geom_line(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=mean_perc_cu, group=grp), alpha=.7) +
-  geom_ribbon(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=1, ymin=mean_perc_cu-sem_perc_cu, ymax=mean_perc_cu + sem_perc_cu, group=grp, fill=grp), alpha=.5) +
-  geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10() 
+  geom_line(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=org, group=org, y=mean_perc_cu), alpha=.7) +
+  geom_ribbon(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=org, y=1, ymin=mean_perc_cu-sem_perc_cu, ymax=mean_perc_cu + sem_perc_cu, group=org, fill=org), alpha=.5) +
+  geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10()  + 
+  facet_wrap(~org) + 
+  scale_color_manual(values=c("Human"="#6495ED", "Mouse"="#9FE2BF")) +
+  scale_fill_manual(values=c("Human"="#6495ED", "Mouse"="#9FE2BF")) +
+  labs(x="clone rank", y="cumulative frequency (%)") 
 
-#just the human data, stratifying by group
-abundance_summary_data <-  tcr_raw %>% 
-  group_by(sample_name) %>% 
-  filter(org != "Mouse") %>%
-  arrange(desc(productive_frequency)) %>% 
-  mutate(
-    clone_rank = rank(desc(productive_frequency), ties.method = "min"),
-    clone_rank_ave = rank(desc(productive_frequency), ties.method = "average"),
-         cumu_templates = cumsum(templates)) %>%
-  group_by(sample_name, gvhd, samp_type , clone_rank, productive_templates) %>%
-  summarize(max_cumulative_tempaltes_at_clone_rank = max(cumu_templates),
-            perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100) %>% 
-  distinct() %>% 
-  ungroup()
+ggsave(plot=p_mouse_human_cumu ,height=4,width=10, filename=file.path(alluvial_figures_path, "S12D-mouse_human_cumulative.pdf"))
 
+# #just the human data, stratifying by group
+# abundance_summary_data <-  tcr_raw %>% 
+#   group_by(sample_name) %>% 
+#   filter(org != "Mouse") %>%
+#   arrange(desc(productive_frequency)) %>% 
+#   mutate(
+#     clone_rank = rank(desc(productive_frequency), ties.method = "min"),
+#     clone_rank_ave = rank(desc(productive_frequency), ties.method = "average"),
+#          cumu_templates = cumsum(templates)) %>%
+#   group_by(sample_name, gvhd, org, samp_type , clone_rank, productive_templates) %>%
+#   summarize(max_cumulative_tempaltes_at_clone_rank = max(cumu_templates),
+#             perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100) %>% 
+#   distinct() %>% 
+#   ungroup()
+# 
+# 
+# all_combos <- expand.grid(
+#   sample_name=unique(abundance_summary_data$sample_name),
+#   clone_rank = 1:max(abundance_summary_data$clone_rank))
+# 
+# abundance_summary_data_grouped_summaries <- abundance_summary_data %>%
+#     full_join(all_combos) %>% 
+#   arrange(sample_name, clone_rank) %>% 
+#   fill(everything(), .direction = "down") %>% 
+#    group_by(gvhd, clone_rank) %>%
+#   summarize(
+#     grp=paste0(org, "-", gvhd),
+#     mean_perc_cu = mean(perc_cu),
+#     min_perc_cu = min(perc_cu),
+#     max_perc_cu = max(perc_cu),
+#     sem_perc_cu = sqrt(var(perc_cu)/n()),
+#     sd_perc_cu = sd(perc_cu),
+#     ) %>% 
+#   distinct() %>%
+#   ungroup() 
+# 
+# 
+# 
+# 
+# p_gvhd_no_gvhd <- ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) +
+#   geom_line(alpha=.05) +
+#   geom_line(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=mean_perc_cu, group=grp), alpha=.7) +
+#   xlab("clone rank ") + 
+#   ylab("cumulative reads (%)") +
+#   geom_ribbon(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=1, ymin=mean_perc_cu-sem_perc_cu, ymax=mean_perc_cu + sem_perc_cu, group=grp, fill=grp), alpha=.5) +
+#   geom_vline(xintercept = 10, linetype="dotted", color="gray4", size = .8) + scale_x_log10() + scale_fill_manual(values = c("#6495ED", "#9FE2BF")) + scale_color_manual(values = c("#6495ED", "#9FE2BF")) + labs(fill = "Group") + labs(color = "Group")
 
-all_combos <- expand.grid(
-  sample_name=unique(abundance_summary_data$sample_name),
-  clone_rank = 1:max(abundance_summary_data$clone_rank))
+# tcr_raw2 <- 
+   
+# #just the human data, all patients
+# abundance_summary_data <-  tcr_raw2 %>% 
+#   group_by(sample_name) %>% 
+#   arrange(desc(productive_frequency)) %>% 
+#   mutate(
+#     clone_rank = rank(desc(productive_frequency), ties.method = "min"),
+#     clone_rank_ave = rank(desc(productive_frequency), ties.method = "average"),
+#          cumu_templates = cumsum(templates)) %>%
+#   group_by(sample_name,samp_type , clone_rank, productive_templates) %>%
+#   summarize(max_cumulative_tempaltes_at_clone_rank = max(cumu_templates),
+#             perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100) %>% 
+#   distinct() %>% 
+#   ungroup()
 
-abundance_summary_data_grouped_summaries <- abundance_summary_data %>%
-    full_join(all_combos) %>% 
-  arrange(sample_name, clone_rank) %>% 
-  fill(everything(), .direction = "down") %>% 
-   group_by(gvhd, clone_rank) %>%
-  summarize(
-    grp=paste0(org, "-", gvhd),
-    mean_perc_cu = mean(perc_cu),
-    min_perc_cu = min(perc_cu),
-    max_perc_cu = max(perc_cu),
-    sem_perc_cu = sqrt(var(perc_cu)/n()),
-    sd_perc_cu = sd(perc_cu),
-    ) %>% 
-  distinct() %>%
-  ungroup() 
-
-
-
- ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) + geom_line(alpha=.02) +
-   geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10() 
-
-ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) +
-  geom_line(alpha=.05) +
-  geom_line(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=mean_perc_cu, group=grp), alpha=.7) +
-  xlab("clone rank ") + 
-  ylab("cumulative reads (%)") +
-  geom_ribbon(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=1, ymin=mean_perc_cu-sem_perc_cu, ymax=mean_perc_cu + sem_perc_cu, group=grp, fill=grp), alpha=.5) +
-  geom_vline(xintercept = 10, linetype="dotted", color="gray4", size = .8) + scale_x_log10() + scale_fill_manual(values = c("#6495ED", "#9FE2BF")) + scale_color_manual(values = c("#6495ED", "#9FE2BF")) + labs(fill = "Group") + labs(color = "Group")
 
 #filtering out samples not included in the alluvials (donor pt A, kidney, heart, and marrow pt D)
- tcr_raw2 <- tcr_raw %>% filter(sample_name != "PtA_donor_TCRB") %>% filter(sample_name != "PtD_autopsy_marrow_TCRB") %>% filter(sample_name != "PtD_kidney_TCRB") %>% filter(sample_name != "PtD_donor_TCRB") %>% filter(org != "Mouse")  
-   
-#just the human data, all patients
-abundance_summary_data <-  tcr_raw2 %>% 
-  group_by(sample_name) %>% 
-  arrange(desc(productive_frequency)) %>% 
-  mutate(
-    clone_rank = rank(desc(productive_frequency), ties.method = "min"),
-    clone_rank_ave = rank(desc(productive_frequency), ties.method = "average"),
-         cumu_templates = cumsum(templates)) %>%
-  group_by(sample_name,samp_type , clone_rank, productive_templates) %>%
-  summarize(max_cumulative_tempaltes_at_clone_rank = max(cumu_templates),
-            perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100) %>% 
-  distinct() %>% 
-  ungroup()
 
-summary_data_for_yuval <-  tcr_raw2 %>% 
+summary_data_for_yuval <- tcr_raw %>% filter(sample_name != "PtA_donor_TCRB") %>% filter(sample_name != "PtD_autopsy_marrow_TCRB") %>% filter(sample_name != "PtD_kidney_TCRB") %>% filter(sample_name != "PtD_donor_TCRB") %>% filter(org != "Mouse")   %>% 
   group_by(sample_name) %>% 
   arrange(desc(productive_frequency)) %>% 
   mutate(
@@ -468,93 +474,93 @@ summary_data_for_yuval <-  tcr_raw2 %>%
 
 write.csv(summary_data_for_yuval, "summary_data_for_yuval.csv")
 
-
-all_combos <- expand.grid(
-  sample_name=unique(abundance_summary_data$sample_name),
-  clone_rank = 1:max(abundance_summary_data$clone_rank))
-
-abundance_summary_data_grouped_summaries <- abundance_summary_data %>%
-    full_join(all_combos) %>% 
-  arrange(sample_name, clone_rank) %>% 
-  fill(everything(), .direction = "down") %>% 
-   group_by(clone_rank) %>%
-  summarize(
-    grp=paste0("Human"),
-    mean_perc_cu = mean(perc_cu),
-    min_perc_cu = min(perc_cu),
-    max_perc_cu = max(perc_cu),
-    sem_perc_cu = sqrt(var(perc_cu)/n()),
-    sd_perc_cu = sd(perc_cu),
-    ) %>% 
-  distinct() %>%
-  ungroup() 
-
-
-
-ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) + geom_line(alpha=.02) +
-   geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10() 
-
-human_cumulative = ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) +
-  geom_line(alpha=.05) +
-  geom_line(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=mean_perc_cu, group=grp), alpha=.7) +
-  xlab("clone rank ") + 
-  ylab("cumulative frequency (%)") +
-  geom_ribbon(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=1, ymin=mean_perc_cu-sem_perc_cu, ymax=mean_perc_cu + sem_perc_cu, group=grp, fill=grp), alpha=.5) +
-  geom_vline(xintercept = 10, linetype="dotted", color="gray4", size = .8) + scale_x_log10() + scale_fill_manual(values = c("#6495ED")) + scale_color_manual(values = c("#6495ED")) + labs(fill = "Group") + labs(color = "Group")
-
-ggsave(plot=human_cumulative ,height=4,width=5, filename=file.path(alluvial_figures_path, "human_cumulative.pdf"))
-
-
-#just the mouse, GVHD only
-mouse_abundance_summary_data <-  tcr_raw %>% 
-  group_by(sample_name) %>% 
-  filter(org != "Human") %>% filter(samp_type == "Recipient") %>%
-  arrange(desc(productive_frequency)) %>% 
-  mutate(
-    clone_rank = rank(desc(productive_frequency), ties.method = "min"),
-    clone_rank_ave = rank(desc(productive_frequency), ties.method = "average"),
-         cumu_templates = cumsum(templates)) %>%
-  group_by(sample_name, gvhd, samp_type , clone_rank, productive_templates) %>%
-  summarize(max_cumulative_tempaltes_at_clone_rank = max(cumu_templates),
-            perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100) %>% 
-  distinct() %>% 
-  ungroup()
-
-
-mouse_all_combos <- expand.grid(
-  sample_name=unique(mouse_abundance_summary_data$sample_name),
-  clone_rank = 1:max(mouse_abundance_summary_data$clone_rank))
-
-mouse_abundance_summary_data_grouped_summaries <- mouse_abundance_summary_data %>%
-    full_join(mouse_all_combos) %>% 
-  arrange(sample_name, clone_rank) %>% 
-  fill(everything(), .direction = "down") %>% 
-   group_by(clone_rank) %>%
-  summarize(
-    grp=paste0("Mouse"),
-    mean_perc_cu = mean(perc_cu),
-    min_perc_cu = min(perc_cu),
-    max_perc_cu = max(perc_cu),
-    sem_perc_cu = sqrt(var(perc_cu)/n()),
-    sd_perc_cu = sd(perc_cu),
-    ) %>% 
-  distinct() %>%
-  ungroup() 
-
-
-
-ggplot(mouse_abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) + geom_line(alpha=.02) +
-   geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10() 
-
-mouse_cumulative = ggplot(mouse_abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) +
-  geom_line(alpha=.05) +
-  geom_line(data=mouse_abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=mean_perc_cu, group=grp), alpha=.7) +
-  xlab("clone rank ") + 
-  ylab("cumulative frequency (%)") +
-  geom_ribbon(data=mouse_abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=1, ymin=mean_perc_cu-sem_perc_cu, ymax=mean_perc_cu + sem_perc_cu, group=grp, fill=grp), alpha=.5) +
-  geom_vline(xintercept = 10, linetype="dotted", color="gray4", size = .8) + scale_x_log10() + scale_fill_manual(values = c("#9FE2BF")) + scale_color_manual(values = c("#9FE2BF")) + labs(fill = "Group") + labs(color = "Group")
-
-ggsave(plot=mouse_cumulative ,height=4,width=5, filename=file.path(alluvial_figures_path, "mouse_cumulative.pdf"))
-
+# 
+# all_combos <- expand.grid(
+#   sample_name=unique(abundance_summary_data$sample_name),
+#   clone_rank = 1:max(abundance_summary_data$clone_rank))
+# 
+# abundance_summary_data_grouped_summaries <- abundance_summary_data %>%
+#     full_join(all_combos) %>% 
+#   arrange(sample_name, clone_rank) %>% 
+#   fill(everything(), .direction = "down") %>% 
+#    group_by(clone_rank) %>%
+#   summarize(
+#     grp=paste0("Human"),
+#     mean_perc_cu = mean(perc_cu),
+#     min_perc_cu = min(perc_cu),
+#     max_perc_cu = max(perc_cu),
+#     sem_perc_cu = sqrt(var(perc_cu)/n()),
+#     sd_perc_cu = sd(perc_cu),
+#     ) %>% 
+#   distinct() %>%
+#   ungroup() 
+# 
+# 
+# 
+# # ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) + geom_line(alpha=.02) +
+# #    geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10() 
+# 
+# human_cumulative = ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) +
+#   geom_line(alpha=.05) +
+#   geom_line(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=mean_perc_cu, group=grp), alpha=.7) +
+#   xlab("clone rank ") + 
+#   ylab("cumulative frequency (%)") +
+#   geom_ribbon(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=1, ymin=mean_perc_cu-sem_perc_cu, ymax=mean_perc_cu + sem_perc_cu, group=grp, fill=grp), alpha=.5) +
+#   geom_vline(xintercept = 10, linetype="dotted", color="gray4", size = .8) + scale_x_log10() + scale_fill_manual(values = c("#6495ED")) + scale_color_manual(values = c("#6495ED")) + labs(fill = "Group") + labs(color = "Group")
+# 
+# ggsave(plot=human_cumulative ,height=4,width=5, filename=file.path(alluvial_figures_path, "human_cumulative.pdf"))
+# 
+# 
+# #just the mouse, GVHD only
+# mouse_abundance_summary_data <-  tcr_raw %>% 
+#   group_by(sample_name) %>% 
+#   filter(org != "Human") %>% filter(samp_type == "Recipient") %>%
+#   arrange(desc(productive_frequency)) %>% 
+#   mutate(
+#     clone_rank = rank(desc(productive_frequency), ties.method = "min"),
+#     clone_rank_ave = rank(desc(productive_frequency), ties.method = "average"),
+#          cumu_templates = cumsum(templates)) %>%
+#   group_by(sample_name, gvhd, samp_type , clone_rank, productive_templates) %>%
+#   summarize(max_cumulative_tempaltes_at_clone_rank = max(cumu_templates),
+#             perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100) %>% 
+#   distinct() %>% 
+#   ungroup()
+# 
+# 
+# mouse_all_combos <- expand.grid(
+#   sample_name=unique(mouse_abundance_summary_data$sample_name),
+#   clone_rank = 1:max(mouse_abundance_summary_data$clone_rank))
+# 
+# mouse_abundance_summary_data_grouped_summaries <- mouse_abundance_summary_data %>%
+#     full_join(mouse_all_combos) %>% 
+#   arrange(sample_name, clone_rank) %>% 
+#   fill(everything(), .direction = "down") %>% 
+#    group_by(clone_rank) %>%
+#   summarize(
+#     grp=paste0("Mouse"),
+#     mean_perc_cu = mean(perc_cu),
+#     min_perc_cu = min(perc_cu),
+#     max_perc_cu = max(perc_cu),
+#     sem_perc_cu = sqrt(var(perc_cu)/n()),
+#     sd_perc_cu = sd(perc_cu),
+#     ) %>% 
+#   distinct() %>%
+#   ungroup() 
+# 
+# 
+# 
+# ggplot(mouse_abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) + geom_line(alpha=.02) +
+#    geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10() 
+# 
+# mouse_cumulative = ggplot(mouse_abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) +
+#   geom_line(alpha=.05) +
+#   geom_line(data=mouse_abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=mean_perc_cu, group=grp), alpha=.7) +
+#   xlab("clone rank ") + 
+#   ylab("cumulative frequency (%)") +
+#   geom_ribbon(data=mouse_abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=1, ymin=mean_perc_cu-sem_perc_cu, ymax=mean_perc_cu + sem_perc_cu, group=grp, fill=grp), alpha=.5) +
+#   geom_vline(xintercept = 10, linetype="dotted", color="gray4", size = .8) + scale_x_log10() + scale_fill_manual(values = c("#9FE2BF")) + scale_color_manual(values = c("#9FE2BF")) + labs(fill = "Group") + labs(color = "Group")
+# 
+# ggsave(plot=mouse_cumulative ,height=4,width=5, filename=file.path(alluvial_figures_path, "mouse_cumulative.pdf"))
+# 
 
 ```

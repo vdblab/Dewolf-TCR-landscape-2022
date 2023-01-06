@@ -26,7 +26,10 @@ s2_theme <- theme_classic() + theme(
 
 s2diversity = tcr_sample_metadata %>% 
   select(sample_name : indv_tissue_label, -sample_amount_ng) %>% 
-  left_join(read.csv("tables/st4.csv")) %>%
+  left_join(read.csv("tables/st4.csv") %>% rename(sample_name=Sample.name,
+         productive_templates=productive.templates,
+         max_productive_frequency=Max.frequency,
+         len=unique.productive.clones) ) %>%
   left_join(read.csv("data/patient_attributes.csv",  na.strings=c("n/a")) %>%
               mutate(subject=paste("Patient", subject)), by=c("indv_label" = "subject")) %>%
   left_join(tissue_annotations, by="tissue")
@@ -175,26 +178,13 @@ check_group_stats(df=GI_GVHD, xcol="Donor_age_cat", ycol="slope")
 
 
 
-#this plot colors by ALC
-clonality_ALC = cc + 
-  geom_point(aes(y=clonality, fill = as.factor(ALC)), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) + s2_theme + labs(fill="ALC") + xlab("") + scale_fill_brewer(palette = "Set2")
-
-
-#this plot colors by ALC
-slope_ALC = cc + 
-  geom_point(aes(y=slope, fill = as.factor(ALC)), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) +
-  s2_theme + scale_fill_brewer(palette = "Set2") + xlab("") + labs(fill="ALC")
-
-S2_ALC = clonality_ALC + slope_ALC + plot_layout(guides = "collect")
-
 ggsave(plot=S2_A ,height=5,width=14, filename=file.path(figures_path, "S2A_by_graft.pdf"))
 ggsave(plot=S2_B ,height=5,width=14, filename=file.path(figures_path, "S2B_by_CMV.pdf"))
 ggsave(plot=S2_C ,height=5,width=14, filename=file.path(figures_path, "S2C_by_GVHD.pdf"))
 ggsave(plot=S2_age ,height=5,width=14, filename=file.path(figures_path, "S2D_by_pt_age.pdf"))
 ggsave(plot=S2_donor ,height=5,width=14, filename=file.path(figures_path, "S2E_by_donor_age.pdf"))
-ggsave(plot=S2_ALC ,height=5,width=14, filename=file.path(figures_path, "S2F_by_ALC.pdf"))
 
-write.csv(msk_uc_corrs,"JSD_public_comparisons.csv")
+# write.csv(msk_uc_corrs,"JSD_public_comparisons.csv")
 
 
 

@@ -32,7 +32,7 @@ parallel -a UC_file_pairs.tsv --bar --progress --colsep "\t" ~/miniconda3/envs/p
 ```
 
 ## recreating figure 5b
-```{r}
+```{r 38-figureS4P-tableS5-UC-TCRs-1}
 
 
 uc_metadata = data.frame("raw"=gsub(".tsv", "", dir("data/UC_raw_TCR_data/", pattern = ".tsv"))) %>% 
@@ -93,7 +93,7 @@ ggsave(plot=fig1R ,height=4,width=6, filename=file.path(figures_path, "Revision_
 
 #plot with the data from Teichmann et al . as well (JSD calculated separately)
 msk_uc_corrs2 <- msk_uc_corrs
-msk_uc_corrs2 = read.csv("JSD_public_comparisons.csv")
+# msk_uc_corrs2 = read.csv("JSD_public_comparisons.csv")
 
 theselimits = sort(unique(msk_uc_corrs2$xgroup))
 theselimits <- theselimits[c(1,5,6,3,4,2)]
@@ -120,7 +120,7 @@ ggsave(plot=JSD_public ,height=4,width=5, filename=file.path(figures_path, "Revi
 
 
 
-```{r}
+```{r 38-figureS4P-tableS5-UC-TCRs-2}
 # msk_uc_corrs <- read.csv(sep = "\t", "data/2022-10-12-UC-tcr-correlations.tsv", header=FALSE, col.names = strsplit("fileA\tfileB\tsizeA\tsizeB\tnorm_sizeA\tnorm_sizeB\tJSD\tjsd_nt_norm\tjsd_aa_raw\tjsd_aa_norm\tmorisita_nt_raw\toverlapping_clones\toverlapping_aa", split = "\t")[[1]], na.strings = c("nan")) %>%
 #     left_join(uc_metadata, by=c("fileA"="raw")) %>% 
 #     left_join(uc_metadata, by=c("fileB"="raw")) %>% 
@@ -155,7 +155,7 @@ ggsave(plot=JSD_public ,height=4,width=5, filename=file.path(figures_path, "Revi
 
 ## Assessing shared clonotypes between patients among the two cohorts:
 
-```{r}
+```{r 38-figureS4P-tableS5-UC-TCRs-3}
 raw_files <- sort(dir("data/UC_raw_TCR_data/", pattern = "*.tsv", full.names = TRUE))
 
 UC_tcr_raw <- purrr::map(raw_files, .f=function(x){
@@ -311,8 +311,10 @@ ggplot(by_msk_pt %>% left_join(tcr_sample_metadata, by=c("samp"="sample_name")),
 ## Comparing to known clonotypes
 
 
-```{r}
-download.file("https://df6sxcketz7bb.cloudfront.net/manuscripts/149000/149080/jci.insight.149080.sdt8.xlsx", "data/jci.insight.149080.sdt8.xlsx")
+```{r 38-figureS4P-tableS5-UC-TCRs-4}
+if(!file.exists("data/jci.insight.149080.sdt8.xlsx")){
+  download.file("https://df6sxcketz7bb.cloudfront.net/manuscripts/149000/149080/jci.insight.149080.sdt8.xlsx", "data/jci.insight.149080.sdt8.xlsx")
+}
 clonotypes <- readxl::read_xlsx("data/jci.insight.149080.sdt8.xlsx", skip = 1) %>%
   mutate(Pathology=ifelse(Pathology == "Coeliac disease", "Celiac disease", Pathology)) %>% 
   mutate(Pathology=ifelse(Pathology == "-", "Unknown", Pathology)) %>% 
@@ -342,7 +344,7 @@ uc_msk_joined_clonotype_data <- bind_rows(
 
 
 # by sample
-ggplot(uc_msk_joined_clonotype_data, 
+p_by_sample <- ggplot(uc_msk_joined_clonotype_data, 
        aes(x=templates, y=str_wrap(Pathology), fill=Category )) +
   geom_point(shape=21) + 
   facet_grid(Category  ~ cohort, space="free", scales = "free_y")
@@ -353,7 +355,7 @@ uc_msk_joined_clonotype_data_by_pt <- uc_msk_joined_clonotype_data %>%
          group_by(indv_label,cohort, Pathology, Category) %>% 
          summarize(n_clonotypes = ifelse(all(is.na(Pathology) & is.na(Category)), 1, n_distinct(cdr3_amino_acid)),
                    median_relab = median(total_cdr3_productive_frequency))
-ggplot(uc_msk_joined_clonotype_data_by_pt, 
+p_by_pr_median <- ggplot(uc_msk_joined_clonotype_data_by_pt, 
        aes(x=n_clonotypes, y=str_wrap(Pathology), fill=Category, size=median_relab)) +
   geom_point(shape=21) + 
   facet_grid(Category  ~ cohort, space="free", scales = "free_y")
@@ -470,16 +472,16 @@ clonotype_data <- uc_msk_joined_clonotype_data  %>%
              TRUE ~ "< 0.5%",
              ))
 p_clonotyes_by_tissue_heatmap_by_rank <- ggplot(clonotype_data %>% filter(Pathology != "Unknown", Pathology != "Encounter for immunization") , 
-       aes(x=tissue_label_fig1, y=reorder(str_wrap(Pathology, 45), yorder), color = reorder(relab_abundance_cat, max_cdr3_perc))) +
+       aes(y=tissue_label_fig1, x=reorder(str_wrap(Pathology, 45), yorder), color = reorder(relab_abundance_cat, max_cdr3_perc))) +
   geom_point() + 
   scale_color_manual(values=c("grey90", "grey60", "navy", "lightblue")) + 
-  facet_grid(Category  ~ cohort+indv_label, space="free", scales = "free") +
+  facet_grid(cohort+indv_label ~ Category, space="free", scales = "free") +
   theme(text = element_text(size=6), axis.text.x = element_text(angle=45, hjust=1), strip.text = element_text(size=6),
         strip.background = element_rect(color="grey80"), 
            legend.position = "bottom", legend.direction = "horizontal") + 
   labs(x="Tissue", y="Associated Pathology Category \n (Pagliuca, et al. 2021)", color="Maximum Percent\nAbundance")
 ggsave(p_clonotyes_by_tissue_heatmap_by_rank, filename = "figures/UC/Revision_clonotypes_by_tissue_heatmap_by_perc.pdf",
-       width=10, height = 7)
+       width=7, height = 10)
 
 
 write.csv(uc_msk_joined_clonotype_data %>% filter(cohort != "UC") %>% 

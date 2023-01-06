@@ -4,7 +4,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 # VECTRA Data 
 
-```{r, eval=FALSE}
+```{r 25-figure5-S7-VECTRA-1, eval=FALSE}
 library(tidyverse)
 vectra_figs_dir <- file.path("figures", "vectra")
 # Note: if you would like access to the HALO data refereced below, please send us a message.

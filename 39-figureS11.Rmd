@@ -401,6 +401,13 @@ tcr_corrs_anno_mouse <- tcr_corrs_anno %>%
   select(tissue.x, tissue.y, everything()) %>% 
   ungroup() 
 
+# To reorder the heatmap columns according to anatomic order, we want to add back
+# in the redundant pairs we intentionally excluded above.  We do that by binding in
+# the data with the reversed labels.
+tcr_corrs_anno_mouse_summary <- bind_rows(
+  tcr_corrs_anno_mouse %>% select(-JSD) %>% distinct(),
+  tcr_corrs_anno_mouse %>% select(-JSD) %>% distinct()  %>% rename(tmp=tissue.x) %>% rename("tissue.x" ="tissue.y", "tissue.y"="tmp")
+  )
 
 p_mouse_variance <- ggplot(tcr_corrs_anno_mouse %>% 
                              filter(gvhd.x == "GvHD") %>% 
@@ -430,13 +437,6 @@ filter(gvhd.x == "GvHD") %>% filter(collection_day.x==14), aes(x=reorder(interac
 ggsave(filename = file.path(boxdir, "mouse_JSD_variance.pdf"), plot = p_mouse_variance, width = 9, height=6)
 
 
-# To reorder the heatmap columns according to anatomic order, we want to add back
-# in the redundant pairs we intentionally excluded above.  We do that by binding in
-# the data with the reversed labels.
-tcr_corrs_anno_mouse_summary <- bind_rows(
-  tcr_corrs_anno_mouse %>% select(-JSD) %>% distinct(),
-  tcr_corrs_anno_mouse %>% select(-JSD) %>% distinct()  %>% rename(tmp=tissue.x) %>% rename("tissue.x" ="tissue.y", "tissue.y"="tmp")
-  )
 
 
 mouse_summary_plist <- list()

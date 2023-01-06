@@ -15,7 +15,7 @@ dir.create(ab_figs_dir, showWarnings = FALSE)
 ```
 
 # Abundance plots
-```{r}
+```{r 37-figureS12D-abundance-1}
 groups = c("mice", "humans", "all")
 for (g in groups){
   if (g == "mice"){

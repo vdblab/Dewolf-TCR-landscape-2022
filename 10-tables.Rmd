@@ -86,7 +86,7 @@ write.csv(tab_sample_summary, row.names = FALSE, file = file.path(tab_dir, "st4.
 
 ## Table S6 and S12
 Tables S6 and S12 are the human and mouse sample pair correlation metrics (respectively).  
-```{r}
+```{r 10-tables-1-bis}
 tcr_corrs_anno <- tcr_corrs %>% 
   left_join(tcr_sample_metadata %>% select(sample_name:species), by=c("sample1" = "sample_name")) %>% 
   left_join(tcr_sample_metadata %>% select(sample_name:species), by=c("sample2" = "sample_name"))
