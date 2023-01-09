@@ -186,7 +186,7 @@ ggsave(plot = wrap_plots(
 ggsave(plot = wrap_plots(
   list(jsdplist[["Patient J"]][["single"]], 
        jsdplist[["Patient I"]][["single"]],
-       jsdplist[["Patient H"]][["single"]]), nrow = 1), filename = file.path(fig2_figs_path, str_glue("TCR_comparator_trees_together.pdf")), height = 5, width = 5.5)
+       jsdplist[["Patient H"]][["single"]]), nrow = 1), filename = file.path(fig2_figs_path, str_glue("S3D-TCR_comparator_trees_together.pdf")), height = 5, width = 5.5)
 
 
 ```

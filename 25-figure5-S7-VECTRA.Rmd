@@ -75,23 +75,24 @@ VectraPlot_subsets = Vectra_subsets + geom_point(size = 6, position=position_dod
 VectraPlot_subsets
 
 ggsave(plot=VectraPlot_subsets ,height=8,width=6,dpi=200,
-       filename=file.path(vectra_figs_dir, "VectraPlot_subsets.pdf"),
+       filename=file.path(vectra_figs_dir, "S7A-VectraPlot_subsets.pdf"),
        useDingbats=FALSE)
 
 #Vectra spatial plot
+# Note colors were manually adjusted
 
-
-Vectra_spatial <-ggplot(spatial_Tcells, aes(x = dBins, y = PCT))
+Vectra_spatial <-ggplot(spatial_Tcells, aes(x = as.numeric(dBins), y = PCT))
 
 Vectra_spatial_plot = Vectra_spatial + geom_bar(stat='identity', aes(fill=Sample)) +
   facet_grid(~Sample) + scale_fill_manual(values = c("hotpink1",  "palevioletred2", "mediumpurple", "slateblue1", "slateblue3", "springgreen4")) +
-  theme_light() + theme(strip.background = element_rect (fill = "white"), strip.text = element_text(colour = "black")) +
+  theme_light() + 
+  theme(strip.background = element_rect (fill = "white"), strip.text = element_text(colour = "black")) +
   ylab("fraction CD69 positive T cells") + xlab("um from panCK+ cell") +
   theme(axis.text.x = element_text(angle = 30, vjust=.6, size = 8, color = "black"), axis.text.y = element_text(color = "black", size = 8)) + theme(legend.position = "none")
 
 Vectra_spatial_plot
 
 ggsave(plot=Vectra_spatial_plot ,height=3,width=6,dpi=200,
-       filename=file.path(vectra_figs_dir, "Vectra_spatial_plot.pdf"),
+       filename=file.path(vectra_figs_dir, "S7B-Vectra_spatial_plot.pdf"),
        useDingbats=FALSE)
 ```

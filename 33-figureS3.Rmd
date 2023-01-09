@@ -20,6 +20,7 @@ comparison <- tcr_corrs %>%
 g <- ggplot(comparison %>% 
               filter(org.x == "Human") %>%
               filter(gvhd.x == "GvHD") %>% 
+              filter(indv_type.x != "Donor", indv_type.y != "Donor") %>%
               filter(sample1 != sample2), aes(JSD, morisita_nt_raw))
 
 S3A <- g + facet_grid(. ~ indv_label.x) + 
@@ -31,10 +32,12 @@ S3A <- g + facet_grid(. ~ indv_label.x) +
   coord_fixed() +
   theme_classic()
 ggsave(filename = file.path(figures_path_s3, "S3A_JSD_vs_morrisita.pdf"), plot = S3A, width = 10, height=5)
-# TODO ggsave this
-g + geom_point(aes(color = indv_label.x), size = 4, shape = 19, alpha = .5) + 
+p_S3A_together <- g + geom_point(aes(color = indv_label.x), size = 4, shape = 19, alpha = .5) + 
   geom_smooth(size = 1, linetype = 1, method = "lm", se = FALSE) + 
   stat_regline_equation(label.y = 1, aes(label = ..rr.label..)) +
-  theme_classic()
+  theme_classic() 
+
+ggsave(filename = file.path(figures_path_s3, "aggregate_JSD_vs_morrisita.pdf"), plot = p_S3A_together, width = 5, height=5)
+
 ```
 

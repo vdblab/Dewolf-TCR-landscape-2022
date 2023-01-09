@@ -146,10 +146,15 @@ stat_pvalue_manual(
 
 ggsave(p_between_within, filename = file.path(boxdir, paste0("between_within_", thisorg, ".pdf")), width = 16, height = 8)
 }
+file.copy(file.path(boxdir, paste0("between_within_Human.pdf")),
+          file.path(boxdir, paste0("S3E-between_within_Human.pdf")))
+file.copy(file.path(boxdir, paste0("between_within_Mouse.pdf")),
+          file.path(boxdir, paste0("S8C-between_within_Mouse.pdf")))
 ```
 
 
-Next, we shuffled the classes for the systems with multiple tissues represented in the data (limiting to human samples for simplicity).  The probability weight of the sampling was set to mimic the comparisons at hand
+Next, we shuffled the classes for the systems with multiple tissues represented in the data (limiting to human samples for simplicity).  The probability weight of the sampling was set to mimic the comparisons at hand.
+
 ```{r 39-figureS11-4 }
 (weights <- pt_comp_df_all %>%
   filter(org == "Human") %>%
@@ -230,7 +235,7 @@ perm_test <- shuff_summary %>%
     scale_x_log10()) 
 
 
-ggsave(p_shuff_summary, filename = file.path(boxdir, "shuffles_between_within_summary.pdf"), width = 5, height=5)
+ggsave(p_shuff_summary, filename = file.path(boxdir, "S3F-shuffles_between_within_summary.pdf"), width = 5, height=5)
 
 ```
 
@@ -314,6 +319,9 @@ for (si in 1:length(sets_of_comparisons)){
   ggsave(p_between_within_intestine + p_shuff_intestinal_summary + plot_layout(ncol=1, heights = c(.8, .3)) , filename = file.path(boxdir, str_glue("mouse_human_between_within_{sname}.pdf")), width = 4, height = 8)
   
 }
+file.copy(file.path(boxdir, str_glue("mouse_human_between_within_{sname}.pdf")),
+          file.path(boxdir, str_glue("S8B-mouse_human_between_within_GI.pdf")))
+
 ```
 
 ## Raw data comparison plots
@@ -325,17 +333,22 @@ tcr_corrs_anno = tcr_corrs_anno %>% filter(sample1 != "PtA_autopsy_marrow_TCRB")
 
 for(i in  unique(tcr_corrs_anno$indv_label.x)){
   tmp_p <- ggplot(tcr_corrs_anno %>% 
-           filter(indv_label.x == indv_label.y) %>% filter(indv_label.x==i)  %>%  
-             left_join(tissue_annotations, by=c("tissue.x"="tissue")) %>%
-             filter(tissue.x != tissue.y) %>%
-           left_join(tissue_annotations, by=c("tissue.y"="tissue")), aes(x=reorder(tissue.x, anatomic_order.x), y=JSD, shape=tissue.y, color=tissue.y)) + 
+                    filter(indv_label.x == indv_label.y) %>% filter(indv_label.x==i)  %>%  
+                    left_join(tissue_annotations, by=c("tissue.x"="tissue")) %>%
+                    filter(tissue.x != tissue.y) %>%
+                    left_join(tissue_annotations, by=c("tissue.y"="tissue")), aes(x=reorder(tissue.x, anatomic_order.x), y=JSD, shape=tissue.y, color=tissue.y)) + 
     geom_jitter(width = .2, height = 0, size=5)  + 
     scale_color_manual(values=tissue_annotations$new_col, breaks=tissue_annotations$tissue) +
     scale_shape_manual(values=tissue_annotations$shape, breaks=tissue_annotations$tissue) +
     labs(x="Tissue", shape="Tissue", subtitle=i, color="Tissue") +
     theme_classic()   + theme(axis.text.x = element_text(angle=45, hjust=1)) + 
     scale_y_continuous(limits=c(0, 1))
-    ggsave(plot = tmp_p, filename = file.path(boxdir, str_glue("TCR_raw_comparisons_{i}.pdf")), width = 6, height = 6)
+  
+  if(startsWith(i, "Patient")){
+    ggsave(plot = tmp_p, filename = file.path(boxdir, str_glue("S3B-{i}-TCR_raw_comparisons.pdf")), width = 6, height = 6)
+  } else{
+    ggsave(plot = tmp_p, filename = file.path(boxdir, str_glue("TCR_raw_comparisons-{i}.pdf")), width = 6, height = 6)
+  }
 }
 
 #formatting individual graph to focus on comparisons with blood (Figure R1) --> this is just for the letter 
@@ -544,3 +557,26 @@ file.copy(
 )
 ```
 
+
+## Cumulative abundancy by harvest day
+
+```{r}
+p_mouse_cumutop10 <- tcr_raw %>% filter(org=="Mouse") %>% filter(grepl("Balb|Recipient", sample_name)) %>% mutate(harvest_day=ifelse(is.na(collection_day), "Donor", collection_day)) %>% 
+  group_by(sample_name) %>% mutate(rank=rank(desc(productive_frequency), ties.method = "min")) %>% 
+  ungroup() %>% 
+  filter(rank <= 10) %>% 
+  mutate(tissue=ifelse(tissue=="terminalileum", "ileum", tissue)) %>% 
+  group_by(sample_name, tissue, harvest_day) %>% 
+  summarize(sum_prod_freq = sum(productive_frequency)) %>% 
+  ggplot(aes(x=harvest_day, fill=harvest_day, y=sum_prod_freq)) + 
+  geom_boxplot(outlier.colour = NA) + 
+  geom_jitter(height = 0, alpha=.4, size=2) +
+  scale_x_discrete(breaks=c("Donor", "7", "14"), limits=c("Donor", "7", "14")) + 
+  scale_fill_manual(values=c("Donor"="#CCD2D0", "14"="#B6DFE9", "7"="#172470")) +
+  facet_grid(~tissue) +
+  theme_bw()
+
+ggsave(p_mouse_cumutop10, filename = "figures/abundance/S8F-mouse-top-abundances.pdf", width = 8, height=5)
+
+
+```
