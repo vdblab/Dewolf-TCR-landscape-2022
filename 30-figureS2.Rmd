@@ -50,17 +50,19 @@ basep <- ggplot(GI, aes(x=reorder(S2_groups, anatomic_order)))
 
 #this plot colors by allograft source
 clonality_graft = basep  +
-  geom_point( aes(y = clonality, fill = allograft), shape=21, size = 4, stroke = 2, alpha = .8, position = jitter2) +
+  geom_point( aes(y = clonality, fill = allograft), shape=21, size = 5, stroke = 1, alpha = .8, position = jitter2) +
   s2_theme +
   xlab("") + scale_fill_brewer(palette = "Set1")
 
 #this plot colors by allograft source
 slope_graft = basep + 
-  geom_point( aes(y = slope, fill = allograft), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) +
+  geom_point( aes(y = slope, fill = allograft), size = 5, stroke = 1, alpha = .8, position = jitter2, shape=21) +
   s2_theme+
   xlab("") + scale_fill_brewer(palette = "Set1")
 
 S2_A = clonality_graft + slope_graft + plot_layout(guides = "collect")
+
+S2_A 
 
 check_group_stats <- function(df, xcol, ycol){
   # require(ggpubr)
@@ -105,12 +107,12 @@ check_group_stats(df=GI, xcol="allograft", ycol="slope")
 cc <- ggplot(GI_GVHD, aes(x=reorder(S2_groups, anatomic_order)))
 
 clonality_CMV = cc + 
-  geom_point(aes(y=clonality, fill = CMV.reactivation),size = 4,  stroke = 2, alpha = .8, position = jitter2, shape=21) +
+  geom_point(aes(y=clonality, fill = CMV.reactivation),size = 5,  stroke = 1, alpha = .8, position = jitter2, shape=21) +
   s2_theme +
   xlab("") + scale_fill_brewer(palette = "Set1")
 
 slope_CMV = cc + 
-  geom_point(aes(y=slope, fill = CMV.reactivation), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) +
+  geom_point(aes(y=slope, fill = CMV.reactivation), size = 5, stroke = 1, alpha = .8, position = jitter2, shape=21) +
   s2_theme +
   xlab("") + scale_fill_brewer(palette = "Set1")
 
@@ -123,14 +125,16 @@ check_group_stats(df=GI_GVHD, xcol="CMV.reactivation", ycol="slope")
 
 #this plot colors by grade of GVHD peri-autopsy (acute GVHD)
 clonality_GVHD = cc + 
-  geom_point(aes(y=clonality, fill = as.factor(GVHD_severity)), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) + s2_theme + labs(fill="GVHD \nseverity") + xlab("") + scale_fill_brewer(palette = "Set2")
+  geom_point(aes(y=clonality, fill = as.factor(GVHD_severity)), size = 5, stroke = 1, alpha = .8, position = jitter2, shape=21) + s2_theme + labs(fill="GVHD \nseverity") + xlab("") + scale_fill_brewer(palette = "Set1")
 
 #this plot colors by grade of GVHD peri-autopsy (acute GVHD)
 slope_GVHD = cc + 
-  geom_point(aes(y=slope, fill = as.factor(GVHD_severity)), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) +
-  s2_theme + scale_fill_brewer(palette = "Set2") + xlab("") + labs(fill="GVHD \nseverity")
+  geom_point(aes(y=slope, fill = as.factor(GVHD_severity)), size = 5, stroke = 1, alpha = .8, position = jitter2, shape=21) +
+  s2_theme + scale_fill_brewer(palette = "Set1") + xlab("") + labs(fill="GVHD \nseverity")
 
 S2_C = clonality_GVHD + slope_GVHD + plot_layout(guides = "collect")
+
+S2_C
 
 
 check_group_stats(df=GI_GVHD, xcol="GVHD_severity", ycol="clonality")
@@ -144,12 +148,12 @@ check_group_stats(df=GI, xcol="gvhd", ycol="slope")
 
 #this plot colors by grade of age of patient
 clonality_age = cc + 
-  geom_point(aes(y=clonality, fill = as.factor(Pt_age_cat)), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) + s2_theme + labs(fill="Pt_age_cat") + xlab("") + scale_fill_brewer(palette = "Set2")
+  geom_point(aes(y=clonality, fill = as.factor(Pt_age_cat)), size = 5, stroke = 1, alpha = .8, position = jitter2, shape=21) + s2_theme + labs(fill="Pt_age_cat") + xlab("") + scale_fill_brewer(palette = "Set2")
 
 
 #this plot colors by age of patient
 slope_age = cc + 
-  geom_point(aes(y=slope, fill = as.factor(Pt_age_cat)), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) +
+  geom_point(aes(y=slope, fill = as.factor(Pt_age_cat)), size = 5, stroke = 1, alpha = .8, position = jitter2, shape=21) +
   s2_theme + scale_fill_brewer(palette = "Set2") + xlab("") + labs(fill="Pt_age_cat")
 
 S2_age = clonality_age + slope_age + plot_layout(guides = "collect")
@@ -163,12 +167,12 @@ check_group_stats(df=GI_GVHD, xcol="Pt_age_cat", ycol="slope")
 
 #this plot colors by grade of age of donor
 clonality_donor = cc + 
-  geom_point(aes(y=clonality, fill = as.factor(Donor_age_cat)), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) + s2_theme + labs(fill="Donor_age_cat") + xlab("") + scale_fill_brewer(palette = "Set2")
+  geom_point(aes(y=clonality, fill = as.factor(Donor_age_cat)), size = 5, stroke = 1, alpha = .8, position = jitter2, shape=21) + s2_theme + labs(fill="Donor_age_cat") + xlab("") + scale_fill_brewer(palette = "Set2")
 
 
 #this plot colors by age of donor
 slope_donor = cc + 
-  geom_point(aes(y=slope, fill = as.factor(Donor_age_cat)), size = 4, stroke = 2, alpha = .8, position = jitter2, shape=21) +
+  geom_point(aes(y=slope, fill = as.factor(Donor_age_cat)), size = 5, stroke = 1, alpha = .8, position = jitter2, shape=21) +
   s2_theme + scale_fill_brewer(palette = "Set2") + xlab("") + labs(fill="Donor_age_cat")
 
 S2_donor = clonality_donor + slope_donor + plot_layout(guides = "collect")

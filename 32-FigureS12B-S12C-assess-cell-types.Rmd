@@ -16,15 +16,15 @@ figures_path <- file.path("figures", "revision1")
 library(tidyverse) 
 if (interactive()) load("tcr_objects.Rdata")
 
-human_mait_NKT = tcr_raw %>% filter(org=="Human") %>% mutate(Tcell_type=case_when(v_family %in% c("TCRBV06", "TCRBV20") ~ "MAIT", v_family == "TCRBV11" ~ "NKT", TRUE ~ "Other")) %>% group_by(sample_name, tissue,  indv_label, Tcell_type) %>% summarize(prop=sum(productive_frequency)) %>% left_join(tissue_annotations, by="tissue") 
+human_mait_NKT = tcr_raw %>% filter(org=="Human") %>% mutate(Tcell_type=case_when(v_family %in% c("TCRBV06", "TCRBV20") ~ "MAIT", v_family == "TCRBV25" ~ "NKT", TRUE ~ "Other")) %>% group_by(sample_name, tissue,  indv_label, Tcell_type) %>% summarize(prop=sum(productive_frequency)) %>% left_join(tissue_annotations, by="tissue") 
 
-human_mait_NKT_plot = human_mait_NKT %>% ggplot(aes(x=tissue_label_fig1, y=prop,fill=Tcell_type)) + scale_fill_manual(values = c("#3949AB", "#64B5F6", "#358856")) + geom_bar(position="stack", stat="identity") + facet_wrap(~indv_label, scales = "free_x") + theme(axis.text.x = element_text(angle=45, hjust=1))
+human_mait_NKT_plot = human_mait_NKT %>% ggplot(aes(x=tissue_label_fig1, y=prop,fill=Tcell_type)) + scale_fill_manual(values = c("#3949AB", "#64B5F6", "#358856")) + geom_bar(position="stack", stat="identity") + facet_wrap(~indv_label, scales = "free_x") + theme_bw() + theme(axis.text.x = element_text(angle=45, hjust=1))
 
 human_mait_NKT_plot
 
 ggsave(plot=human_mait_NKT_plot,height=8,width=8, filename=file.path(figures_path, "human_mait_NKT_plot.pdf"))
 
-tcr_raw %>% filter(org=="Human") %>% mutate(Tcell_type=case_when(v_family %in% c("TCRBV06", "TCRBV20") ~ "MAIT", v_family == "TCRBV11" ~ "NKT", TRUE ~ "Other")) %>% group_by(sample_name,tissue,  indv_label, Tcell_type) %>% summarize(prop=sum(productive_frequency))  %>%
+tcr_raw %>% filter(org=="Human") %>% mutate(Tcell_type=case_when(v_family %in% c("TCRBV06", "TCRBV20") ~ "MAIT", v_family == "TCRBV25" ~ "NKT", TRUE ~ "Other")) %>% group_by(sample_name,tissue,  indv_label, Tcell_type) %>% summarize(prop=sum(productive_frequency))  %>%
   filter(Tcell_type=="MAIT") %>%  ggplot(aes(x=tissue, y=prop)) + geom_boxplot() + geom_jitter() +  ggpubr::stat_compare_means(hide.ns = FALSE, ref.group = "pretx_blood", label.y = .3+ (.05*(1:30)))  + theme(axis.text.x = element_text(angle=45, hjust=1))
 
 ```
@@ -34,7 +34,7 @@ tcr_raw %>% filter(org=="Human") %>% mutate(Tcell_type=case_when(v_family %in% c
 
 ```{r 32-assess-cell-types-2 }
 
-mouse_mait_NKT = tcr_raw %>% filter(org=="Mouse") %>% mutate(Tcell_type=case_when(v_family %in% c("TCRBV09", "TCRBV13") ~ "MAIT", v_family %in% c("TCRBV02","TCRBV07","TCRBV08") ~ "NKT", TRUE ~ "Other")) %>% group_by(sample_name,tissue,  indv_label, Tcell_type) %>% summarize(prop=sum(productive_frequency))  %>% left_join(tissue_annotations, by="tissue") 
+mouse_mait_NKT = tcr_raw %>% filter(org=="Mouse") %>% mutate(Tcell_type=case_when(v_family %in% c("TCRBV09", "TCRBV13") ~ "MAIT", v_family %in% c("TCRBV13","TCRBV29","TCRBV01") ~ "NKT", TRUE ~ "Other")) %>% group_by(sample_name,tissue,  indv_label, Tcell_type) %>% summarize(prop=sum(productive_frequency))  %>% left_join(tissue_annotations, by="tissue") 
 
 mouse_mait_NKT_plot = mouse_mait_NKT %>% filter(tissue_label_fig1!="donor") %>% ggplot(aes(x=tissue_label_fig1, y=prop,fill=Tcell_type)) + scale_fill_manual(values = c("#3949AB", "#64B5F6", "#358856")) + geom_bar(position="stack", stat="identity") + facet_wrap(~indv_label, scales = "free_x") + theme(axis.text.x = element_text(angle=45, hjust=1))
 
