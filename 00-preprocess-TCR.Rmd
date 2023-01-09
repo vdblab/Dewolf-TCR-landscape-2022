@@ -191,19 +191,24 @@ if(!file.exists(tcr_objects_path)){
   
   ##to draw the venn diagram, we need to create a different format
   ##the format is a list of vector, each vector containing the clone names present in each patient
+  
+  # We removed the graft blood  
   indvs <- unique(tcr_raw$indv_label)
   clones_per_pt <- lapply(setNames(indvs, indvs), function(x) {
     tcr_raw %>% filter(indv_label == x) %>% 
+      filter(tissue != "graft_blood") %>% 
       filter(productive_frequency > 0) %>%
       pull(rearrangement) %>% unique()
   }) 
   aa_per_pt <- lapply(setNames(indvs, indvs), function(x) {
     tcr_raw %>% filter(indv_label == x) %>% 
+      filter(tissue != "graft_blood") %>% 
       filter(productive_frequency > 0) %>%
       pull(amino_acid) %>% unique()
   })
   bioid_per_pt <- lapply(setNames(indvs, indvs), function(x) {
     tcr_raw %>% filter(indv_label == x) %>% 
+      filter(tissue != "graft_blood") %>% 
       filter(productive_frequency > 0) %>%
       pull(bio_identity) %>% unique()
   })

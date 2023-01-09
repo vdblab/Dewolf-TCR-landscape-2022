@@ -12,7 +12,7 @@ library(ggtree)    # for trees
 library(ape)   # for as.phylo
 if (interactive())  load("tcr_objects.Rdata")
 load("GTEx/gtex_objects.Rdata")
-figs_dir <- "figures"
+figs_dir <- "figures/exploratory_trees/"
 dir.create(figs_dir, showWarnings = FALSE)
 
 ```

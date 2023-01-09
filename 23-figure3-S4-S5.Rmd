@@ -14,7 +14,7 @@ library(ggpolypath)
 
 if (interactive()) load("tcr_objects.Rdata")
 
-alluvial_figures_path <- file.path("figures", "alluvials")
+alluvial_figures_path <- file.path("figures", "fig3-S4-S5-alluvials")
 dir.create(alluvial_figures_path, showWarnings = FALSE)
 
 
@@ -133,8 +133,7 @@ plots_to_make <- list(
   "Patient C" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="S4C"),
   "Patient D" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="S4D"),
   "Patient E" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="S4E"),
-  "Patient F" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="3C"),
-  "Patient G" = c(org="Human", topn=10, ref_tissue="small_intestine", ref_color="mediumpurple", f="S4F"),
+   "Patient G" = c(org="Human", topn=10, ref_tissue="small_intestine", ref_color="mediumpurple", f="S4F"),
   "Patient H" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="S4H"),
   "Patient I" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="3D"),
   "Patient J" = c(org="Human", topn=10, ref_tissue="jejunum", ref_color="mediumpurple", f="S4G"),
@@ -147,8 +146,8 @@ plots_to_make <- list(
   "Patient C" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="blue", f="S4M"), 
   "Patient D" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="blue", f="S4N"), 
   "Patient E" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="blue", f="S4O"), 
-  "Patient F" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="blue", f="S4P"),
-  "Patient G" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="blue", f="S4Q")
+  "Patient F" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="blue", f="3G"),
+  "Patient G" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="blue", f="3F")
 )
 
   
@@ -195,6 +194,7 @@ p_ptF_alluvial_A <- ggplot(ptF_alluvial$plot_data %>%
       geom_flow(stat = "alluvium", curve_type = "sigmoid", color = "gray45", size = .3) +
       geom_stratum(alpha = 1) +
       geom_text(aes(y=tissue_total *1.1, label=thislabel), size=15) +
+      geom_text(aes(y=tissue_total *1.05, label=jsd_label), size=3) +
   # consider , color=NA) + 
       scale_fill_identity() +
       theme_classic() +
@@ -215,8 +215,13 @@ ggsave(plot=p_ptF_alluvial_A ,height=5,width=10,dpi=200,
 
 ### Mouse Alluvials
 ```{r 23-figure3-S4-S5-1}
+fig6path <- paste0("figures/fig6")
+dir.create(fig6path,showWarnings = FALSE)
 mouse_plots_to_make <- list(
-  "Recipient 7, rep2, day 14" = c(org="Mouse", ref_tissue="skin", topn=10, ref_color="forestgreen", f="S4A")
+  "Recipient 3, rep1, day 7" = c(org="Mouse", ref_tissue="duodenum", topn=10, ref_color="mediumpurple", f="6B1"),
+  "Recipient 3, rep1, day 7" = c(org="Mouse", ref_tissue="spleen", topn=10, ref_color="#B03827", f="6B2"),
+  "Recipient 7, rep2, day 14" = c(org="Mouse", ref_tissue="duodenum", topn=10, ref_color="mediumpurple", f="6C1"),
+  "Recipient 7, rep2, day 14" = c(org="Mouse", ref_tissue="spleen", topn=10, ref_color="#B03827", f="6C2")
 )
 
 for (i in seq_along(mouse_plots_to_make)){
@@ -229,8 +234,13 @@ for (i in seq_along(mouse_plots_to_make)){
   tmpmetadata$indv_label <- names(mouse_plots_to_make)[i]
   thisdata <- make_alluvial_dataset(tcr_raw, rbind(tcr_sample_metadata, tmpmetadata), ref_org=thing["org"],
                                     ref_tissue = thing["ref_tissue"], tissue_metadata = tissue_annotations,
+                                    ref_color=thing["ref_color"],
                                     ref_pt=names(mouse_plots_to_make)[i], topn=as.numeric(thing["topn"]))
-  thisdata$p_
+  #thisdata$p_
+  ggsave(plot=thisdata$p_ ,height=5,width=6,dpi=200, 
+         filename=file.path(fig6path, paste0(thing["f"],"_", names(mouse_plots_to_make)[i], ".pdf")), 
+         useDingbats=FALSE)
+
 }
 ```
 
@@ -408,7 +418,9 @@ p_mouse_human_cumu <- ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu
   facet_wrap(~org) + 
   scale_color_manual(values=c("Human"="#6495ED", "Mouse"="#9FE2BF")) +
   scale_fill_manual(values=c("Human"="#6495ED", "Mouse"="#9FE2BF")) +
-  labs(x="clone rank", y="cumulative frequency (%)") 
+  labs(x="clone rank", y="cumulative frequency (%)")+ 
+        theme_classic() 
+
 
 ggsave(plot=p_mouse_human_cumu ,height=4,width=10, filename=file.path(alluvial_figures_path, "S12D-mouse_human_cumulative.pdf"))
 

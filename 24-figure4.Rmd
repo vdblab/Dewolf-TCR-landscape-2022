@@ -45,6 +45,12 @@ ggsave(plot=Vmouse ,height=6,width=6,
        useDingbats=FALSE)
 }
 
+Vmouse_donor = venn::venn(aa_per_pt[grep("Donor", names(aa_per_pt))], ilab = TRUE, zcolor = "style", opacity = .2, ggplot = TRUE)
+
+ggsave(plot=Vmouse_donor ,height=6,width=6,
+       filename=file.path("figures", "fig6", "6D-mouse_donor_venn_plot_AA.pdf"), 
+       useDingbats=FALSE)
+
 ```
 
 

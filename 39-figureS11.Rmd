@@ -437,6 +437,8 @@ filter(gvhd.x == "GvHD") %>% filter(collection_day.x==14), aes(x=reorder(interac
 ggsave(filename = file.path(boxdir, "mouse_JSD_variance.pdf"), plot = p_mouse_variance, width = 9, height=6)
 
 
+expl_figs_dir <- "figures/exploratory_trees/"
+dir.create(expl_figs_dir, showWarnings = FALSE)
 
 
 mouse_summary_plist <- list()
@@ -495,7 +497,7 @@ for (gr in c("GvHD", "noGvHD")){
       geom_segment(data=ticks, aes(y=-yend, yend=0, x=x, xend=x )) +
       theme(legend.position = c(.2, .95)) 
     mouse_summary_plist[[gr]] <- p_tcr_all
-    ggsave(p_tcr_all, filename = file.path("figures", str_glue("aggregated_mouse_tcr_{gr}_day{cday}.pdf")), width=6, height=8,device = "pdf")
+    ggsave(p_tcr_all, filename = file.path(expl_figs_dir, str_glue("aggregated_mouse_tcr_{gr}_day{cday}.pdf")), width=6, height=8,device = "pdf")
     
     tcr_agg_mice_ordered[upper.tri(tcr_agg_mice_ordered)] <- NA
     diag(tcr_agg_mice_ordered) <- NA
@@ -523,13 +525,22 @@ for (gr in c("GvHD", "noGvHD")){
         )
     
     ggsave(p_tcr_all_heat,
-           filename = file.path(boxdir, str_glue("aggregated_mouse_tcr_{gr}_day{cday}_heatmap.pdf")), width=6, height=8,device = "pdf")
+           filename = file.path(expl_figs_dir, str_glue("aggregated_mouse_tcr_{gr}_day{cday}_heatmap.pdf")), width=6, height=8,device = "pdf")
     ggsave(p_tcr_all_heat + scale_fill_gradient2(midpoint = .5, limits=c(0, 1)),
-           filename = file.path(boxdir, str_glue("aggregated_mouse_tcr_{gr}_day{cday}_heatmap_altcolor.pdf")), width=6, height=8,device = "pdf")
+           filename = file.path(expl_figs_dir, str_glue("aggregated_mouse_tcr_{gr}_day{cday}_heatmap_altcolor.pdf")), width=6, height=8,device = "pdf")
     
     
     
   }
 }
+dir.create("figures/fig6/", showWarnings = FALSE)
+file.copy(
+  file.path(expl_figs_dir, str_glue("aggregated_mouse_tcr_GvHD_day7_heatmap.pdf")),
+  file.path("figures/fig6/", str_glue("6A1-aggregated_mouse_tcr_GvHD_day7_heatmap.pdf"))
+)
+file.copy(
+  file.path(expl_figs_dir, str_glue("aggregated_mouse_tcr_GvHD_day14_heatmap.pdf")),
+  file.path("figures/fig6/", str_glue("6A2-aggregated_mouse_tcr_GvHD_day14_heatmap.pdf"))
+)
 ```
 

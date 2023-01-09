@@ -6,8 +6,9 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r 25-figure5-S7-VECTRA-1, eval=FALSE}
 library(tidyverse)
-vectra_figs_dir <- file.path("figures", "vectra")
-# Note: if you would like access to the HALO data refereced below, please send us a message.
+vectra_figs_dir <- file.path("figures", "fig5-vectra")
+dir.create(vectra_figs_dir, showWarnings = FALSE)
+# Note: if you would like access to the HALO data referenced below, please send us a message.
 
 
 #first we merge together the CD8, CD4, and Treg populations so we can graph together (this is the output from Nick Socci, after being run through a pipeline based on the original Halo output files)
@@ -16,7 +17,7 @@ CD8 <- read_csv("/Volumes/vandenBrinkLab/Susan/Human GVHD/VECTRA/5_2021/results 
 CD4 <- read_csv("/Volumes/vandenBrinkLab/Susan/Human GVHD/VECTRA/5_2021/results 2/2021-06-20/dewolfs_Proj01_5.5.1_20210620__Tcell_CD8_neg__TABLES.csv")
 Treg <- read_csv("/Volumes/vandenBrinkLab/Susan/Human GVHD/VECTRA/5_2021/results 2/2021-06-20/dewolfs_Proj01_5.5.1_20210620__Treg__TABLES.csv")
 T_cells <- read_csv("/Volumes/vandenBrinkLab/Susan/Human GVHD/VECTRA/5_2021/results 2/2021-06-20/dewolfs_Proj01_5.5.1_20210620__T_cell__TABLES.csv")
-spatial_Tcells <- read_csv("~/Downloads/dewolfS_SpatialByPop_2021-09-24/dewolfs_Proj01_SpatialProfiles_5.5.1_Pop__T_cell___TABLES.csv")
+spatial_Tcells <- readxl::read_xlsx("/Volumes/vandenBrinkLab/Susan/Human GVHD/VECTRA/dewolfS_SpatialByPop_2021-09-24/dewolfs_Proj01_SpatialProfiles_5.5.1_Pop__T_cell___TABLES.xlsx")
 
 
 
