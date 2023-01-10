@@ -60,7 +60,7 @@ for (pat in unique(tcr_sample_metadata$indv_label)){#c("Pt1", "Pt2", "Pt3", "Pt5
   # pat="Patient A"
   if (startsWith(pat, "Donor")) next
   pt_comp_df <- tcr_corrs_anno %>% 
-    filter(indv_label.x == "Patient A" & indv_label.y == "Patient A" ) %>%
+    filter(indv_label.x == pat & indv_label.y == pat ) %>%
     rename(A=tissue.x, B=tissue.y, value=JSD) %>% 
     #mutate(A=pmin(tissue.x, tissue.y), B=pmax(tissue.x, tissue.y), value=JSD) %>%
     select(A, B, value) %>% distinct() %>% 
@@ -561,22 +561,36 @@ file.copy(
 ## Cumulative abundancy by harvest day
 
 ```{r}
-p_mouse_cumutop10 <- tcr_raw %>% filter(org=="Mouse") %>% filter(grepl("Balb|Recipient", sample_name)) %>% mutate(harvest_day=ifelse(is.na(collection_day), "Donor", collection_day)) %>% 
-  group_by(sample_name) %>% mutate(rank=rank(desc(productive_frequency), ties.method = "min")) %>% 
+top_mouse_data <- tcr_raw %>% filter(org=="Mouse") %>% 
+  filter(grepl("Balb|Recipient", sample_name)) %>% 
+  mutate(harvest_day=ifelse(is.na(collection_day), 0, collection_day)) %>% 
+  group_by(sample_name) %>% 
+  mutate(rank=rank(desc(productive_frequency), ties.method = "min")) %>% 
   ungroup() %>% 
   filter(rank <= 10) %>% 
   mutate(tissue=ifelse(tissue=="terminalileum", "ileum", tissue)) %>% 
-  group_by(sample_name, tissue, harvest_day) %>% 
-  summarize(sum_prod_freq = sum(productive_frequency)) %>% 
-  ggplot(aes(x=harvest_day, fill=harvest_day, y=sum_prod_freq)) + 
+  group_by(sample_name, indv_label, tissue, harvest_day) %>% 
+  summarize(sum_prod_freq = sum(productive_frequency))
+
+p_mouse_cumutop10 <- top_mouse_data %>% 
+  ggplot(aes(x=harvest_day, fill=as.character(harvest_day), y=sum_prod_freq, group=harvest_day)) + 
   geom_boxplot(outlier.colour = NA) + 
   geom_jitter(height = 0, alpha=.4, size=2) +
-  scale_x_discrete(breaks=c("Donor", "7", "14"), limits=c("Donor", "7", "14")) + 
-  scale_fill_manual(values=c("Donor"="#CCD2D0", "14"="#B6DFE9", "7"="#172470")) +
+  scale_x_continuous(breaks=c(0, 7, 14), labels=c("control", "7", "14")) + 
+  scale_fill_manual(values=c("control"="#CCD2D0", "14"="#B6DFE9", "7"="#172470")) +
   facet_grid(~tissue) +
+  labs(x="", y="sum productive frequency \n of top 10 clones", fill="Harvest Day") + 
   theme_bw()
 
 ggsave(p_mouse_cumutop10, filename = "figures/abundance/S8F-mouse-top-abundances.pdf", width = 8, height=5)
+
+top_mouse_data
+mod.slope1 <- lmerTest::lmer(sum_prod_freq ~
+                     harvest_day +
+                     tissue +
+                     (1| indv_label),
+                   data = top_mouse_data %>% filter(harvest_day > 0) %>% mutate(harvest_day=as.character(harvest_day)))
+summary(mod.slope1)
 
 
 ```

@@ -43,6 +43,21 @@ Scatter <- tcr_raw %>%
 ) 
   
 ggsave(file = file.path(fig2_figs_path, "2Ba-scatterplot_ascending_descending.pdf"), plot = scatterplot_ascending_descending, device = "pdf", height = 2, width = 2, units = "in")
+(scatterplot_ascending_descending_hex =
+  ggplot(Scatter, aes(x=ascending_colon_pseudo,y=descending_colon_pseudo, 
+                      #fill = ifelse(0.00001 == ascending_colon_pseudo | 0.00001==descending_colon_pseudo, "grey20", "navy"),
+                      alpha = ifelse(0.00001 == ascending_colon_pseudo | 0.00001==descending_colon_pseudo, 1, .1),
+  )) +
+  geom_hex(size = 2, bins=30) +
+   guides(alpha="none", color="none") + 
+  scale_y_log10(labels=scales::trans_format('log10',scales::math_format(10^.x)), limits = c(0.000009,1)) +
+  scale_x_log10(labels=scales::trans_format('log10',scales::math_format(10^.x)), limits = c(0.000009,1)) +
+  coord_fixed() + theme_classic() +
+  scale_fill_gradient(name = "count", trans = "log",
+                        breaks = c(1, 10, 100, 1000, 10000, 100000), labels = c(1, 10, 100, 1000, 10000, 100000))  
+) 
+  
+ggsave(file = file.path(fig2_figs_path, "hex-scatterplot_ascending_descending.pdf"), plot = scatterplot_ascending_descending, device = "pdf", height = 2, width = 2, units = "in")
 
  
 (scatterplot_ascending_skin =

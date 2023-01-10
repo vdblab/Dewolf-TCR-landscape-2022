@@ -92,14 +92,16 @@ fig1R <- ggplot(msk_uc_corrs%>%
 
 ggsave(plot=fig1R ,height=4,width=6, filename=file.path(figures_path, "Revision_fig1R.pdf"))
 
-#plot with the data from Teichmann et al . as well (JSD calculated separately)
-msk_uc_corrs2 <- msk_uc_corrs
-# msk_uc_corrs2 = read.csv("JSD_public_comparisons.csv")
+# This file was created manually from the results of the tcr calculations on the MSK and UC datasets plus the single cell analysis results in notebooks/sc-tcr-analysis.ipynb
 
-theselimits = sort(unique(msk_uc_corrs2$xgroup))
+msk_uc_sc_corrs <-   read.csv("data/JSD_public_comparisons.csv") %>% 
+  group_by(xgroup) %>% mutate(n=n_distinct(indv_label.x)) %>% 
+  ungroup() %>% 
+  mutate(xgroup = paste0(xgroup, "\n(n=", n, ")"))
+theselimits = sort(unique(msk_uc_sc_corrs$xgroup))
 theselimits <- theselimits[c(1,5,6,3,4,2)]
 
-JSD_public <- ggplot(msk_uc_corrs2%>%
+JSD_public <- ggplot(msk_uc_sc_corrs%>%
          rename(metic= all_of(thismetric)) %>%
          select(indv_label.x, xgroup, metic, tissue.x, tissue.y) %>% distinct() %>% 
          filter(!indv_label.x %in% c("P01", "P08")), aes(x=xgroup, y=metic, fill = xgroup)) + geom_boxplot(alpha = .3) +  

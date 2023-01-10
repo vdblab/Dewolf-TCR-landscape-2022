@@ -1,0 +1,38 @@
+,indv_label.x,indv_label.y,tissue.x,tissue.y,disease.x,JSD,cohort,S2_uc_group,xgroup
+1,C01,C01,blood,rectum,control,0.95167178,UC,Rectum,UC - control
+2,C02,C02,blood,rectum,control,0.960928823,UC,Rectum,UC - control
+3,C03,C03,blood,rectum,control,0.94965932,UC,Rectum,UC - control
+4,C04,C04,blood,rectum,control,0.999673327,UC,Rectum,UC - control
+5,P01,P01,blood,rectum,disease,0.999574207,UC,Rectum,UC - disease
+6,P02,P02,blood,rectum,disease,0.914040259,UC,Rectum,UC - disease
+7,P03,P03,blood,rectum,disease,0.858683494,UC,Rectum,UC - disease
+8,P04,P04,blood,rectum,disease,0.960097227,UC,Rectum,UC - disease
+9,P05,P05,blood,rectum,disease,0.934866852,UC,Rectum,UC - disease
+10,P06,P06,blood,rectum,disease,0.936926273,UC,Rectum,UC - disease
+11,P07,P07,blood,rectum,disease,0.818539354,UC,Rectum,UC - disease
+12,P08,P08,blood,rectum,disease,1,UC,Rectum,UC - disease
+13,P09,P09,blood,rectum,disease,0.898569125,UC,Rectum,UC - disease
+14,Patient A,Patient A,autopsy_blood,ileum,GvHD,0.820506283,MSK,Small Intestine,GvHD - Small Intestine
+15,Patient A,Patient A,autopsy_blood,duodenum,GvHD,0.788926885,MSK,Small Intestine,GvHD - Small Intestine
+16,Patient A,Patient A,autopsy_blood,mid_colon,GvHD,0.794876843,MSK,Large Intestine,GvHD - Large Intestine
+17,Patient D,Patient D,autopsy_blood,jejunum,GvHD,0.471387079,MSK,Small Intestine,GvHD - Small Intestine
+18,Patient D,Patient D,autopsy_blood,ileum,GvHD,0.49567787,MSK,Small Intestine,GvHD - Small Intestine
+19,Patient D,Patient D,autopsy_blood,descending_colon,GvHD,0.502526656,MSK,Large Intestine,GvHD - Large Intestine
+20,Patient D,Patient D,autopsy_blood,transverse_colon,GvHD,0.511411791,MSK,Large Intestine,GvHD - Large Intestine
+21,Patient D,Patient D,autopsy_blood,duodenum,GvHD,0.431546885,MSK,Small Intestine,GvHD - Small Intestine
+22,Patient D,Patient D,autopsy_blood,rectum,GvHD,0.455311523,MSK,Rectum,GvHD - Rectum
+23,Patient F,Patient F,autopsy_blood,descending_colon,GvHD,0.621085796,MSK,Large Intestine,GvHD - Large Intestine
+24,Patient F,Patient F,autopsy_blood,duodenum,GvHD,0.708043605,MSK,Small Intestine,GvHD - Small Intestine
+25,Patient F,Patient F,autopsy_blood,jejunum,GvHD,0.695875705,MSK,Small Intestine,GvHD - Small Intestine
+26,Patient F,Patient F,autopsy_blood,rectum,GvHD,0.363126212,MSK,Rectum,GvHD - Rectum
+27,Patient F,Patient F,autopsy_blood,ileum,GvHD,0.500773557,MSK,Small Intestine,GvHD - Small Intestine
+28,Patient F,Patient F,autopsy_blood,transverse_colon,GvHD,0.632869475,MSK,Large Intestine,GvHD - Large Intestine
+29,Patient G,Patient G,autopsy_blood,colon,GvHD,0.978875218,MSK,Large Intestine,GvHD - Large Intestine
+30,Patient G,Patient G,autopsy_blood,small_intestine,GvHD,0.988315239,MSK,Small Intestine,GvHD - Small Intestine
+31,Patient D,Patient D,autopsy_blood,ascending_colon,GvHD,0.522657908,MSK,Large Intestine,GvHD - Large Intestine
+32,Patient F,Patient F,autopsy_blood,ascending_colon,GvHD,0.58405504,MSK,Large Intestine,GvHD - Large Intestine
+33,Patient G,Patient G,autopsy_blood,L_colon,GvHD,0.954109295,MSK,Large Intestine,GvHD - Large Intestine
+34,637C,637C,blood,JEJEPI,control,1,Teichmann et al. ,GI Tissues,GI Tissues
+35,637C,637C,blood,JEJLP,control,0.987730227,Teichmann et al. ,GI Tissues,GI Tissues
+36,A36,A36,blood,CAE,control,1,Teichmann et al. ,GI Tissues,GI Tissues
+37,A36,A36,blood,ILE,control,0.990956863,Teichmann et al. ,GI Tissues,GI Tissues
