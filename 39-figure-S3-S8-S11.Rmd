@@ -50,19 +50,18 @@ ggplot(comp_df, aes(x=TissueSystem.y, color=grp, group=interaction(TissueSystem.
 
 ```
 
-Now, for the TCR data.  First, the per-patient boxplots.
+Now, for the TCR data.  First, the per-patient boxplots showing the JSDs by tissue system, with stats for cases where multiple tissues within a system are available.
 
 ```{r 39-figureS11-2 }
 
 ### Per patient
-for (pat in unique(tcr_sample_metadata$indv_label)){#c("Pt1", "Pt2", "Pt3", "Pt5", "Pt6", "Pt7",  "Pt9")){
+for (pat in unique(tcr_sample_metadata$indv_label)){
   print(str_glue("Processing {pat}"))
   # pat="Patient A"
   if (startsWith(pat, "Donor")) next
   pt_comp_df <- tcr_corrs_anno %>% 
     filter(indv_label.x == pat & indv_label.y == pat ) %>%
     rename(A=tissue.x, B=tissue.y, value=JSD) %>% 
-    #mutate(A=pmin(tissue.x, tissue.y), B=pmax(tissue.x, tissue.y), value=JSD) %>%
     select(A, B, value) %>% distinct() %>% 
     filter(A != B) %>% 
     left_join(tissue_key %>% select(TissueTCR, TissueSystem), by=c("A"="TissueTCR")) %>%
@@ -82,7 +81,7 @@ ggsave(p_, filename = file.path(boxdir, str_glue("{pat}_comparisons.png")), widt
 }
 ```
 
-Then the same was calculated across all samples:
+Then the same was calculated across all samples.  We calculated these separately for the mouse and the human samples.
 
 ```{r 39-figureS11-3 }
 
@@ -152,8 +151,8 @@ file.copy(file.path(boxdir, paste0("between_within_Mouse.pdf")),
           file.path(boxdir, paste0("S8C-between_within_Mouse.pdf")))
 ```
 
-
-Next, we shuffled the classes for the systems with multiple tissues represented in the data (limiting to human samples for simplicity).  The probability weight of the sampling was set to mimic the comparisons at hand.
+## Permuttaion tests
+Next, we shuffled the classes for the systems with multiple tissues represented in the data (limiting to human samples for simplicity).  The probability weight of the sampling was set to mimic the comparisons at hand. For instance, we have 124 small-intestinal vs non-small-intestine pairs, and 19 within-small-intestine pairs, so a weight ratio or .867:.133.
 
 ```{r 39-figureS11-4 }
 (weights <- pt_comp_df_all %>%
@@ -325,6 +324,8 @@ file.copy(file.path(boxdir, str_glue("mouse_human_between_within_{sname}.pdf")),
 ```
 
 ## Raw data comparison plots
+
+
 ```{r 39-figureS11-7 }
 # note the lack of the `distinct()` call here; we need all the (redundant) comparisons for this figure
 set.seed(123)

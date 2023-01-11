@@ -18,7 +18,7 @@ For certain analyses (such as GLIPH), id's of samples and patients needed to be 
 
 ## Data cleaning
 
-Sample id's were changed to conform to the format needed by gliph, and processed with the script `04_gliph2.Rmd`. The output of that script with the relevant columns is written out to `all_tcr_data_withcomp.tsv`.
+Sample id's were changed to conform to the format needed by gliph, and processed with the script `GLIPH2/04_gliph2.Rmd`. The output of that script with the relevant columns is written out to `all_tcr_data_withcomp.tsv`.
 
 ## Running GLIPH
 
@@ -26,7 +26,7 @@ The parameters for gliph can be found `GLIPH/test_paramter.txt`. GLIPH version 0
 
 # Calculating Overlap Score of GLIPH results
 
-The script `overlap_score_calculations.py` reads in `test_cluster_allpts_withcomparators` to create the overlap figure.
+The script `GLIPH2/overlap_score_calculations.py` reads in `test_cluster_allpts_withcomparators` to create the overlap figure.
 
     # if needed 
     # conda create -n tcr --file conda_env.txt
@@ -41,4 +41,9 @@ See soccin's repository for a description of this analysis. That repo is include
 ## GTEx comparison
 
 The comparison between the TCR profiles and the GTEx transcription data are in `GTEx/`.  The documents there describe downloading, preprocessing the data, and generating the figures.
+
+## Jupyter notebooks
+Two analyses (NucSeq and single-cell TCR) were performed by @nceglia and @kousaa respectively; these jupyter notebooks and a README describing the analysis are found in the `notebooks` directory.
+
+
 

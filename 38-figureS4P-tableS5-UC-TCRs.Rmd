@@ -117,7 +117,7 @@ JSD_public <- ggplot(msk_uc_sc_corrs%>%
 JSD_public
 
 
-ggsave(plot=JSD_public ,height=4,width=5, filename=file.path(figures_path, "Revision_JSD_public.pdf"))
+ggsave(plot=JSD_public ,height=4,width=5, filename=file.path(figures_path, "S4P-Revision_JSD_public.pdf"))
 
 ```
 
