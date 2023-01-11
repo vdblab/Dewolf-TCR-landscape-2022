@@ -28,12 +28,12 @@ library(patchwork)
 # devtools::install_version("preseqR", version = "1.2.1", repos = "http://cran.us.r-project.org")
 library(preseqR)
 
-tcr_counts_gvh <- tcr_raw %>% select(sample_name, rearrangement,templates )
+tcr_counts_gvh <- tcr_raw %>% select(sample_name, rearrangement, templates)
 theme_set(theme_classic())
 # The  input here, (Tsoni writing this) is the dataframe overallTCR.hist
 # which has two columns, and I believe the first column here is misnamed n.
 # it should be j
-#The first column is meant to be ascending sorted counts j = 1,2 ... (but not necessarily sequential)
+# The first column is meant to be ascending sorted counts j = 1,2 ... (but not necessarily sequential)
 # The second column is meant to n_j, the frequency count of j.
 # "one example is the word frequencies in Shakepssear's known works,
 # where n_j is the number of words appeared exactly j times.
@@ -56,8 +56,10 @@ set.seed(123456)
 tcr_hist <- tcr_counts_gvh %>%
   group_by(sample_name) %>%
   count(templates) %>%
-  rename(j = templates,
-         n_j = n) %>%
+  rename(
+    j = templates,
+    n_j = n
+  ) %>%
   arrange(sample_name, j) %>%
   ungroup()
 
@@ -68,73 +70,83 @@ We set a fold increase target of 10x the original depth sampled, per sample (eg 
 
 ```{R 41-figureS12A-addressing-questions-of-sampling-depth-1}
 preseq_predictions <- "preseq_data.rds"
-if(file.exists(preseq_predictions)){
-  tcr_increase_results<- readRDS(preseq_predictions)
-} else{
-   # NOTE: this generates lots of warnings:
+if (file.exists(preseq_predictions)) {
+  tcr_increase_results <- readRDS(preseq_predictions)
+} else {
+  # NOTE: this generates lots of warnings:
   # - max count before zero is les than min required count (4), sample not sufficiently deep or duplicates removed
   # that seems to happen for very diverse libraries, where it appears to be deduplicated and preseq cant run
-  # 
+  #
 
-tcr_increase_results <- map(unique(tcr_hist$sample_name), .f = function(x){
-  # set a target depth fold change
-  target_depth = 10
-  # get only this sample's data
-  dat <- tcr_hist[tcr_hist$sample_name == x, ]  %>%
-    select(j, n_j)
-  # get the actual target depth (total of each line of histograms' product)
-  total_depth = sum(dat$j*dat$n_j)
-  # get the library complexity estimates
-  overallTCR.preseqR <- preseqR.rfa.species.accum.curve(
-    as.matrix(dat), 
-    ss=total_depth,
-    max.extrapolation=total_depth*target_depth, 
-    bootstrap.times = 10)
-  # reformat
-  data.frame(overallTCR.preseqR) %>%
-    mutate(sample_name=x,
-           total=total_depth,
-           target=total_depth*target_depth)
-}) %>% bind_rows()
-saveRDS(tcr_increase_results, file = preseq_predictions )
+  tcr_increase_results <- map(unique(tcr_hist$sample_name), .f = function(x) {
+    # set a target depth fold change
+    target_depth <- 10
+    # get only this sample's data
+    dat <- tcr_hist[tcr_hist$sample_name == x, ] %>%
+      select(j, n_j)
+    # get the actual target depth (total of each line of histograms' product)
+    total_depth <- sum(dat$j * dat$n_j)
+    # get the library complexity estimates
+    overallTCR.preseqR <- preseqR.rfa.species.accum.curve(
+      as.matrix(dat),
+      ss = total_depth,
+      max.extrapolation = total_depth * target_depth,
+      bootstrap.times = 10
+    )
+    # reformat
+    data.frame(overallTCR.preseqR) %>%
+      mutate(
+        sample_name = x,
+        total = total_depth,
+        target = total_depth * target_depth
+      )
+  }) %>% bind_rows()
+  saveRDS(tcr_increase_results, file = preseq_predictions)
 }
-p_preseq_extrap_by_tissue <-  ggplot(tcr_increase_results %>% group_by(sample_name) %>%
-         summarize(perc_increase=max(yield.estimate)/min(yield.estimate)) %>%
-         left_join(tcr_sample_metadata %>% select(sample_name, indv_label, tissue, org, gvhd)) %>%
-         left_join(tissue_annotations) ,
-       aes(x=reorder(tissue_label, anatomic_order), y=perc_increase, color=new_col)) +
+p_preseq_extrap_by_tissue <- ggplot(
+  tcr_increase_results %>% group_by(sample_name) %>%
+    summarize(perc_increase = max(yield.estimate) / min(yield.estimate)) %>%
+    left_join(tcr_sample_metadata %>% select(sample_name, indv_label, tissue, org, gvhd)) %>%
+    left_join(tissue_annotations),
+  aes(x = reorder(tissue_label, anatomic_order), y = perc_increase, color = new_col)
+) +
   geom_boxplot(outlier.colour = NA) +
   geom_jitter() +
   scale_color_identity() +
-  facet_grid(org~gvhd, scales="free_x", space="free") +
-  scale_y_continuous(limits = c(1, 10), expand = c(0,0)) +
-  theme(axis.text.x = element_text(angle=45, hjust=1)) +
+  facet_grid(org ~ gvhd, scales = "free_x", space = "free") +
+  scale_y_continuous(limits = c(1, 10), expand = c(0, 0)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
   geom_hline(yintercept = 1) +
-  labs(x="Tissue", y="Preseq predicted fold change of unique TCRs \nwith 10x sequencing depth")
+  labs(x = "Tissue", y = "Preseq predicted fold change of unique TCRs \nwith 10x sequencing depth")
 
 
 p_preseq_select_tissues_curves <- ggplot(tcr_increase_results %>%
-         left_join(tcr_sample_metadata %>% select(sample_name, indv_label, tissue, org, gvhd)) %>%
-         filter(tissue %in% c("graft_blood", "duodenum", "skin", "stomatch", "descending_colon")) %>%
-         left_join(tissue_annotations) %>%
-       filter(org == "Human"), aes(x=sample.size, y=yield.estimate, color=indv_label)) +
-       geom_line() +
-  facet_wrap(gvhd + org~tissue) +
-  geom_abline(intercept = 0, slope = 1) + coord_equal()
-
-
-
-
-
-tcr_preseq_increase <- tcr_increase_results %>% group_by(sample_name) %>%
-  summarize(perc_increase=max(yield.estimate)/min(yield.estimate)) %>%
   left_join(tcr_sample_metadata %>% select(sample_name, indv_label, tissue, org, gvhd)) %>%
-  filter(!grepl("[Dd]onor", sample_name)) %>% 
-  filter("PtD_autopsy_marrow_TCRB" != sample_name) %>%  
-  mutate(gr = ifelse(grepl("blood", tissue), tissue, "non-blood")) %>%
-  group_by(gr, org) %>% do(x=broom::tidy(summary(.$perc_increase))) %>% unnest(x) %>%
-  arrange(org, gr) %>% mutate(across(.cols = minimum:maximum, round, 2)) %>% rename(`Tissue Type`=gr, `Species`=org)
+  filter(tissue %in% c("graft_blood", "duodenum", "skin", "stomatch", "descending_colon")) %>%
+  left_join(tissue_annotations) %>%
+  filter(org == "Human"), aes(x = sample.size, y = yield.estimate, color = indv_label)) +
+  geom_line() +
+  facet_wrap(gvhd + org ~ tissue) +
+  geom_abline(intercept = 0, slope = 1) +
+  coord_equal()
 
+
+
+
+
+tcr_preseq_increase <- tcr_increase_results %>%
+  group_by(sample_name) %>%
+  summarize(perc_increase = max(yield.estimate) / min(yield.estimate)) %>%
+  left_join(tcr_sample_metadata %>% select(sample_name, indv_label, tissue, org, gvhd)) %>%
+  filter(!grepl("[Dd]onor", sample_name)) %>%
+  filter("PtD_autopsy_marrow_TCRB" != sample_name) %>%
+  mutate(gr = ifelse(grepl("blood", tissue), tissue, "non-blood")) %>%
+  group_by(gr, org) %>%
+  do(x = broom::tidy(summary(.$perc_increase))) %>%
+  unnest(x) %>%
+  arrange(org, gr) %>%
+  mutate(across(.cols = minimum:maximum, round, 2)) %>%
+  rename(`Tissue Type` = gr, `Species` = org)
 ```
 
 
@@ -142,97 +154,108 @@ tcr_preseq_increase <- tcr_increase_results %>% group_by(sample_name) %>%
 
 ```{r 41-figureS12A-addressing-questions-of-sampling-depth-2}
 
-tmp_long <- tcr_raw %>% 
-  filter(sample_name %in% c("PtF_jejunum_TCRB", "PtF_pretx_blood_TCRB")) %>% 
-  select(sample_name, templates, rearrangement) 
-tmp <- tmp_long %>% pivot_wider(names_from = sample_name, values_from=templates, values_fill = 0) %>%
+tmp_long <- tcr_raw %>%
+  filter(sample_name %in% c("PtF_jejunum_TCRB", "PtF_pretx_blood_TCRB")) %>%
+  select(sample_name, templates, rearrangement)
+tmp <- tmp_long %>%
+  pivot_wider(names_from = sample_name, values_from = templates, values_fill = 0) %>%
   column_to_rownames("rearrangement")
-vegan::rarecurve(t(tmp), step = 10, ylab = "Rearrangements", col =  data.frame(sample_name=colnames(tmp)) %>% left_join(tcr_sample_metadata %>% select(sample_name, tissue)) %>%
-  left_join(tissue_annotations) %>% pull(new_col)
-)
+vegan::rarecurve(t(tmp), step = 10, ylab = "Rearrangements", col = data.frame(sample_name = colnames(tmp)) %>% left_join(tcr_sample_metadata %>% select(sample_name, tissue)) %>%
+  left_join(tissue_annotations) %>% pull(new_col))
 
-tmpdf <- map(seq(1,  max(colSums(tmp)), 10), .f = function(x){
-  data.frame(Rearrangements=vegan::rarefy(t(tmp), sample = x, se = FALSE, )) %>% rownames_to_column("sample_name") %>% mutate(`Sample Size` = x) 
-}) %>% 
-  bind_rows() %>% 
-  left_join(data.frame(total=colSums(tmp), sample_name=names(colSums(tmp)))) %>% 
-  group_by(sample_name) %>% 
+tmpdf <- map(seq(1, max(colSums(tmp)), 10), .f = function(x) {
+  data.frame(Rearrangements = vegan::rarefy(t(tmp), sample = x, se = FALSE, )) %>%
+    rownames_to_column("sample_name") %>%
+    mutate(`Sample Size` = x)
+}) %>%
+  bind_rows() %>%
+  left_join(data.frame(total = colSums(tmp), sample_name = names(colSums(tmp)))) %>%
+  group_by(sample_name) %>%
   filter(`Sample Size` <= total) %>%
   mutate(lab = ifelse(`Sample Size` == max(`Sample Size`), sample_name, ""))
 
 tmp_tcr_hist <- tmp_long %>%
   group_by(sample_name) %>%
   count(templates) %>%
-  rename(j = templates,
-         n_j = n) %>%
+  rename(
+    j = templates,
+    n_j = n
+  ) %>%
   arrange(sample_name, j) %>%
   ungroup()
 
 # make exemplar preseq curves out to 10x
-these_preseq <- map(unique(tmp_tcr_hist$sample_name), .f=function(x){
-  target_depth = 10
-  dat <- tmp_tcr_hist[tmp_tcr_hist$sample_name == x, ]  %>%
+these_preseq <- map(unique(tmp_tcr_hist$sample_name), .f = function(x) {
+  target_depth <- 10
+  dat <- tmp_tcr_hist[tmp_tcr_hist$sample_name == x, ] %>%
     select(j, n_j)
   # get the actual target depth (total of each line of histograms' product)
-  total_depth = sum(dat$j*dat$n_j)
+  total_depth <- sum(dat$j * dat$n_j)
   # get the library complexity estimates
   overallTCR.preseqR <- preseqR.rfa.species.accum.curve(
-    as.matrix(dat), 
-    ss=total_depth*target_depth/10,
-    max.extrapolation=total_depth*target_depth, 
-    bootstrap.times = 100)
+    as.matrix(dat),
+    ss = total_depth * target_depth / 10,
+    max.extrapolation = total_depth * target_depth,
+    bootstrap.times = 100
+  )
   # reformat
   data.frame(overallTCR.preseqR) %>%
-    mutate(sample_name=x,
-           total=total_depth,
-           target=total_depth*target_depth)
+    mutate(
+      sample_name = x,
+      total = total_depth,
+      target = total_depth * target_depth
+    )
 }) %>% bind_rows()
 
 # why is this requiring me such an increase in max.overlaps? I have no idea...
-p_rare <- ggplot(tmpdf, aes(x=`Sample Size`, y=Rearrangements, color=sample_name)) +
-  geom_abline(slope = 1, intercept = 0, linetype="dotted", color="grey20")  + 
-  geom_line(size=.7) +  
-  scale_color_manual(values=c("red", "purple"), guide="none") + 
-  geom_line(data=these_preseq, aes(x=sample.size, y=yield.estimate), linetype="dashed", size=.2) +  
-  geom_segment(data=these_preseq %>% group_by(sample_name) %>% filter(sample.size == max(sample.size)) %>% 
-                 left_join(tmpdf %>% group_by(sample_name) %>%  filter(`Sample Size` == max(`Sample Size`))), aes(x=sample.size, y=yield.estimate, xend=sample.size, yend=Rearrangements), color="grey") +
-  scale_x_continuous(limits = c(0, max(these_preseq$sample.size)*1.05)) +
-  scale_y_continuous(limits = c(0, max(these_preseq$sample.size)*1.05)) +
-  geom_text(data=these_preseq %>% group_by(sample_name) %>% mutate(lab=ifelse(sample.size == max(sample.size), sample_name, "")), 
-            aes(x=sample.size, y=yield.estimate, label=lab), nudge_y = 10000,  nudge_x = -30000) + 
-  coord_equal() + 
-  labs(x="Total Depth", y="Unique TCRs")+ 
-       #caption="Dotted black line indicates diagonal\nSolid lines are species accumulation curves.\nDashed lines indicate preseq extrapolations.\nGray vertical lines show predicted increase \n of unique species at 10X current sequencing depth")+
-  theme(plot.caption = element_text(hjust=0), text = element_text(size=15))
+p_rare <- ggplot(tmpdf, aes(x = `Sample Size`, y = Rearrangements, color = sample_name)) +
+  geom_abline(slope = 1, intercept = 0, linetype = "dotted", color = "grey20") +
+  geom_line(size = .7) +
+  scale_color_manual(values = c("red", "purple"), guide = "none") +
+  geom_line(data = these_preseq, aes(x = sample.size, y = yield.estimate), linetype = "dashed", size = .2) +
+  geom_segment(data = these_preseq %>% group_by(sample_name) %>% filter(sample.size == max(sample.size)) %>%
+    left_join(tmpdf %>% group_by(sample_name) %>% filter(`Sample Size` == max(`Sample Size`))), aes(x = sample.size, y = yield.estimate, xend = sample.size, yend = Rearrangements), color = "grey") +
+  scale_x_continuous(limits = c(0, max(these_preseq$sample.size) * 1.05)) +
+  scale_y_continuous(limits = c(0, max(these_preseq$sample.size) * 1.05)) +
+  geom_text(
+    data = these_preseq %>% group_by(sample_name) %>% mutate(lab = ifelse(sample.size == max(sample.size), sample_name, "")),
+    aes(x = sample.size, y = yield.estimate, label = lab), nudge_y = 10000, nudge_x = -30000
+  ) +
+  coord_equal() +
+  labs(x = "Total Depth", y = "Unique TCRs") +
+  # caption="Dotted black line indicates diagonal\nSolid lines are species accumulation curves.\nDashed lines indicate preseq extrapolations.\nGray vertical lines show predicted increase \n of unique species at 10X current sequencing depth")+
+  theme(plot.caption = element_text(hjust = 0), text = element_text(size = 15))
 
 # p_rare_inset <- ggplot(tmpdf %>% filter(`Sample Size` <= min(colSums(tmp))*1.1),
-#                        aes(x=`Sample Size`, y=Rearrangements, color=sample_name)) + geom_line() +  
-#   scale_color_manual(values=c("red", "purple"), guide="none") + 
-#   scale_y_continuous(expand=c(0, 0)) + 
-#   scale_x_continuous(expand=c(0, 0)) + 
+#                        aes(x=`Sample Size`, y=Rearrangements, color=sample_name)) + geom_line() +
+#   scale_color_manual(values=c("red", "purple"), guide="none") +
+#   scale_y_continuous(expand=c(0, 0)) +
+#   scale_x_continuous(expand=c(0, 0)) +
 #   geom_abline(slope = 1, intercept = 0, linetype="dotted", color="grey40") + coord_equal() + labs(x="", y="")
 
 ggsave(p_rare,
-  filename = file.path(depth_dir, paste0("exemplar_rarefaction_curves-", paste0(names(tmp), collapse="__"), ".pdf")), width = 8, height=8
+  filename = file.path(depth_dir, paste0("exemplar_rarefaction_curves-", paste0(names(tmp), collapse = "__"), ".pdf")), width = 8, height = 8
   # p_rare + inset_element(p_rare_inset, left = .1, bottom = 0.7, right = .5, top = 1)
 )
 ggsave(p_rare,
-  filename = file.path(depth_dir, paste0("exemplar_rarefaction_curves-", paste0(names(tmp), collapse="__"), ".png")), width = 8, height=8
+  filename = file.path(depth_dir, paste0("exemplar_rarefaction_curves-", paste0(names(tmp), collapse = "__"), ".png")), width = 8, height = 8
   # p_rare + inset_element(p_rare_inset, left = .1, bottom = 0.7, right = .5, top = 1)
 )
 
 
-tt2 <- gridExtra::ttheme_minimal(core=list(fg_params=list(hjust=1, x=0.9)),
-                      rowhead=list(fg_params=list(hjust=1, x=0.95)))
-fold_increase_tab <-gridExtra::tableGrob(tcr_preseq_increase, theme=tt2, rows = NULL)
-combined_fold_increase_plot <- p_rare + fold_increase_tab + plot_layout(nrow=2, heights = c(.8, .1))
-#ggview::ggview(combined_fold_increase_plot, device = "png", width = 7, height=9)
+tt2 <- gridExtra::ttheme_minimal(
+  core = list(fg_params = list(hjust = 1, x = 0.9)),
+  rowhead = list(fg_params = list(hjust = 1, x = 0.95))
+)
+fold_increase_tab <- gridExtra::tableGrob(tcr_preseq_increase, theme = tt2, rows = NULL)
+combined_fold_increase_plot <- p_rare + fold_increase_tab + plot_layout(nrow = 2, heights = c(.8, .1))
+# ggview::ggview(combined_fold_increase_plot, device = "png", width = 7, height=9)
 
 ggsave(combined_fold_increase_plot,
-  filename = file.path(depth_dir, paste0("S12-exemplar_rarefaction_curves-", paste0(names(tmp), collapse="__"), ".png")), width = 7, height=9
+  filename = file.path(depth_dir, paste0("S12-exemplar_rarefaction_curves-", paste0(names(tmp), collapse = "__"), ".png")), width = 7, height = 9
 )
 ggsave(combined_fold_increase_plot,
-  filename = file.path(depth_dir, paste0("S12-exemplar_rarefaction_curves-", paste0(names(tmp), collapse="__"), ".pdf")), width = 7, height=9
+  filename = file.path(depth_dir, paste0("S12-exemplar_rarefaction_curves-", paste0(names(tmp), collapse = "__"), ".pdf")), width = 7, height = 9
 )
 ```    
 

@@ -4,9 +4,9 @@ editor_options:
   chunk_output_type: console
 ---
 ```{r 10-tables-1, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, fig.width=10, fig.height=7) 
-library(tidyverse) 
-library(patchwork)  # for combining figures
+knitr::opts_chunk$set(echo = FALSE, fig.width = 10, fig.height = 7)
+library(tidyverse)
+library(patchwork) # for combining figures
 ```
 
 # Summary Tables
@@ -17,103 +17,110 @@ load(tcr_objects_path)
 tab_dir <- "tables"
 dir.create(tab_dir, showWarnings = FALSE)
 
-getslope <- function(vals){
+getslope <- function(vals) {
   # get the slope of the abundance plots a la https://insight.jci.org/articles/view/121256
-  vals = vals[vals$Included == "Yes",]
-  slope = coef(lm(log(vals$n)~log(vals$productive_frequency)))[[2]]
-  sample_name = unique(vals$sample_name)
+  vals <- vals[vals$Included == "Yes", ]
+  slope <- coef(lm(log(vals$n) ~ log(vals$productive_frequency)))[[2]]
+  sample_name <- unique(vals$sample_name)
   return(cbind.data.frame(sample_name = sample_name, slope = slope))
 }
 
-slope_clean_low_frequency_clone<-function(vals)
-{
-  vals$Included = c("Yes")
-  vals = vals[order(vals$n),]
-  
-  vals_1clone = vals[vals$n == 1,]
-  ind = nrow(vals_1clone)
-  
-  if (nrow(vals_1clone) <= 1){
+slope_clean_low_frequency_clone <- function(vals) {
+  vals$Included <- c("Yes")
+  vals <- vals[order(vals$n), ]
+
+  vals_1clone <- vals[vals$n == 1, ]
+  ind <- nrow(vals_1clone)
+
+  if (nrow(vals_1clone) <= 1) {
     return(vals)
   } else {
-    bottom1 = vals_1clone$productive_frequency[1]
-    bottom2 = vals_1clone$productive_frequency[2]
-    
-    if (abs(log(bottom1)-log(bottom2)) < 1.5) {
-      cutoff_point = vals_1clone$productive_frequency[3]
-      vals$Included[vals$productive_frequency > cutoff_point] = "No"
-      vals$Included[3:ind] = "No"
+    bottom1 <- vals_1clone$productive_frequency[1]
+    bottom2 <- vals_1clone$productive_frequency[2]
+
+    if (abs(log(bottom1) - log(bottom2)) < 1.5) {
+      cutoff_point <- vals_1clone$productive_frequency[3]
+      vals$Included[vals$productive_frequency > cutoff_point] <- "No"
+      vals$Included[3:ind] <- "No"
       return(vals)
     } else {
-      cutoff_point = vals_1clone$productive_frequency[2]
-      vals$Included[vals$productive_frequency > cutoff_point] = "No"
-      vals$Included[2:ind] = "No"
+      cutoff_point <- vals_1clone$productive_frequency[2]
+      vals$Included[vals$productive_frequency > cutoff_point] <- "No"
+      vals$Included[2:ind] <- "No"
       return(vals)
     }
   }
-} 
-slopes <- tcr_raw %>% 
+}
+slopes <- tcr_raw %>%
   group_by(sample_name) %>%
-  count(productive_frequency) %>% 
-  group_split(.) %>% 
-  map(~slope_clean_low_frequency_clone(.)) %>%
-  map(~getslope(.)) %>% 
-  do.call(rbind.data.frame,.)
+  count(productive_frequency) %>%
+  group_split(.) %>%
+  map(~ slope_clean_low_frequency_clone(.)) %>%
+  map(~ getslope(.)) %>%
+  do.call(rbind.data.frame, .)
 
 
-(tab_sample_summary <- tcr_raw %>% 
-  group_by(sample_name, species, productive_templates, productive_rearrangements, sample_amount_ng, max_productive_frequency) %>% 
+tab_sample_summary <- tcr_raw %>%
+  group_by(sample_name, species, productive_templates, productive_rearrangements, sample_amount_ng, max_productive_frequency) %>%
   summarize(
-    entropy = -sum(log2(productive_frequency)*productive_frequency),
-    len = n(), 
-    clonality = 1- entropy/(log2(len))) %>% 
+    entropy = -sum(log2(productive_frequency) * productive_frequency),
+    len = n(),
+    clonality = 1 - entropy / (log2(len))
+  ) %>%
   left_join(slopes) %>%
-  mutate (slope = abs(slope),
-          max_productive_frequency = round(max_productive_frequency*100, 2)) %>% 
-  rename(`Sample name` = sample_name, 
-         `productive templates` = productive_templates,
-         `unique productive clones` = productive_rearrangements,
-         `gDNA (ng)` = sample_amount_ng,
-         `Max frequency` = max_productive_frequency) %>% 
-    arrange(species, `Sample name`) %>% 
-    select(-len)
-)
+  mutate(
+    slope = abs(slope),
+    max_productive_frequency = round(max_productive_frequency * 100, 2)
+  ) %>%
+  rename(
+    `Sample name` = sample_name,
+    `productive templates` = productive_templates,
+    `unique productive clones` = productive_rearrangements,
+    `gDNA (ng)` = sample_amount_ng,
+    `Max frequency` = max_productive_frequency
+  ) %>%
+  arrange(species, `Sample name`) %>%
+  select(-len)
 
+knitr::kable(tab_sample_summary)
 write.csv(tab_sample_summary, row.names = FALSE, file = file.path(tab_dir, "st4.csv"))
-
-
 ```
 
 ## Table S6 and S12
 Tables S6 and S12 are the human and mouse sample pair correlation metrics (respectively).  
 ```{r 10-tables-1-bis}
-tcr_corrs_anno <- tcr_corrs %>% 
-  left_join(tcr_sample_metadata %>% select(sample_name:species), by=c("sample1" = "sample_name")) %>% 
-  left_join(tcr_sample_metadata %>% select(sample_name:species), by=c("sample2" = "sample_name"))
+tcr_corrs_anno <- tcr_corrs %>%
+  left_join(tcr_sample_metadata %>% select(sample_name:species), by = c("sample1" = "sample_name")) %>%
+  left_join(tcr_sample_metadata %>% select(sample_name:species), by = c("sample2" = "sample_name"))
 
-thisround <- function(x){round(x, 3)}
-write.csv(tcr_corrs_anno   %>% filter(grepl("^Pt", sample1) & grepl("^Pt", sample2)) %>% 
-            filter(indv_label.x == indv_label.y) %>% 
-            filter(sample1 != sample2) %>% 
-            select(sample1, sample2, JSD, jsd_aa_raw, morisita_nt_raw, overlapping_clones ) %>% 
-            rename(
-              `JSD (nucleotide)`=JSD,
-              `JSD (amino acid)` = jsd_aa_raw, 
-                   `Morisita (nucleotide)`= morisita_nt_raw) %>% 
-             mutate_if(is.numeric, thisround), 
-          row.names = FALSE, file = file.path(tab_dir, "st6-human-tcr-comparisons.csv"))
+thisround <- function(x) {
+  round(x, 3)
+}
+write.csv(tcr_corrs_anno %>% filter(grepl("^Pt", sample1) & grepl("^Pt", sample2)) %>%
+  filter(indv_label.x == indv_label.y) %>%
+  filter(sample1 != sample2) %>%
+  select(sample1, sample2, JSD, jsd_aa_raw, morisita_nt_raw, overlapping_clones) %>%
+  rename(
+    `JSD (nucleotide)` = JSD,
+    `JSD (amino acid)` = jsd_aa_raw,
+    `Morisita (nucleotide)` = morisita_nt_raw
+  ) %>%
+  mutate_if(is.numeric, thisround),
+row.names = FALSE, file = file.path(tab_dir, "st6-human-tcr-comparisons.csv")
+)
 
-write.csv(tcr_corrs_anno   %>% filter(!grepl("^Pt", sample1) & !grepl("^Pt", sample2)) %>% 
-            filter(indv_label.x == indv_label.y) %>% 
-            filter(sample1 != sample2) %>% 
-            select(sample1, sample2, JSD, jsd_aa_raw, morisita_nt_raw, overlapping_clones ) %>% 
-            rename(
-              `JSD (nucleotide)`=JSD,
-              `JSD (amino acid)` = jsd_aa_raw, 
-                   `Morisita (nucleotide)`= morisita_nt_raw) %>% 
-             mutate_if(is.numeric, thisround), 
-          row.names = FALSE, file = file.path(tab_dir, "st12-mouse-tcr-comparisons.csv"))
-
+write.csv(tcr_corrs_anno %>% filter(!grepl("^Pt", sample1) & !grepl("^Pt", sample2)) %>%
+  filter(indv_label.x == indv_label.y) %>%
+  filter(sample1 != sample2) %>%
+  select(sample1, sample2, JSD, jsd_aa_raw, morisita_nt_raw, overlapping_clones) %>%
+  rename(
+    `JSD (nucleotide)` = JSD,
+    `JSD (amino acid)` = jsd_aa_raw,
+    `Morisita (nucleotide)` = morisita_nt_raw
+  ) %>%
+  mutate_if(is.numeric, thisround),
+row.names = FALSE, file = file.path(tab_dir, "st12-mouse-tcr-comparisons.csv")
+)
 ```
 
 

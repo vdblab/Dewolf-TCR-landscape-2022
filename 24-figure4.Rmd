@@ -7,28 +7,34 @@ fig4_figs_path <- file.path("figures", "fig4")
 dir.create(fig4_figs_path, showWarnings = FALSE)
 
 
-(V = venn::venn(clones_per_pt[paste("Patient", LETTERS[1:7])], ilab = TRUE, zcolor = "style", opacity = .2, ggplot = TRUE))
+(V <- venn::venn(clones_per_pt[paste("Patient", LETTERS[1:7])], ilab = TRUE, zcolor = "style", opacity = .2, ggplot = TRUE))
 
 
 
-ggsave(plot=V ,height=6,width=6,dpi=200, 
-       filename=file.path(fig4_figs_path, "fig4_venn_plot_7.pdf"), 
-       useDingbats=FALSE)
+ggsave(
+  plot = V, height = 6, width = 6, dpi = 200,
+  filename = file.path(fig4_figs_path, "fig4_venn_plot_7.pdf"),
+  useDingbats = FALSE
+)
 
 
-(Vaa = venn::venn(aa_per_pt[paste("Patient", LETTERS[1:7])], ilab = TRUE, zcolor = "style", opacity = .2, ggplot = TRUE))
-ggsave(plot=Vaa ,height=6,width=6,
-       filename=file.path(fig4_figs_path,"fig4_venn_plot_7_aa.pdf"), 
-       useDingbats=FALSE)
+(Vaa <- venn::venn(aa_per_pt[paste("Patient", LETTERS[1:7])], ilab = TRUE, zcolor = "style", opacity = .2, ggplot = TRUE))
+ggsave(
+  plot = Vaa, height = 6, width = 6,
+  filename = file.path(fig4_figs_path, "fig4_venn_plot_7_aa.pdf"),
+  useDingbats = FALSE
+)
 
-(Vbioid = venn::venn(bioid_per_pt[paste("Patient", LETTERS[1:7])], ilab = TRUE, zcolor = "style", opacity = .2, ggplot = TRUE))
-ggsave(plot=Vbioid ,height=6,width=6,
-       filename=file.path(fig4_figs_path,"fig4_venn_plot_7_bioid.pdf"), 
-       useDingbats=FALSE)
+(Vbioid <- venn::venn(bioid_per_pt[paste("Patient", LETTERS[1:7])], ilab = TRUE, zcolor = "style", opacity = .2, ggplot = TRUE))
+ggsave(
+  plot = Vbioid, height = 6, width = 6,
+  filename = file.path(fig4_figs_path, "fig4_venn_plot_7_bioid.pdf"),
+  useDingbats = FALSE
+)
 
 
 
-#write.csv(paired_patients, "overlapping_clones_com.csv", row.names = F)
+# write.csv(paired_patients, "overlapping_clones_com.csv", row.names = F)
 
 Vaa + Vbioid
 ```
@@ -37,20 +43,23 @@ Vaa + Vbioid
 
 ```{R 24-figure4-2 }
 # make one for each set because venns can only handle so many
-for (thisrep in c("rep1", "rep2", "rep3")){
-Vmouse = venn::venn(clones_per_pt[grep(thisrep, names(clones_per_pt))], ilab = TRUE, zcolor = "style", opacity = .2, ggplot = TRUE)
+for (thisrep in c("rep1", "rep2", "rep3")) {
+  Vmouse <- venn::venn(clones_per_pt[grep(thisrep, names(clones_per_pt))], ilab = TRUE, zcolor = "style", opacity = .2, ggplot = TRUE)
 
-ggsave(plot=Vmouse ,height=6,width=6,
-       filename=file.path(fig4_figs_path,paste("fig4_venn_plot_7_mouse", thisrep, ".pdf")), 
-       useDingbats=FALSE)
+  ggsave(
+    plot = Vmouse, height = 6, width = 6,
+    filename = file.path(fig4_figs_path, paste("fig4_venn_plot_7_mouse", thisrep, ".pdf")),
+    useDingbats = FALSE
+  )
 }
 
-Vmouse_donor = venn::venn(aa_per_pt[grep("Donor", names(aa_per_pt))], ilab = TRUE, zcolor = "style", opacity = .2, ggplot = TRUE)
+Vmouse_donor <- venn::venn(aa_per_pt[grep("Donor", names(aa_per_pt))], ilab = TRUE, zcolor = "style", opacity = .2, ggplot = TRUE)
 
-ggsave(plot=Vmouse_donor ,height=6,width=6,
-       filename=file.path("figures", "fig6", "6D-mouse_donor_venn_plot_AA.pdf"), 
-       useDingbats=FALSE)
-
+ggsave(
+  plot = Vmouse_donor, height = 6, width = 6,
+  filename = file.path("figures", "fig6", "6D-mouse_donor_venn_plot_AA.pdf"),
+  useDingbats = FALSE
+)
 ```
 
 

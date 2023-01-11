@@ -12,32 +12,31 @@ if (interactive()) load("tcr_objects.Rdata")
 figures_path_s3 <- file.path("figures", "figS3")
 dir.create(figures_path_s3, showWarnings = FALSE, recursive = TRUE)
 # subset to only within-individual comparisons
-comparison <- tcr_corrs %>% 
-  full_join(tcr_sample_metadata, by=c("sample1"="sample_name")) %>% 
-  full_join(tcr_sample_metadata, by=c("sample2"="sample_name")) %>% 
-    filter(indv_label.x == indv_label.y)
+comparison <- tcr_corrs %>%
+  full_join(tcr_sample_metadata, by = c("sample1" = "sample_name")) %>%
+  full_join(tcr_sample_metadata, by = c("sample2" = "sample_name")) %>%
+  filter(indv_label.x == indv_label.y)
 
-g <- ggplot(comparison %>% 
-              filter(org.x == "Human") %>%
-              filter(gvhd.x == "GvHD") %>% 
-              filter(indv_type.x != "Donor", indv_type.y != "Donor") %>%
-              filter(sample1 != sample2), aes(JSD, morisita_nt_raw))
+g <- ggplot(comparison %>%
+  filter(org.x == "Human") %>%
+  filter(gvhd.x == "GvHD") %>%
+  filter(indv_type.x != "Donor", indv_type.y != "Donor") %>%
+  filter(sample1 != sample2), aes(JSD, morisita_nt_raw))
 
-S3A <- g + facet_grid(. ~ indv_label.x) + 
-  geom_point(aes(color = indv_label.x)) + 
-  scale_color_brewer(palette="Set2", guide="none") +
-  geom_smooth(size = .5, linetype = 1, method = "lm", fullrange = F, se = FALSE, color = "black") + 
+S3A <- g + facet_grid(. ~ indv_label.x) +
+  geom_point(aes(color = indv_label.x)) +
+  scale_color_brewer(palette = "Set2", guide = "none") +
+  geom_smooth(size = .5, linetype = 1, method = "lm", fullrange = F, se = FALSE, color = "black") +
   stat_regline_equation(label.y = 1, aes(label = ..rr.label..)) +
-  theme(axis.text=element_text(size=15, color = "black")) + 
+  theme(axis.text = element_text(size = 15, color = "black")) +
   coord_fixed() +
   theme_classic()
-ggsave(filename = file.path(figures_path_s3, "S3A_JSD_vs_morrisita.pdf"), plot = S3A, width = 10, height=5)
-p_S3A_together <- g + geom_point(aes(color = indv_label.x), size = 4, shape = 19, alpha = .5) + 
-  geom_smooth(size = 1, linetype = 1, method = "lm", se = FALSE) + 
+ggsave(filename = file.path(figures_path_s3, "S3A_JSD_vs_morrisita.pdf"), plot = S3A, width = 10, height = 5)
+p_S3A_together <- g + geom_point(aes(color = indv_label.x), size = 4, shape = 19, alpha = .5) +
+  geom_smooth(size = 1, linetype = 1, method = "lm", se = FALSE) +
   stat_regline_equation(label.y = 1, aes(label = ..rr.label..)) +
-  theme_classic() 
+  theme_classic()
 
-ggsave(filename = file.path(figures_path_s3, "aggregate_JSD_vs_morrisita.pdf"), plot = p_S3A_together, width = 5, height=5)
-
+ggsave(filename = file.path(figures_path_s3, "aggregate_JSD_vs_morrisita.pdf"), plot = p_S3A_together, width = 5, height = 5)
 ```
 

@@ -7,7 +7,7 @@ editor_options:
 
 ```{R 23-figure3-1 }
 library(RColorBrewer)
-library(tidyverse) 
+library(tidyverse)
 library(ggalluvial)
 library(ggplot2)
 library(ggpolypath)
@@ -18,109 +18,123 @@ alluvial_figures_path <- file.path("figures", "fig3-S4-S5-alluvials")
 dir.create(alluvial_figures_path, showWarnings = FALSE)
 
 
-get_top_clones_data <-  function(df, topn=10){
-  #max_productive_frequency is a sanity check
-   top_clones <- df %>% 
+get_top_clones_data <- function(df, topn = 10) {
+  # max_productive_frequency is a sanity check
+  top_clones <- df %>%
     group_by(sample_name) %>%
-    slice_max(n = topn, order_by=productive_frequency, with_ties = TRUE) %>%
-    arrange(desc(productive_frequency)) %>% 
-    #mutate(top_tissue_clone_rank=row_number()) %>% 
-    mutate(max_productive_frequency = max(productive_frequency)) %>% 
-    select(sample_name, rearrangement,  productive_frequency, max_productive_frequency)
-  top_n_data <- df %>% 
+    slice_max(n = topn, order_by = productive_frequency, with_ties = TRUE) %>%
+    arrange(desc(productive_frequency)) %>%
+    # mutate(top_tissue_clone_rank=row_number()) %>%
+    mutate(max_productive_frequency = max(productive_frequency)) %>%
+    select(sample_name, rearrangement, productive_frequency, max_productive_frequency)
+  top_n_data <- df %>%
     group_by(sample_name) %>%
-    arrange(desc(productive_frequency))%>%
-    mutate(orig_tissue_clone_rank=rank(-productive_frequency,  ties.method = "first", na.last = "keep")) %>% 
-    ungroup() %>% 
-    filter(rearrangement %in% top_clones$rearrangement) 
-  return(list(top_clones = top_clones, top_n_data=top_n_data))
+    arrange(desc(productive_frequency)) %>%
+    mutate(orig_tissue_clone_rank = rank(-productive_frequency, ties.method = "first", na.last = "keep")) %>%
+    ungroup() %>%
+    filter(rearrangement %in% top_clones$rearrangement)
+  return(list(top_clones = top_clones, top_n_data = top_n_data))
 }
-make_alluvial_dataset <- function(tcr_data, thistcr_sample_metadata, tissue_metadata, ref_org="Human", ref_pt="Patient B", ref_tissue="duodenum", topn=10, ref_color="mediumpurple", label_jsd=FALSE){
+make_alluvial_dataset <- function(tcr_data, thistcr_sample_metadata, tissue_metadata, ref_org = "Human", ref_pt = "Patient B", ref_tissue = "duodenum", topn = 10, ref_color = "mediumpurple", label_jsd = FALSE) {
   metadata_of_interest <- thistcr_sample_metadata %>%
     filter(
-      org==ref_org,
+      org == ref_org,
       indv_label == ref_pt
     )
-  if (!ref_tissue %in% metadata_of_interest$tissue){stop(paste("Tissue", ref_tissue, "not sampled in", ref_pt))}
-  samples_of_interest <- metadata_of_interest  %>% pull(sample_name)
-  res <- get_top_clones_data(df=tcr_data %>%filter(sample_name %in% samples_of_interest), topn = topn)
+  if (!ref_tissue %in% metadata_of_interest$tissue) {
+    stop(paste("Tissue", ref_tissue, "not sampled in", ref_pt))
+  }
+  samples_of_interest <- metadata_of_interest %>% pull(sample_name)
+  res <- get_top_clones_data(df = tcr_data %>% filter(sample_name %in% samples_of_interest), topn = topn)
   top_clones <- res$top_clones
   top_n_data <- res$top_n_data
   n_distinct(top_clones$rearrangement)
-  top_n_data_wide <- top_n_data %>% 
+  top_n_data_wide <- top_n_data %>%
     select(rearrangement, tissue, productive_frequency) %>%
     # dplyr::group_by(rearrangement, tissue) %>%
     # dplyr::summarise(n = dplyr::n(), .groups = "drop") %>%
-    # dplyr::filter(n > 1L) 
-    pivot_wider(id_cols = rearrangement, names_from=tissue, values_from=productive_frequency, values_fill = 0) %>% 
+    # dplyr::filter(n > 1L)
+    pivot_wider(id_cols = rearrangement, names_from = tissue, values_from = productive_frequency, values_fill = 0) %>%
     column_to_rownames("rearrangement")
-  
-  # JSD Annotation 
-  jsd_anno <- tcr_corrs_anno %>% 
-        filter(sample1 %in% metadata_of_interest$sample_name, 
-               sample2 %in% metadata_of_interest$sample_name) %>% 
-        filter(tissue.y == ref_tissue) %>% select(sample1, sample2, tissue.x, tissue.y, JSD)
-  # 
-  # top_n_data %>% 
+
+  # JSD Annotation
+  jsd_anno <- tcr_corrs_anno %>%
+    filter(
+      sample1 %in% metadata_of_interest$sample_name,
+      sample2 %in% metadata_of_interest$sample_name
+    ) %>%
+    filter(tissue.y == ref_tissue) %>%
+    select(sample1, sample2, tissue.x, tissue.y, JSD)
+  #
+  # top_n_data %>%
   #   left_join(
   #     ,
   #     by=c("sample_name" = "sample1")) %>% select(sample_name, sample2, JSD)
-  
-  top_10_ascending = top_n_data_wide %>%
-    arrange(desc(get(ref_tissue))) %>% 
+
+  top_10_ascending <- top_n_data_wide %>%
+    arrange(desc(get(ref_tissue))) %>%
     data.frame() %>%
-    #mutate(key=row_number())
-    mutate(key=row_number(),
-           true_rank=rank(desc(get(ref_tissue)), ties.method = "min"))
-  
+    # mutate(key=row_number())
+    mutate(
+      key = row_number(),
+      true_rank = rank(desc(get(ref_tissue)), ties.method = "min")
+    )
+
   # alluviual plots need to have a unique  key per entry, and ties mess that up
   # so, in order to include the ties, we calcualted both the key (based on row numbers, could also use rank  ties.method="first")
   # and the rank with ties.method = "min". Even though the function requires a topn arg, we adjust that here to include all keys under the requested true rank
-  this_topn = max(top_10_ascending[top_10_ascending$true_rank <= topn, "key"])
-  
-  #now that we have the dataframe with just the clones we want and their frequencies in all the tissues, we will re-format the data for alluvium
-  # top_10_ascending = data.frame(top_10_ascending)
-  # top_10_ascending$key = 1:nrow(top_10_ascending) #this adds a "key" or "NT ID" to each row 
-  # top_10_ascending$key #this is the number of rows
-  plot_data <- top_10_ascending %>% 
-    select(-true_rank) %>% 
-    pivot_longer(cols = -key, names_to = "tissue", values_to="freq") %>%
-    mutate(frequency_nudged = freq + rnorm(n=n(),  mean = 10E-7, sd = 10E-9)) %>% 
-    data.frame() %>% 
-    left_join(tissue_metadata) %>% 
-    left_join(jsd_anno %>% select(tissue.x, JSD) %>% filter(tissue.x != ref_tissue ) %>% rename(tissue=tissue.x)) %>%
-    group_by(tissue) %>%
-    mutate(tissue_total = sum(freq),
-           jsd_label = ifelse(tissue != ref_tissue &row_number() == 1, round(JSD, 2), ""),
-           thislabel=ifelse(tissue == ref_tissue & row_number()==1, "*", ""))
-  
-  p_ <- ggplot(plot_data,
-                aes(x = reorder(tissue_label, anatomic_order), stratum = frequency_nudged, y=frequency_nudged, alluvium = key,
-                    fill = ifelse(key%in%1:this_topn, ref_color, "gray75"))) +
-      labs(x="", y="", fill = "Nucleotide ID", title="") +
-      geom_flow(stat = "alluvium", curve_type = "sigmoid", color = "gray45", size = .3) +
-      geom_stratum(alpha = 1) +
-      geom_text(aes(y=tissue_total *1.1, label=thislabel), size=15) +
-  # consider , color=NA) + 
-      scale_fill_identity() +
-      theme_classic() +
-      theme(
-        axis.text.y = element_text(size = 15, color = "black"),
-        legend.position = "right",
-        axis.text.x = element_text(size = 15, angle = -30, color = "black", hjust = 0),
-        plot.margin = margin(r=80) #
-      ) +
-      scale_y_continuous(expand = c(0,0)) 
-  
-  if (label_jsd){
-    p_ <- p_ +  geom_text(aes(y=tissue_total *1.05, label=jsd_label), size=3)
+  this_topn <- max(top_10_ascending[top_10_ascending$true_rank <= topn, "key"])
 
+  # now that we have the dataframe with just the clones we want and their frequencies in all the tissues, we will re-format the data for alluvium
+  # top_10_ascending = data.frame(top_10_ascending)
+  # top_10_ascending$key = 1:nrow(top_10_ascending) #this adds a "key" or "NT ID" to each row
+  # top_10_ascending$key #this is the number of rows
+  plot_data <- top_10_ascending %>%
+    select(-true_rank) %>%
+    pivot_longer(cols = -key, names_to = "tissue", values_to = "freq") %>%
+    mutate(frequency_nudged = freq + rnorm(n = n(), mean = 10E-7, sd = 10E-9)) %>%
+    data.frame() %>%
+    left_join(tissue_metadata) %>%
+    left_join(jsd_anno %>% select(tissue.x, JSD) %>% filter(tissue.x != ref_tissue) %>% rename(tissue = tissue.x)) %>%
+    group_by(tissue) %>%
+    mutate(
+      tissue_total = sum(freq),
+      jsd_label = ifelse(tissue != ref_tissue & row_number() == 1, round(JSD, 2), ""),
+      thislabel = ifelse(tissue == ref_tissue & row_number() == 1, "*", "")
+    )
+
+  p_ <- ggplot(
+    plot_data,
+    aes(
+      x = reorder(tissue_label, anatomic_order), stratum = frequency_nudged, y = frequency_nudged, alluvium = key,
+      fill = ifelse(key %in% 1:this_topn, ref_color, "gray75")
+    )
+  ) +
+    labs(x = "", y = "", fill = "Nucleotide ID", title = "") +
+    geom_flow(stat = "alluvium", curve_type = "sigmoid", color = "gray45", size = .3) +
+    geom_stratum(alpha = 1) +
+    geom_text(aes(y = tissue_total * 1.1, label = thislabel), size = 15) +
+    # consider , color=NA) +
+    scale_fill_identity() +
+    theme_classic() +
+    theme(
+      axis.text.y = element_text(size = 15, color = "black"),
+      legend.position = "right",
+      axis.text.x = element_text(size = 15, angle = -30, color = "black", hjust = 0),
+      plot.margin = margin(r = 80) #
+    ) +
+    scale_y_continuous(expand = c(0, 0))
+
+  if (label_jsd) {
+    p_ <- p_ + geom_text(aes(y = tissue_total * 1.05, label = jsd_label), size = 3)
   }
-  return(list(top_n_data=top_n_data,
-              top_clones=top_clones,
-              top_n_data_wide=top_n_data_wide,
-              plot_data=plot_data,
-              p_=p_))
+  return(list(
+    top_n_data = top_n_data,
+    top_clones = top_clones,
+    top_n_data_wide = top_n_data_wide,
+    plot_data = plot_data,
+    p_ = p_
+  ))
 }
 
 
@@ -128,119 +142,134 @@ make_alluvial_dataset <- function(tcr_data, thistcr_sample_metadata, tissue_meta
 
 
 plots_to_make <- list(
-  "Patient A" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="S4A"),
-  "Patient B" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="S4B"),
-  "Patient C" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="S4C"),
-  "Patient D" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="S4D"),
-  "Patient E" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="S4E"),
-   "Patient G" = c(org="Human", topn=10, ref_tissue="small_intestine", ref_color="mediumpurple", f="S4F"),
-  "Patient H" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="S4H"),
-  "Patient I" = c(org="Human", topn=10, ref_tissue="duodenum", ref_color="mediumpurple", f="3D"),
-  "Patient J" = c(org="Human", topn=10, ref_tissue="jejunum", ref_color="mediumpurple", f="S4G"),
-  "Patient A" = c(org="Human", topn=10, ref_tissue="autopsy_blood", ref_color="#cc3333", f="S4I"),
-  "Patient D" = c(org="Human", topn=10, ref_tissue="autopsy_blood", ref_color="#cc3333", f="3E"),
-  "Patient F" = c(org="Human", topn=10, ref_tissue="autopsy_blood", ref_color="#cc3333", f="S4J"),
-  "Patient G" = c(org="Human", topn=10, ref_tissue="autopsy_blood", ref_color="#cc3333", f="S4K"),
-  "Recipient 7, rep2, day 14" = c(org="Mouse", ref_tissue="skin", topn=10, ref_color="forestgreen", f="S4A"),
-   "Patient B" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="blue", f="S4L"), 
-  "Patient C" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="blue", f="S4M"), 
-  "Patient D" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="blue", f="S4N"), 
-  "Patient E" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="blue", f="S4O"), 
-  "Patient F" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="blue", f="3G"),
-  "Patient G" = c(org="Human", topn=10, ref_tissue="graft_blood", ref_color="blue", f="3F")
+  "Patient A" = c(org = "Human", topn = 10, ref_tissue = "duodenum", ref_color = "mediumpurple", f = "S4A"),
+  "Patient B" = c(org = "Human", topn = 10, ref_tissue = "duodenum", ref_color = "mediumpurple", f = "S4B"),
+  "Patient C" = c(org = "Human", topn = 10, ref_tissue = "duodenum", ref_color = "mediumpurple", f = "S4C"),
+  "Patient D" = c(org = "Human", topn = 10, ref_tissue = "duodenum", ref_color = "mediumpurple", f = "S4D"),
+  "Patient E" = c(org = "Human", topn = 10, ref_tissue = "duodenum", ref_color = "mediumpurple", f = "S4E"),
+  "Patient G" = c(org = "Human", topn = 10, ref_tissue = "small_intestine", ref_color = "mediumpurple", f = "S4F"),
+  "Patient H" = c(org = "Human", topn = 10, ref_tissue = "duodenum", ref_color = "mediumpurple", f = "S4H"),
+  "Patient I" = c(org = "Human", topn = 10, ref_tissue = "duodenum", ref_color = "mediumpurple", f = "3D"),
+  "Patient J" = c(org = "Human", topn = 10, ref_tissue = "jejunum", ref_color = "mediumpurple", f = "S4G"),
+  "Patient A" = c(org = "Human", topn = 10, ref_tissue = "autopsy_blood", ref_color = "#cc3333", f = "S4I"),
+  "Patient D" = c(org = "Human", topn = 10, ref_tissue = "autopsy_blood", ref_color = "#cc3333", f = "3E"),
+  "Patient F" = c(org = "Human", topn = 10, ref_tissue = "autopsy_blood", ref_color = "#cc3333", f = "S4J"),
+  "Patient G" = c(org = "Human", topn = 10, ref_tissue = "autopsy_blood", ref_color = "#cc3333", f = "S4K"),
+  "Recipient 7, rep2, day 14" = c(org = "Mouse", ref_tissue = "skin", topn = 10, ref_color = "forestgreen", f = "S4A"),
+  "Patient B" = c(org = "Human", topn = 10, ref_tissue = "graft_blood", ref_color = "blue", f = "S4L"),
+  "Patient C" = c(org = "Human", topn = 10, ref_tissue = "graft_blood", ref_color = "blue", f = "S4M"),
+  "Patient D" = c(org = "Human", topn = 10, ref_tissue = "graft_blood", ref_color = "blue", f = "S4N"),
+  "Patient E" = c(org = "Human", topn = 10, ref_tissue = "graft_blood", ref_color = "blue", f = "S4O"),
+  "Patient F" = c(org = "Human", topn = 10, ref_tissue = "graft_blood", ref_color = "blue", f = "3G"),
+  "Patient G" = c(org = "Human", topn = 10, ref_tissue = "graft_blood", ref_color = "blue", f = "3F")
 )
 
-  
-for (i in seq_along(plots_to_make)){
-  thing = plots_to_make[[i]]
+
+for (i in seq_along(plots_to_make)) {
+  thing <- plots_to_make[[i]]
   thistcr_sample_metadata <- tcr_sample_metadata
-  
+
   # do any patient-specific filtering here
-  if(names(plots_to_make)[i] == "Patient D"){
-    thistcr_sample_metadata <- thistcr_sample_metadata %>% 
-      filter(!tissue %in% c("kidney", "heart", "autopsy_marrow") )
+  if (names(plots_to_make)[i] == "Patient D") {
+    thistcr_sample_metadata <- thistcr_sample_metadata %>%
+      filter(!tissue %in% c("kidney", "heart", "autopsy_marrow"))
   }
   # Patient A's donor sample is so diverse it makes the alluvial layers illegible
-  if(names(plots_to_make)[i] == "Patient A"){
-    thistcr_sample_metadata <- thistcr_sample_metadata %>% 
-      filter(!tissue %in% c("graft_blood") )
+  if (names(plots_to_make)[i] == "Patient A") {
+    thistcr_sample_metadata <- thistcr_sample_metadata %>%
+      filter(!tissue %in% c("graft_blood"))
   }
 
   thisdata <- make_alluvial_dataset(
-    tcr_raw, thistcr_sample_metadata=thistcr_sample_metadata, ref_org=thing["org"],
-    ref_tissue = thing["ref_tissue"], 
+    tcr_raw,
+    thistcr_sample_metadata = thistcr_sample_metadata, ref_org = thing["org"],
+    ref_tissue = thing["ref_tissue"],
     ref_color = thing["ref_color"],
     tissue_metadata = tissue_annotations,
     # label_jsd=!grepl("^S", thing["f"]),
-    label_jsd=TRUE,
-    ref_pt=names(plots_to_make)[i], topn=as.numeric(thing["topn"]))
-  
-  
-  ggsave(plot=thisdata$p_ ,height=5,width=10,dpi=200, 
-         filename=file.path(alluvial_figures_path, paste0(thing["f"],"_", names(plots_to_make)[i], ".pdf")), 
-         useDingbats=FALSE)
+    label_jsd = TRUE,
+    ref_pt = names(plots_to_make)[i], topn = as.numeric(thing["topn"])
+  )
+
+
+  ggsave(
+    plot = thisdata$p_, height = 5, width = 10, dpi = 200,
+    filename = file.path(alluvial_figures_path, paste0(thing["f"], "_", names(plots_to_make)[i], ".pdf")),
+    useDingbats = FALSE
+  )
 }
 
 ptF_alluvial <- make_alluvial_dataset(tcr_raw, ref_org = "Human", ref_pt = "Patient F", ref_tissue = "ascending_colon", thistcr_sample_metadata = tcr_sample_metadata, tissue_metadata = tissue_annotations, topn = 5)
 
 top5colors <- data.frame(
-  key=1:5, 
-  stratacol=c("blue","red2", "mediumseagreen", "yellow","#996633"))
-p_ptF_alluvial_A <- ggplot(ptF_alluvial$plot_data %>% 
-                             left_join(top5colors),
-                aes(x = reorder(tissue_label, anatomic_order), stratum = frequency_nudged, y=frequency_nudged, alluvium = key,
-                    fill = ifelse(key < 6, stratacol, "gray75"))) +
-      labs(x="", y="", fill = "Nucleotide ID", title="") +
-      geom_flow(stat = "alluvium", curve_type = "sigmoid", color = "gray45", size = .3) +
-      geom_stratum(alpha = 1) +
-      geom_text(aes(y=tissue_total *1.1, label=thislabel), size=15) +
-      geom_text(aes(y=tissue_total *1.05, label=jsd_label), size=3) +
-  # consider , color=NA) + 
-      scale_fill_identity() +
-      theme_classic() +
-      theme(
-        axis.text.y = element_text(size = 15, color = "black"),
-        legend.position = "right",
-        axis.text.x = element_text(size = 15, angle = -30, color = "black", hjust = 0),
-        plot.margin = margin(r=80) #
-      ) +
-      scale_y_continuous(expand = c(0,0)) 
-ggsave(plot=p_ptF_alluvial_A ,height=5,width=10,dpi=200, 
-         filename=file.path(alluvial_figures_path, "3B_PtF_multicolor.pdf"), 
-         useDingbats=FALSE)
-
-
+  key = 1:5,
+  stratacol = c("blue", "red2", "mediumseagreen", "yellow", "#996633")
+)
+p_ptF_alluvial_A <- ggplot(
+  ptF_alluvial$plot_data %>%
+    left_join(top5colors),
+  aes(
+    x = reorder(tissue_label, anatomic_order), stratum = frequency_nudged, y = frequency_nudged, alluvium = key,
+    fill = ifelse(key < 6, stratacol, "gray75")
+  )
+) +
+  labs(x = "", y = "", fill = "Nucleotide ID", title = "") +
+  geom_flow(stat = "alluvium", curve_type = "sigmoid", color = "gray45", size = .3) +
+  geom_stratum(alpha = 1) +
+  geom_text(aes(y = tissue_total * 1.1, label = thislabel), size = 15) +
+  geom_text(aes(y = tissue_total * 1.05, label = jsd_label), size = 3) +
+  # consider , color=NA) +
+  scale_fill_identity() +
+  theme_classic() +
+  theme(
+    axis.text.y = element_text(size = 15, color = "black"),
+    legend.position = "right",
+    axis.text.x = element_text(size = 15, angle = -30, color = "black", hjust = 0),
+    plot.margin = margin(r = 80) #
+  ) +
+  scale_y_continuous(expand = c(0, 0))
+ggsave(
+  plot = p_ptF_alluvial_A, height = 5, width = 10, dpi = 200,
+  filename = file.path(alluvial_figures_path, "3B_PtF_multicolor.pdf"),
+  useDingbats = FALSE
+)
 ```
 
 
 ### Mouse Alluvials
 ```{r 23-figure3-S4-S5-1}
 fig6path <- paste0("figures/fig6")
-dir.create(fig6path,showWarnings = FALSE)
+dir.create(fig6path, showWarnings = FALSE)
 mouse_plots_to_make <- list(
-  "Recipient 3, rep1, day 7" = c(org="Mouse", ref_tissue="duodenum", topn=10, ref_color="mediumpurple", f="6B1"),
-  "Recipient 3, rep1, day 7" = c(org="Mouse", ref_tissue="spleen", topn=10, ref_color="#B03827", f="6B2"),
-  "Recipient 7, rep2, day 14" = c(org="Mouse", ref_tissue="duodenum", topn=10, ref_color="mediumpurple", f="6C1"),
-  "Recipient 7, rep2, day 14" = c(org="Mouse", ref_tissue="spleen", topn=10, ref_color="#B03827", f="6C2")
+  "Recipient 3, rep1, day 7" = c(org = "Mouse", ref_tissue = "duodenum", topn = 10, ref_color = "mediumpurple", f = "6B1"),
+  "Recipient 3, rep1, day 7" = c(org = "Mouse", ref_tissue = "spleen", topn = 10, ref_color = "#B03827", f = "6B2"),
+  "Recipient 7, rep2, day 14" = c(org = "Mouse", ref_tissue = "duodenum", topn = 10, ref_color = "mediumpurple", f = "6C1"),
+  "Recipient 7, rep2, day 14" = c(org = "Mouse", ref_tissue = "spleen", topn = 10, ref_color = "#B03827", f = "6C2")
 )
 
-for (i in seq_along(mouse_plots_to_make)){
-  thing = mouse_plots_to_make[[i]]
-  
+for (i in seq_along(mouse_plots_to_make)) {
+  thing <- mouse_plots_to_make[[i]]
+
   # identify which mouse donor
-  rep = tcr_sample_metadata %>% filter(indv_label ==names(mouse_plots_to_make)[i]) %>% pull(exp_rep) %>% unique()
+  rep <- tcr_sample_metadata %>%
+    filter(indv_label == names(mouse_plots_to_make)[i]) %>%
+    pull(exp_rep) %>%
+    unique()
   tmpmetadata <- tcr_sample_metadata %>% filter(grepl(paste0("Donor_", rep, "_"), sample_name))
   # add a dummy row to create that mouse's donor "tissue" to metadata so it is included in plots
   tmpmetadata$indv_label <- names(mouse_plots_to_make)[i]
-  thisdata <- make_alluvial_dataset(tcr_raw, rbind(tcr_sample_metadata, tmpmetadata), ref_org=thing["org"],
-                                    ref_tissue = thing["ref_tissue"], tissue_metadata = tissue_annotations,
-                                    ref_color=thing["ref_color"],
-                                    ref_pt=names(mouse_plots_to_make)[i], topn=as.numeric(thing["topn"]))
-  #thisdata$p_
-  ggsave(plot=thisdata$p_ ,height=5,width=6,dpi=200, 
-         filename=file.path(fig6path, paste0(thing["f"],"_", names(mouse_plots_to_make)[i], ".pdf")), 
-         useDingbats=FALSE)
-
+  thisdata <- make_alluvial_dataset(tcr_raw, rbind(tcr_sample_metadata, tmpmetadata),
+    ref_org = thing["org"],
+    ref_tissue = thing["ref_tissue"], tissue_metadata = tissue_annotations,
+    ref_color = thing["ref_color"],
+    ref_pt = names(mouse_plots_to_make)[i], topn = as.numeric(thing["topn"])
+  )
+  # thisdata$p_
+  ggsave(
+    plot = thisdata$p_, height = 5, width = 6, dpi = 200,
+    filename = file.path(fig6path, paste0(thing["f"], "_", names(mouse_plots_to_make)[i], ".pdf")),
+    useDingbats = FALSE
+  )
 }
 ```
 
@@ -257,197 +286,234 @@ dir.create(figures_path_s5, showWarnings = FALSE)
 
 
 
-tissues_to_completely_exclude = c("heart", "kidney", "Heart", "Kidney")
+tissues_to_completely_exclude <- c("heart", "kidney", "Heart", "Kidney")
 
-cols_to_exclude_from_ranking = c("rearrangement", "amino_acid")
+cols_to_exclude_from_ranking <- c("rearrangement", "amino_acid")
 
 supp_data_file_list <- list()
-for (pat in tcr_sample_metadata %>% filter(org == "Human") %>% pull(indv_label) %>% unique){
-  thisdata <- get_top_clones_data(df=tcr_raw %>% filter(indv_label == all_of(pat), !tissue %in% tissues_to_completely_exclude), topn = 10)
-  
+for (pat in tcr_sample_metadata %>%
+  filter(org == "Human") %>%
+  pull(indv_label) %>%
+  unique()) {
+  thisdata <- get_top_clones_data(df = tcr_raw %>% filter(indv_label == all_of(pat), !tissue %in% tissues_to_completely_exclude), topn = 10)
+
   # Patient A's donor sample consists almost entirely of singletons. We do not plot that for this sample
-  if (pat == "Patient A"){
-    thisdata$top_n_data  <- thisdata$top_n_data %>% filter(tissue != "graft_blood") 
+  if (pat == "Patient A") {
+    thisdata$top_n_data <- thisdata$top_n_data %>% filter(tissue != "graft_blood")
   }
 
 
-  hmap_data_pre  <- thisdata$top_n_data %>% left_join(tissue_annotations) %>% arrange(anatomic_order)  %>% 
-    select(rearrangement, amino_acid, rearrangement_trunc, v_gene, j_gene,  tissue, tissue_label, orig_tissue_clone_rank) %>% 
-    select(-tissue) %>% 
-    pivot_wider(names_from = tissue_label, values_from = orig_tissue_clone_rank) 
-  
+  hmap_data_pre <- thisdata$top_n_data %>%
+    left_join(tissue_annotations) %>%
+    arrange(anatomic_order) %>%
+    select(rearrangement, amino_acid, rearrangement_trunc, v_gene, j_gene, tissue, tissue_label, orig_tissue_clone_rank) %>%
+    select(-tissue) %>%
+    pivot_wider(names_from = tissue_label, values_from = orig_tissue_clone_rank)
+
   # we have the ranks, but we need the template count in order to label cells
-  hmap_data_labels  <- thisdata$top_n_data %>% left_join(tissue_annotations) %>% arrange(anatomic_order)  %>% 
-    select(rearrangement, amino_acid, rearrangement_trunc, v_gene, j_gene,  tissue, tissue_label, templates) %>% 
-    select(-tissue) %>% 
-    pivot_wider(names_from = tissue_label, values_from = templates) %>% select(-v_gene, -j_gene, -rearrangement_trunc)
+  hmap_data_labels <- thisdata$top_n_data %>%
+    left_join(tissue_annotations) %>%
+    arrange(anatomic_order) %>%
+    select(rearrangement, amino_acid, rearrangement_trunc, v_gene, j_gene, tissue, tissue_label, templates) %>%
+    select(-tissue) %>%
+    pivot_wider(names_from = tissue_label, values_from = templates) %>%
+    select(-v_gene, -j_gene, -rearrangement_trunc)
   hmap_data <- hmap_data_pre %>% select(-v_gene, -j_gene, -rearrangement_trunc)
-  
+
   # add pseudoranks for absent clones
-  tmphmap_data_for_ordering <- hmap_data[,!colnames(hmap_data) %in% cols_to_exclude_from_ranking]
+  tmphmap_data_for_ordering <- hmap_data[, !colnames(hmap_data) %in% cols_to_exclude_from_ranking]
   tmphmap_data_for_ordering <- hmap_data %>% select(-rearrangement, -amino_acid)
-  
+
   # give a pseudorank as 1.5x the max rank considered
-  pseudorank = round(max(na.rm = TRUE, tmphmap_data_for_ordering) * 1.5)
+  pseudorank <- round(max(na.rm = TRUE, tmphmap_data_for_ordering) * 1.5)
   tmphmap_data_for_ordering[is.na(tmphmap_data_for_ordering)] <- pseudorank
-  
-  mean_order = apply(tmphmap_data_for_ordering, 1, mean)
-  med_order = apply(tmphmap_data_for_ordering, 1, median)
-  clustered <- hclust(dist(tmphmap_data_for_ordering %>% as.matrix))
-  
+
+  mean_order <- apply(tmphmap_data_for_ordering, 1, mean)
+  med_order <- apply(tmphmap_data_for_ordering, 1, median)
+  clustered <- hclust(dist(tmphmap_data_for_ordering %>% as.matrix()))
+
   # these_cols_to_exclude_from_ranking <- quos(cols_to_exclude_from_ranking[cols_to_exclude_from_ranking %in% colnames(hmap_data)])
-  if ("Pre-tx PBMCs" %in% hmap_data){
-    hmap_data <- hmap_data  %>% relocate(pretx_blood, .after = last_col()) 
+  if ("Pre-tx PBMCs" %in% hmap_data) {
+    hmap_data <- hmap_data %>% relocate(pretx_blood, .after = last_col())
   }
   hmap_data$order <- mean_order
-  ordered_hmap_data <- hmap_data %>% 
-    arrange(across(any_of(c("order", "pre-tx Blood")))) %>% 
-    select(-order) 
-  
-  mat <- ordered_hmap_data %>% select(-amino_acid)%>% select(-rearrangement) %>% as.matrix()
+  ordered_hmap_data <- hmap_data %>%
+    arrange(across(any_of(c("order", "pre-tx Blood")))) %>%
+    select(-order)
+
+  mat <- ordered_hmap_data %>%
+    select(-amino_acid) %>%
+    select(-rearrangement) %>%
+    as.matrix()
   rownames(mat) <- gsub("^(.{10}).*", "\\1", ordered_hmap_data$rearrangement)
   rownames(mat) <- ordered_hmap_data$amino_acid
-  
+
   # clean up the label matrix with the actual template counts
   hmap_data_labels_clean <- hmap_data_labels[
-    match(ordered_hmap_data$rearrangement, hmap_data_labels$rearrangement) ,
-    colnames(ordered_hmap_data)] %>% select(-amino_acid)%>% select(-rearrangement) %>% as.matrix()
-  # this converts to 
+    match(ordered_hmap_data$rearrangement, hmap_data_labels$rearrangement),
+    colnames(ordered_hmap_data)
+  ] %>%
+    select(-amino_acid) %>%
+    select(-rearrangement) %>%
+    as.matrix()
+  # this converts to
   hmap_data_labels_clean[is.na(hmap_data_labels_clean)] <- ""
   # the use of ordered_hmap_data here is intentional; we already matched up the rearrangement order above
   rownames(hmap_data_labels_clean) <- gsub("^(.{10}).*", "\\1", ordered_hmap_data$rearrangement)
-   
-  
-  tmp <- data.frame(tissue=unique(thisdata$top_n_data$tissue)) %>% left_join(tissue_annotations) %>% mutate(rn=tissue_label) %>% column_to_rownames("rn")
-  mat_colors=list(tissue_label=tmp %>% pull(S5_colors))
+
+
+  tmp <- data.frame(tissue = unique(thisdata$top_n_data$tissue)) %>%
+    left_join(tissue_annotations) %>%
+    mutate(rn = tissue_label) %>%
+    column_to_rownames("rn")
+  mat_colors <- list(tissue_label = tmp %>% pull(S5_colors))
   names(mat_colors$tissue_label) <- rownames(tmp)
-  pdf(file=file.path(figures_path_s5, paste0(pat, ".pdf")))
+  pdf(file = file.path(figures_path_s5, paste0(pat, ".pdf")))
   # if (pat == "Patient A"){
   #   mat <- mat[, colnames(mat)[colnames(mat) != "Graft/Blood"] ]
   #   mat <- mat[rowSums(mat, na.rm = TRUE) !=0 , ]
   # }
-  pheatmap::pheatmap(na_col = "grey70",
-    mat               = mat ,
-    color             = c(topo.colors(50), rep("grey90", 5)),
-    border_color      = "black",
-    show_colnames     = TRUE,
-    show_rownames     = TRUE,
-    annotation_col    = tmp %>% select(tissue_label),
+  pheatmap::pheatmap(
+    na_col = "grey70",
+    mat = mat,
+    color = c(topo.colors(50), rep("grey90", 5)),
+    border_color = "black",
+    show_colnames = TRUE,
+    show_rownames = TRUE,
+    annotation_col = tmp %>% select(tissue_label),
     annotation_colors = mat_colors,
-    breaks            = seq(1,55,1),
+    breaks = seq(1, 55, 1),
     display_numbers = hmap_data_labels_clean,
     number_color = "black",
-    drop_levels       = TRUE,
+    drop_levels = TRUE,
     fontsize_row = 4,
-    angle_col = 315, 
+    angle_col = 315,
     cluster_rows = F,
     cluster_cols = F,
-    fontsize          = 8,
+    fontsize = 8,
   )
   dev.off()
-  supp_data_file_list[[pat]]  <- hmap_data_pre %>% select(-rearrangement) %>% select(2,1,3,4) %>% mutate(patient=pat)
+  supp_data_file_list[[pat]] <- hmap_data_pre %>%
+    select(-rearrangement) %>%
+    select(2, 1, 3, 4) %>%
+    mutate(patient = pat)
 }
-write.csv(bind_rows(supp_data_file_list), row.names = FALSE,  file = "tables/st7-topclone-IDs.csv")
+write.csv(bind_rows(supp_data_file_list), row.names = FALSE, file = "tables/st7-topclone-IDs.csv")
 ```
   
   
 ## cumulative rank abundance plot
 ```{R 23-figure3-S4-S5-2}
 
-p_ <- tcr_raw %>% filter(sample_name == "PtC_stomach_TCRB") %>% 
-  group_by(sample_name) %>% 
-  arrange(desc(productive_frequency)) %>% 
-  mutate(clone_rank = rank(desc(productive_frequency)),
-         cumu_templates = cumsum(templates),) %>%
+p_ <- tcr_raw %>%
+  filter(sample_name == "PtC_stomach_TCRB") %>%
+  group_by(sample_name) %>%
+  arrange(desc(productive_frequency)) %>%
+  mutate(
+    clone_rank = rank(desc(productive_frequency)),
+    cumu_templates = cumsum(templates),
+  ) %>%
   group_by(sample_name, clone_rank, productive_templates) %>%
-  summarize(max_cumulative_tempaltes_at_clone_rank = max(cumu_templates),
-            perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100) %>% 
-  ggplot(aes(x=clone_rank, y=perc_cu)) + geom_point() +
-  geom_vline(xintercept = 10, linetype="dotted", color="gray")
+  summarize(
+    max_cumulative_tempaltes_at_clone_rank = max(cumu_templates),
+    perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100
+  ) %>%
+  ggplot(aes(x = clone_rank, y = perc_cu)) +
+  geom_point() +
+  geom_vline(xintercept = 10, linetype = "dotted", color = "gray")
 # p_
-p_ + coord_cartesian(xlim=c(0, 50))
-p_ + scale_x_log10() 
+p_ + coord_cartesian(xlim = c(0, 50))
+p_ + scale_x_log10()
 
 
 
-abundance_summary_data <-  tcr_raw %>% 
-  filter(sample_name != "PtA_donor_TCRB") %>% filter(sample_name != "PtD_autopsy_marrow_TCRB") %>% filter(sample_name != "PtD_kidney_TCRB") %>% filter(sample_name != "PtD_donor_TCRB") %>% filter(gvhd == "GvHD")  %>% 
-  group_by(sample_name) %>% 
-  arrange(desc(productive_frequency)) %>% 
+abundance_summary_data <- tcr_raw %>%
+  filter(sample_name != "PtA_donor_TCRB") %>%
+  filter(sample_name != "PtD_autopsy_marrow_TCRB") %>%
+  filter(sample_name != "PtD_kidney_TCRB") %>%
+  filter(sample_name != "PtD_donor_TCRB") %>%
+  filter(gvhd == "GvHD") %>%
+  group_by(sample_name) %>%
+  arrange(desc(productive_frequency)) %>%
   mutate(
     clone_rank = rank(desc(productive_frequency), ties.method = "min"),
     clone_rank_ave = rank(desc(productive_frequency), ties.method = "average"),
-         cumu_templates = cumsum(templates)) %>%
-  group_by(sample_name, org, gvhd, samp_type , clone_rank, productive_templates) %>%
-  summarize(max_cumulative_tempaltes_at_clone_rank = max(cumu_templates),
-            perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100) %>% 
-  distinct() %>% 
+    cumu_templates = cumsum(templates)
+  ) %>%
+  group_by(sample_name, org, gvhd, samp_type, clone_rank, productive_templates) %>%
+  summarize(
+    max_cumulative_tempaltes_at_clone_rank = max(cumu_templates),
+    perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100
+  ) %>%
+  distinct() %>%
   ungroup()
 
 
 all_combos <- expand.grid(
-  sample_name=unique(abundance_summary_data$sample_name),
-  clone_rank = 1:max(abundance_summary_data$clone_rank))
+  sample_name = unique(abundance_summary_data$sample_name),
+  clone_rank = 1:max(abundance_summary_data$clone_rank)
+)
 
 abundance_summary_data_grouped_summaries <- abundance_summary_data %>%
-    full_join(all_combos) %>% 
-  arrange(sample_name, clone_rank) %>% 
-  fill(everything(), .direction = "down") %>% 
-   group_by(org, gvhd, clone_rank) %>%
+  full_join(all_combos) %>%
+  arrange(sample_name, clone_rank) %>%
+  fill(everything(), .direction = "down") %>%
+  group_by(org, gvhd, clone_rank) %>%
   summarize(
-    grp=paste0(org, "-", gvhd),
+    grp = paste0(org, "-", gvhd),
     mean_perc_cu = mean(perc_cu),
     min_perc_cu = min(perc_cu),
     max_perc_cu = max(perc_cu),
-    sem_perc_cu = sqrt(var(perc_cu)/n()),
+    sem_perc_cu = sqrt(var(perc_cu) / n()),
     sd_perc_cu = sd(perc_cu),
-    ) %>% 
+  ) %>%
   distinct() %>%
-  ungroup() 
+  ungroup()
 
 
 
 # clone_rank_plot <- ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) + geom_line(alpha=.02) +
-#    geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10() 
+#    geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10()
 
-p_mouse_human_cumu <- ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) +
-  geom_line(alpha=.05) +
-  geom_line(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=org, group=org, y=mean_perc_cu), alpha=.7) +
-  geom_ribbon(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=org, y=1, ymin=mean_perc_cu-sem_perc_cu, ymax=mean_perc_cu + sem_perc_cu, group=org, fill=org), alpha=.5) +
-  geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10()  + 
-  facet_wrap(~org) + 
-  scale_color_manual(values=c("Human"="#6495ED", "Mouse"="#9FE2BF")) +
-  scale_fill_manual(values=c("Human"="#6495ED", "Mouse"="#9FE2BF")) +
-  labs(x="clone rank", y="cumulative frequency (%)")+ 
-        theme_classic() 
+p_mouse_human_cumu <- ggplot(abundance_summary_data, aes(x = clone_rank, y = perc_cu, group = sample_name)) +
+  geom_line(alpha = .05) +
+  geom_line(data = abundance_summary_data_grouped_summaries, aes(x = clone_rank, color = org, group = org, y = mean_perc_cu), alpha = .7) +
+  geom_ribbon(data = abundance_summary_data_grouped_summaries, aes(x = clone_rank, color = org, y = 1, ymin = mean_perc_cu - sem_perc_cu, ymax = mean_perc_cu + sem_perc_cu, group = org, fill = org), alpha = .5) +
+  geom_vline(xintercept = 10, linetype = "dotted", color = "gray") +
+  scale_x_log10() +
+  facet_wrap(~org) +
+  scale_color_manual(values = c("Human" = "#6495ED", "Mouse" = "#9FE2BF")) +
+  scale_fill_manual(values = c("Human" = "#6495ED", "Mouse" = "#9FE2BF")) +
+  labs(x = "clone rank", y = "cumulative frequency (%)") +
+  theme_classic()
 
 
-ggsave(plot=p_mouse_human_cumu ,height=4,width=10, filename=file.path(alluvial_figures_path, "S12D-mouse_human_cumulative.pdf"))
+ggsave(plot = p_mouse_human_cumu, height = 4, width = 10, filename = file.path(alluvial_figures_path, "S12D-mouse_human_cumulative.pdf"))
 
 # #just the human data, stratifying by group
-# abundance_summary_data <-  tcr_raw %>% 
-#   group_by(sample_name) %>% 
+# abundance_summary_data <-  tcr_raw %>%
+#   group_by(sample_name) %>%
 #   filter(org != "Mouse") %>%
-#   arrange(desc(productive_frequency)) %>% 
+#   arrange(desc(productive_frequency)) %>%
 #   mutate(
 #     clone_rank = rank(desc(productive_frequency), ties.method = "min"),
 #     clone_rank_ave = rank(desc(productive_frequency), ties.method = "average"),
 #          cumu_templates = cumsum(templates)) %>%
 #   group_by(sample_name, gvhd, org, samp_type , clone_rank, productive_templates) %>%
 #   summarize(max_cumulative_tempaltes_at_clone_rank = max(cumu_templates),
-#             perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100) %>% 
-#   distinct() %>% 
+#             perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100) %>%
+#   distinct() %>%
 #   ungroup()
-# 
-# 
+#
+#
 # all_combos <- expand.grid(
 #   sample_name=unique(abundance_summary_data$sample_name),
 #   clone_rank = 1:max(abundance_summary_data$clone_rank))
-# 
+#
 # abundance_summary_data_grouped_summaries <- abundance_summary_data %>%
-#     full_join(all_combos) %>% 
-#   arrange(sample_name, clone_rank) %>% 
-#   fill(everything(), .direction = "down") %>% 
+#     full_join(all_combos) %>%
+#   arrange(sample_name, clone_rank) %>%
+#   fill(everything(), .direction = "down") %>%
 #    group_by(gvhd, clone_rank) %>%
 #   summarize(
 #     grp=paste0(org, "-", gvhd),
@@ -456,62 +522,68 @@ ggsave(plot=p_mouse_human_cumu ,height=4,width=10, filename=file.path(alluvial_f
 #     max_perc_cu = max(perc_cu),
 #     sem_perc_cu = sqrt(var(perc_cu)/n()),
 #     sd_perc_cu = sd(perc_cu),
-#     ) %>% 
+#     ) %>%
 #   distinct() %>%
-#   ungroup() 
-# 
-# 
-# 
-# 
+#   ungroup()
+#
+#
+#
+#
 # p_gvhd_no_gvhd <- ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) +
 #   geom_line(alpha=.05) +
 #   geom_line(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=mean_perc_cu, group=grp), alpha=.7) +
-#   xlab("clone rank ") + 
+#   xlab("clone rank ") +
 #   ylab("cumulative reads (%)") +
 #   geom_ribbon(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=1, ymin=mean_perc_cu-sem_perc_cu, ymax=mean_perc_cu + sem_perc_cu, group=grp, fill=grp), alpha=.5) +
 #   geom_vline(xintercept = 10, linetype="dotted", color="gray4", size = .8) + scale_x_log10() + scale_fill_manual(values = c("#6495ED", "#9FE2BF")) + scale_color_manual(values = c("#6495ED", "#9FE2BF")) + labs(fill = "Group") + labs(color = "Group")
 
-# tcr_raw2 <- 
-   
+# tcr_raw2 <-
+
 # #just the human data, all patients
-# abundance_summary_data <-  tcr_raw2 %>% 
-#   group_by(sample_name) %>% 
-#   arrange(desc(productive_frequency)) %>% 
+# abundance_summary_data <-  tcr_raw2 %>%
+#   group_by(sample_name) %>%
+#   arrange(desc(productive_frequency)) %>%
 #   mutate(
 #     clone_rank = rank(desc(productive_frequency), ties.method = "min"),
 #     clone_rank_ave = rank(desc(productive_frequency), ties.method = "average"),
 #          cumu_templates = cumsum(templates)) %>%
 #   group_by(sample_name,samp_type , clone_rank, productive_templates) %>%
 #   summarize(max_cumulative_tempaltes_at_clone_rank = max(cumu_templates),
-#             perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100) %>% 
-#   distinct() %>% 
+#             perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100) %>%
+#   distinct() %>%
 #   ungroup()
 
 
-#filtering out samples not included in the alluvials (donor pt A, kidney, heart, and marrow pt D)
+# filtering out samples not included in the alluvials (donor pt A, kidney, heart, and marrow pt D)
 
-summary_data_for_yuval <- tcr_raw %>% filter(sample_name != "PtA_donor_TCRB") %>% filter(sample_name != "PtD_autopsy_marrow_TCRB") %>% filter(sample_name != "PtD_kidney_TCRB") %>% filter(sample_name != "PtD_donor_TCRB") %>% filter(org != "Mouse")   %>% 
-  group_by(sample_name) %>% 
-  arrange(desc(productive_frequency)) %>% 
+summary_data_for_yuval <- tcr_raw %>%
+  filter(sample_name != "PtA_donor_TCRB") %>%
+  filter(sample_name != "PtD_autopsy_marrow_TCRB") %>%
+  filter(sample_name != "PtD_kidney_TCRB") %>%
+  filter(sample_name != "PtD_donor_TCRB") %>%
+  filter(org != "Mouse") %>%
+  group_by(sample_name) %>%
+  arrange(desc(productive_frequency)) %>%
   mutate(
     clone_rank = rank(desc(productive_frequency), ties.method = "min"),
     clone_rank_ave = rank(desc(productive_frequency), ties.method = "average"),
-         cumu_templates = cumsum(templates)) %>%
+    cumu_templates = cumsum(templates)
+  ) %>%
   select(sample_name, productive_templates, productive_frequency, rearrangement, amino_acid, indv_type, gvhd, indv_id, tissue, indv_label, clone_rank) %>%
-  distinct() %>% 
+  distinct() %>%
   ungroup()
 
 write.csv(summary_data_for_yuval, "summary_data_for_yuval.csv")
 
-# 
+#
 # all_combos <- expand.grid(
 #   sample_name=unique(abundance_summary_data$sample_name),
 #   clone_rank = 1:max(abundance_summary_data$clone_rank))
-# 
+#
 # abundance_summary_data_grouped_summaries <- abundance_summary_data %>%
-#     full_join(all_combos) %>% 
-#   arrange(sample_name, clone_rank) %>% 
-#   fill(everything(), .direction = "down") %>% 
+#     full_join(all_combos) %>%
+#   arrange(sample_name, clone_rank) %>%
+#   fill(everything(), .direction = "down") %>%
 #    group_by(clone_rank) %>%
 #   summarize(
 #     grp=paste0("Human"),
@@ -520,50 +592,50 @@ write.csv(summary_data_for_yuval, "summary_data_for_yuval.csv")
 #     max_perc_cu = max(perc_cu),
 #     sem_perc_cu = sqrt(var(perc_cu)/n()),
 #     sd_perc_cu = sd(perc_cu),
-#     ) %>% 
+#     ) %>%
 #   distinct() %>%
-#   ungroup() 
-# 
-# 
-# 
+#   ungroup()
+#
+#
+#
 # # ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) + geom_line(alpha=.02) +
-# #    geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10() 
-# 
+# #    geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10()
+#
 # human_cumulative = ggplot(abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) +
 #   geom_line(alpha=.05) +
 #   geom_line(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=mean_perc_cu, group=grp), alpha=.7) +
-#   xlab("clone rank ") + 
+#   xlab("clone rank ") +
 #   ylab("cumulative frequency (%)") +
 #   geom_ribbon(data=abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=1, ymin=mean_perc_cu-sem_perc_cu, ymax=mean_perc_cu + sem_perc_cu, group=grp, fill=grp), alpha=.5) +
 #   geom_vline(xintercept = 10, linetype="dotted", color="gray4", size = .8) + scale_x_log10() + scale_fill_manual(values = c("#6495ED")) + scale_color_manual(values = c("#6495ED")) + labs(fill = "Group") + labs(color = "Group")
-# 
+#
 # ggsave(plot=human_cumulative ,height=4,width=5, filename=file.path(alluvial_figures_path, "human_cumulative.pdf"))
-# 
-# 
+#
+#
 # #just the mouse, GVHD only
-# mouse_abundance_summary_data <-  tcr_raw %>% 
-#   group_by(sample_name) %>% 
+# mouse_abundance_summary_data <-  tcr_raw %>%
+#   group_by(sample_name) %>%
 #   filter(org != "Human") %>% filter(samp_type == "Recipient") %>%
-#   arrange(desc(productive_frequency)) %>% 
+#   arrange(desc(productive_frequency)) %>%
 #   mutate(
 #     clone_rank = rank(desc(productive_frequency), ties.method = "min"),
 #     clone_rank_ave = rank(desc(productive_frequency), ties.method = "average"),
 #          cumu_templates = cumsum(templates)) %>%
 #   group_by(sample_name, gvhd, samp_type , clone_rank, productive_templates) %>%
 #   summarize(max_cumulative_tempaltes_at_clone_rank = max(cumu_templates),
-#             perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100) %>% 
-#   distinct() %>% 
+#             perc_cu = max_cumulative_tempaltes_at_clone_rank / productive_templates * 100) %>%
+#   distinct() %>%
 #   ungroup()
-# 
-# 
+#
+#
 # mouse_all_combos <- expand.grid(
 #   sample_name=unique(mouse_abundance_summary_data$sample_name),
 #   clone_rank = 1:max(mouse_abundance_summary_data$clone_rank))
-# 
+#
 # mouse_abundance_summary_data_grouped_summaries <- mouse_abundance_summary_data %>%
-#     full_join(mouse_all_combos) %>% 
-#   arrange(sample_name, clone_rank) %>% 
-#   fill(everything(), .direction = "down") %>% 
+#     full_join(mouse_all_combos) %>%
+#   arrange(sample_name, clone_rank) %>%
+#   fill(everything(), .direction = "down") %>%
 #    group_by(clone_rank) %>%
 #   summarize(
 #     grp=paste0("Mouse"),
@@ -572,24 +644,23 @@ write.csv(summary_data_for_yuval, "summary_data_for_yuval.csv")
 #     max_perc_cu = max(perc_cu),
 #     sem_perc_cu = sqrt(var(perc_cu)/n()),
 #     sd_perc_cu = sd(perc_cu),
-#     ) %>% 
+#     ) %>%
 #   distinct() %>%
-#   ungroup() 
-# 
-# 
-# 
+#   ungroup()
+#
+#
+#
 # ggplot(mouse_abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) + geom_line(alpha=.02) +
-#    geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10() 
-# 
+#    geom_vline(xintercept = 10, linetype="dotted", color="gray") + scale_x_log10()
+#
 # mouse_cumulative = ggplot(mouse_abundance_summary_data, aes(x=clone_rank, y=perc_cu, group=sample_name)) +
 #   geom_line(alpha=.05) +
 #   geom_line(data=mouse_abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=mean_perc_cu, group=grp), alpha=.7) +
-#   xlab("clone rank ") + 
+#   xlab("clone rank ") +
 #   ylab("cumulative frequency (%)") +
 #   geom_ribbon(data=mouse_abundance_summary_data_grouped_summaries, aes(x=clone_rank, color=grp, y=1, ymin=mean_perc_cu-sem_perc_cu, ymax=mean_perc_cu + sem_perc_cu, group=grp, fill=grp), alpha=.5) +
 #   geom_vline(xintercept = 10, linetype="dotted", color="gray4", size = .8) + scale_x_log10() + scale_fill_manual(values = c("#9FE2BF")) + scale_color_manual(values = c("#9FE2BF")) + labs(fill = "Group") + labs(color = "Group")
-# 
+#
 # ggsave(plot=mouse_cumulative ,height=4,width=5, filename=file.path(alluvial_figures_path, "mouse_cumulative.pdf"))
-# 
-
+#
 ```

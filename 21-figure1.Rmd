@@ -4,13 +4,13 @@ editor_options:
   chunk_output_type: console
 ---
 ```{r 21-figure1-1, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, fig.width=10, fig.height=7) 
-library(tidyverse) 
-library(patchwork)  # for combining figures
-library(gplots)     # for heatmap.2
+knitr::opts_chunk$set(echo = FALSE, fig.width = 10, fig.height = 7)
+library(tidyverse)
+library(patchwork) # for combining figures
+library(gplots) # for heatmap.2
 library(RColorBrewer)
 
-if (interactive())  load("tcr_objects.Rdata")
+if (interactive()) load("tcr_objects.Rdata")
 ```
 
 # Figure 1
@@ -23,67 +23,76 @@ if (interactive())  load("tcr_objects.Rdata")
 figures_path <- file.path("figures", "fig1")
 dir.create(figures_path, showWarnings = FALSE, recursive = TRUE)
 
-diversity <- read.csv("tables/st4.csv") %>% 
-  rename(sample_name=Sample.name,
-         productive_templates=productive.templates,
-         max_productive_frequency=Max.frequency,
-         len=unique.productive.clones) %>% 
-  left_join(tcr_sample_metadata %>% select(-sample_amount_ng) %>% 
-              select(sample_name:species)) %>%
-  left_join(tissue_annotations, by="tissue") 
+diversity <- read.csv("tables/st4.csv") %>%
+  rename(
+    sample_name = Sample.name,
+    productive_templates = productive.templates,
+    max_productive_frequency = Max.frequency,
+    len = unique.productive.clones
+  ) %>%
+  left_join(tcr_sample_metadata %>% select(-sample_amount_ng) %>%
+    select(sample_name:species)) %>%
+  left_join(tissue_annotations, by = "tissue")
 
 indvs <- unique(tcr_raw$indv_label)
 
 clones_per_pt_no_graft <- lapply(setNames(indvs, indvs), function(x) {
-    tcr_raw %>% filter(indv_label == x) %>% 
-    filter(tissue != "graft_blood") %>% 
-    filter(tissue == "Tcells") %>% 
-      filter(productive_frequency > 0) %>%
-      pull(rearrangement) %>% unique()
-  }) %>% 
+  tcr_raw %>%
+    filter(indv_label == x) %>%
+    filter(tissue != "graft_blood") %>%
+    filter(tissue == "Tcells") %>%
+    filter(productive_frequency > 0) %>%
+    pull(rearrangement) %>%
+    unique()
+}) %>%
   sapply(n_distinct)
 
-data.frame(nclones=clones_per_pt_no_graft) %>% 
-  rownames_to_column("indv_label")  %>% left_join(tcr_sample_metadata %>% select(indv_label, org)%>%distinct()) %>% 
-  filter(!grepl("Donor", indv_label)) %>% 
-  group_by(org) %>% summarize(
-    mean_clones_per_patient=mean(nclones),
-    median_clones_per_patient=median(nclones),
-    sd_clones_per_patient=sd(nclones),
-    )
+data.frame(nclones = clones_per_pt_no_graft) %>%
+  rownames_to_column("indv_label") %>%
+  left_join(tcr_sample_metadata %>% select(indv_label, org) %>% distinct()) %>%
+  filter(!grepl("Donor", indv_label)) %>%
+  group_by(org) %>%
+  summarize(
+    mean_clones_per_patient = mean(nclones),
+    median_clones_per_patient = median(nclones),
+    sd_clones_per_patient = sd(nclones),
+  )
 
 clones_per_pt_yes_graft <- lapply(setNames(indvs, indvs), function(x) {
-    tcr_raw %>% filter(indv_label == x) %>% 
-      filter(productive_frequency > 0) %>%
-      pull(rearrangement) %>% unique()
-  }) %>% 
+  tcr_raw %>%
+    filter(indv_label == x) %>%
+    filter(productive_frequency > 0) %>%
+    pull(rearrangement) %>%
+    unique()
+}) %>%
   sapply(n_distinct)
 
-data.frame(nclones=clones_per_pt_yes_graft) %>% 
-  rownames_to_column("indv_label")  %>% left_join(tcr_sample_metadata %>% select(indv_label, org)%>%distinct()) %>% 
-  group_by(org) %>% summarize(
-    mean_clones_per_patient=mean(nclones),
-    median_clones_per_patient=median(nclones),
-    sd_clones_per_patient=sd(nclones),
-    )
+data.frame(nclones = clones_per_pt_yes_graft) %>%
+  rownames_to_column("indv_label") %>%
+  left_join(tcr_sample_metadata %>% select(indv_label, org) %>% distinct()) %>%
+  group_by(org) %>%
+  summarize(
+    mean_clones_per_patient = mean(nclones),
+    median_clones_per_patient = median(nclones),
+    sd_clones_per_patient = sd(nclones),
+  )
 
-tcr_raw %>% 
-    filter(!tissue %in%  c("autopsy_blood", "graft_blood", "blood", "Tcells", "pretx_blood", "autopsy_marrow")) %>% 
-      filter(productive_frequency > 0) %>%
-  group_by(sample_name, org) %>% 
-   filter(!grepl("Donor", indv_label)) %>% 
- summarize(n_distinct_clones = n_distinct(rearrangement)) %>% 
-  ungroup()   %>% 
-   group_by(org) %>% summarize(n=n(), 
-    mean_clones_per_tissue=mean(n_distinct_clones),
-    median_clones_per_tissue=median(n_distinct_clones),
-    sd_clones_per_tissue=sd(n_distinct_clones),
-    min= min(n_distinct_clones),
-    max= max(n_distinct_clones),
-    
-    )
-
-
+tcr_raw %>%
+  filter(!tissue %in% c("autopsy_blood", "graft_blood", "blood", "Tcells", "pretx_blood", "autopsy_marrow")) %>%
+  filter(productive_frequency > 0) %>%
+  group_by(sample_name, org) %>%
+  filter(!grepl("Donor", indv_label)) %>%
+  summarize(n_distinct_clones = n_distinct(rearrangement)) %>%
+  ungroup() %>%
+  group_by(org) %>%
+  summarize(
+    n = n(),
+    mean_clones_per_tissue = mean(n_distinct_clones),
+    median_clones_per_tissue = median(n_distinct_clones),
+    sd_clones_per_tissue = sd(n_distinct_clones),
+    min = min(n_distinct_clones),
+    max = max(n_distinct_clones),
+  )
 ```
 
 
@@ -101,88 +110,95 @@ jitter <- position_jitter(width = 0.0, height = 0.1)
 # removed heart and kidney as they were only present in PtD.
 # remove kidney due to very low quality sample
 div_base <- ggplot(
-  diversity %>% 
+  diversity %>%
     filter(sample_name != "PtD_autopsy_marrow_TCRB") %>%
     filter(sample_name != "PtD_heart_TCRB") %>%
     filter(sample_name != "PtD_kidney_TCRB") %>%
-    filter(org == "Human"), aes(y=reorder(tissue_label_fig1, desc(anatomic_order)))) 
+    filter(org == "Human"), aes(y = reorder(tissue_label_fig1, desc(anatomic_order)))
+)
 
-(fig1b <- ggplot(data.frame(nclones=sapply(clones_per_pt, n_distinct)) %>% rownames_to_column("indv_label") %>% 
-                   filter(grepl("Patient", indv_label )),
-                 aes(y=indv_label,x=nclones, fill=indv_label)) +
-    geom_bar(stat="identity", orientation = "y", alpha=.9, width = .6) +
-    scale_x_log10(
-      expand=c(0,0),
-      breaks = c(1 %o% 10^(-6:6)),
-      labels = scales::trans_format("log10", scales::math_format(10^.x))
-    ) +
-    scale_y_discrete(limits=rev, name="") +
-    theme_classic() + 
-    scale_fill_manual(values = human_patient_colors, breaks = names(human_patient_colors), guide="none"))
+(fig1b <- ggplot(
+  data.frame(nclones = sapply(clones_per_pt, n_distinct)) %>% rownames_to_column("indv_label") %>%
+    filter(grepl("Patient", indv_label)),
+  aes(y = indv_label, x = nclones, fill = indv_label)
+) +
+  geom_bar(stat = "identity", orientation = "y", alpha = .9, width = .6) +
+  scale_x_log10(
+    expand = c(0, 0),
+    breaks = c(1 %o% 10^(-6:6)),
+    labels = scales::trans_format("log10", scales::math_format(10^.x))
+  ) +
+  scale_y_discrete(limits = rev, name = "") +
+  theme_classic() +
+  scale_fill_manual(values = human_patient_colors, breaks = names(human_patient_colors), guide = "none"))
 
-ggsave(plot=fig1b ,height=6,width=5, filename=file.path(figures_path, "fig1b.pdf"))
+ggsave(plot = fig1b, height = 6, width = 5, filename = file.path(figures_path, "fig1b.pdf"))
 
 (fig1c <- div_base +
-    geom_point(aes(x=productive_templates, fill = indv_label), size = 6, shape=21, alpha = .9, position = jitter) +
-    theme_classic()  +
-    scale_x_log10(
-      breaks = c(1 %o% 10^(-6:6)),
-      labels = scales::trans_format("log10", scales::math_format(10^.x))
-    ) +
-    theme(legend.position = "none") +
-    labs(x="templates", y="") +
-    theme(axis.text.y = element_text(size = 10, face = "bold")) + 
-    scale_fill_manual(values = human_patient_colors, breaks = names(human_patient_colors)) +
-    theme(axis.text.x = element_text(size = 8, hjust = 0, face = "bold")))
+  geom_point(aes(x = productive_templates, fill = indv_label), size = 6, shape = 21, alpha = .9, position = jitter) +
+  theme_classic() +
+  scale_x_log10(
+    breaks = c(1 %o% 10^(-6:6)),
+    labels = scales::trans_format("log10", scales::math_format(10^.x))
+  ) +
+  theme(legend.position = "none") +
+  labs(x = "templates", y = "") +
+  theme(axis.text.y = element_text(size = 10, face = "bold")) +
+  scale_fill_manual(values = human_patient_colors, breaks = names(human_patient_colors)) +
+  theme(axis.text.x = element_text(size = 8, hjust = 0, face = "bold")))
 
 
-ggsave(plot=fig1c ,height=4.5,width=5, filename=file.path(figures_path, "fig1c.pdf"))
+ggsave(plot = fig1c, height = 4.5, width = 5, filename = file.path(figures_path, "fig1c.pdf"))
 
 (fig1d <- div_base +
-    geom_point(aes(x=len, fill = indv_label), size = 6, shape=21, alpha = .9, position = jitter) +
-    theme_classic()  +
-    scale_x_log10(
-      breaks = c(1 %o% 10^(-6:6)),
-      labels = scales::trans_format("log10", scales::math_format(10^.x))
-    ) +
-    theme(legend.position = "none") +
-    labs(x="unique clones per tissue", y="") +
-    theme(axis.text.y = element_text(size = 10, face = "bold")) + 
-    scale_fill_manual(values = human_patient_colors, breaks = names(human_patient_colors)) +
-    theme(axis.text.x = element_text(size = 8, hjust = 0, face = "bold")))
+  geom_point(aes(x = len, fill = indv_label), size = 6, shape = 21, alpha = .9, position = jitter) +
+  theme_classic() +
+  scale_x_log10(
+    breaks = c(1 %o% 10^(-6:6)),
+    labels = scales::trans_format("log10", scales::math_format(10^.x))
+  ) +
+  theme(legend.position = "none") +
+  labs(x = "unique clones per tissue", y = "") +
+  theme(axis.text.y = element_text(size = 10, face = "bold")) +
+  scale_fill_manual(values = human_patient_colors, breaks = names(human_patient_colors)) +
+  theme(axis.text.x = element_text(size = 8, hjust = 0, face = "bold")))
 
 
-ggsave(plot=fig1d ,height=4.5,width=5, filename=file.path(figures_path, "fig1d.pdf"))
+ggsave(plot = fig1d, height = 4.5, width = 5, filename = file.path(figures_path, "fig1d.pdf"))
 
 
-(fig1e = div_base +
-  geom_point( aes(x=clonality, fill = indv_label), size=6, shape=21, alpha = .9, position = jitter) +
-  theme_classic()  +
-  labs(x="clonality", y="") +
-  theme(legend.position = "none") + 
-  theme(axis.text.y = element_text(size = 10, face = "bold")) +  
+(fig1e <- div_base +
+  geom_point(aes(x = clonality, fill = indv_label), size = 6, shape = 21, alpha = .9, position = jitter) +
+  theme_classic() +
+  labs(x = "clonality", y = "") +
+  theme(legend.position = "none") +
+  theme(axis.text.y = element_text(size = 10, face = "bold")) +
   scale_fill_manual(values = human_patient_colors, breaks = names(human_patient_colors)) +
   theme(axis.text.x = element_text(size = 8, angle = 0, hjust = 0, face = "bold")))
 
-ggsave(plot=fig1e ,height=4.5,width=5,dpi=200, 
-       filename=file.path(figures_path, "fig1e.pdf"), 
-       useDingbats=FALSE)
+ggsave(
+  plot = fig1e, height = 4.5, width = 5, dpi = 200,
+  filename = file.path(figures_path, "fig1e.pdf"),
+  useDingbats = FALSE
+)
 
 
-(figS1d = div_base +
-  geom_point( aes(x=max_productive_frequency, fill = indv_label), size=6, shape=21, alpha = .9, position = jitter) +
-  theme_classic()  +
-  labs(x="Clone Frequency (%)", y="") +
-  theme(legend.position = "none") + 
-  theme(axis.text.y = element_text(size = 10, face = "bold")) +  
+(figS1d <- div_base +
+  geom_point(aes(x = max_productive_frequency, fill = indv_label), size = 6, shape = 21, alpha = .9, position = jitter) +
+  theme_classic() +
+  labs(x = "Clone Frequency (%)", y = "") +
+  theme(legend.position = "none") +
+  theme(axis.text.y = element_text(size = 10, face = "bold")) +
   scale_fill_manual(values = human_patient_colors, breaks = names(human_patient_colors)) +
   theme(axis.text.x = element_text(size = 8, angle = 0, hjust = 0, face = "bold")))
 
-ggsave(plot=figS1d ,height=4.5,width=5,dpi=200, 
-       filename=file.path(figures_path, "figS1d.pdf"), 
-       useDingbats=FALSE)
+ggsave(
+  plot = figS1d, height = 4.5, width = 5, dpi = 200,
+  filename = file.path(figures_path, "figS1d.pdf"),
+  useDingbats = FALSE
+)
 
-ggsave(patchwork::plot_spacer()  + fig1b + fig1c + fig1d + fig1e + plot_layout(widths = c(1, .7, 1,1,1), nrow=1, guides="collect") + plot_annotation(tag_levels = "A"), width = 24, height=5, filename = file.path(figures_path,"fig1.pdf"))
+ggsave(patchwork::plot_spacer() + fig1b + fig1c + fig1d + fig1e + plot_layout(widths = c(1, .7, 1, 1, 1), nrow = 1, guides = "collect") + plot_annotation(tag_levels = "A"), width = 24, height = 5, filename = file.path(figures_path, "fig1.pdf"))
 ```
 
 
@@ -191,83 +207,98 @@ ggsave(patchwork::plot_spacer()  + fig1b + fig1c + fig1d + fig1e + plot_layout(w
 
 ```{r 21-figure1-3 }
 
-div_base_mouse <- ggplot(diversity %>% filter(org != "Human", gvhd=="GvHD" | samp_type == "Donor" ),
-                           aes(y=reorder(tissue_label_fig1, desc(anatomic_order))))
+div_base_mouse <- ggplot(
+  diversity %>% filter(org != "Human", gvhd == "GvHD" | samp_type == "Donor"),
+  aes(y = reorder(tissue_label_fig1, desc(anatomic_order)))
+)
 
 
-(mouse_fig1h = div_base_mouse + 
-  geom_point( aes(x=len), size=5, shape=21, alpha = .7, position = jitter, fill="gray", color = "black") + scale_x_log10(
-      breaks = c(1 %o% 10^(-6:6)),
-      labels = scales::trans_format("log10", scales::math_format(10^.x))
-    ) +
-  theme_classic()  +
-  labs(x="unique clones", y="") + geom_boxplot(aes(x=len),  alpha=0, width = .5, outlier.color = NA, size = .3,) +
-  theme(legend.position = "right") + 
-  theme(axis.text.y = element_text(size = 10, face = "bold")) +  
+(mouse_fig1h <- div_base_mouse +
+  geom_point(aes(x = len), size = 5, shape = 21, alpha = .7, position = jitter, fill = "gray", color = "black") + scale_x_log10(
+    breaks = c(1 %o% 10^(-6:6)),
+    labels = scales::trans_format("log10", scales::math_format(10^.x))
+  ) +
+  theme_classic() +
+  labs(x = "unique clones", y = "") + geom_boxplot(aes(x = len), alpha = 0, width = .5, outlier.color = NA, size = .3, ) +
+  theme(legend.position = "right") +
+  theme(axis.text.y = element_text(size = 10, face = "bold")) +
   theme(axis.text.x = element_text(size = 8, angle = 0, hjust = 0, face = "bold")))
 
-ggsave(plot=mouse_fig1h ,height=4.5,width=5,dpi=200, 
-       filename=file.path(figures_path, "mouse_fig1.pdf"), 
-       useDingbats=FALSE)
+ggsave(
+  plot = mouse_fig1h, height = 4.5, width = 5, dpi = 200,
+  filename = file.path(figures_path, "mouse_fig1.pdf"),
+  useDingbats = FALSE
+)
 
-(mouse_figS1e = div_base_mouse +
-  geom_point( aes(x=max_productive_frequency), size=6, shape=21, alpha = .7, color = "black", position = jitter, fill="gray") +
-  theme_classic()  + geom_boxplot(aes(x=max_productive_frequency),  alpha=0, width = .5, size = .2, outlier.color = NA) +
-  labs(x="clone frequency (%)", y="") +
-  theme(legend.position = "right") + 
-  theme(axis.text.y = element_text(size = 10, face = "bold")) +  
+(mouse_figS1e <- div_base_mouse +
+  geom_point(aes(x = max_productive_frequency), size = 6, shape = 21, alpha = .7, color = "black", position = jitter, fill = "gray") +
+  theme_classic() + geom_boxplot(aes(x = max_productive_frequency), alpha = 0, width = .5, size = .2, outlier.color = NA) +
+  labs(x = "clone frequency (%)", y = "") +
+  theme(legend.position = "right") +
+  theme(axis.text.y = element_text(size = 10, face = "bold")) +
   theme(axis.text.x = element_text(size = 8, angle = 0, hjust = 0, face = "bold")))
 
-ggsave(plot=mouse_figS1e ,height=4.5,width=5,dpi=200, 
-       filename=file.path(figures_path, "mouse_figS1e.pdf"), 
-       useDingbats=FALSE)
+ggsave(
+  plot = mouse_figS1e, height = 4.5, width = 5, dpi = 200,
+  filename = file.path(figures_path, "mouse_figS1e.pdf"),
+  useDingbats = FALSE
+)
 
-(mouse_fig1i = div_base_mouse + 
-  geom_point( aes(x=clonality), size=5, shape=21, alpha = .7, position = jitter, fill="gray", color = "black") +
-  theme_classic()  + geom_boxplot(aes(x=clonality),  alpha=0, width = .5, size = .2, outlier.color = NA) +
-  labs(x="clonality", y="") +
-  theme(legend.position = "right") + 
-  theme(axis.text.y = element_text(size = 10, face = "bold")) +  
+(mouse_fig1i <- div_base_mouse +
+  geom_point(aes(x = clonality), size = 5, shape = 21, alpha = .7, position = jitter, fill = "gray", color = "black") +
+  theme_classic() + geom_boxplot(aes(x = clonality), alpha = 0, width = .5, size = .2, outlier.color = NA) +
+  labs(x = "clonality", y = "") +
+  theme(legend.position = "right") +
+  theme(axis.text.y = element_text(size = 10, face = "bold")) +
   theme(axis.text.x = element_text(size = 8, angle = 0, hjust = 0, face = "bold")))
 
-ggsave(plot=mouse_fig1i ,height=4.5,width=5,dpi=200, 
-       filename=file.path(figures_path, "mouse_fig1i.pdf"), 
-       useDingbats=FALSE)
+ggsave(
+  plot = mouse_fig1i, height = 4.5, width = 5, dpi = 200,
+  filename = file.path(figures_path, "mouse_fig1i.pdf"),
+  useDingbats = FALSE
+)
 
-(mouse_fig1g = div_base_mouse + 
-  geom_point(aes(x=productive_templates), size=5, shape=21, alpha = .7, position = jitter, fill = "gray", color = "black") + 
-    scale_x_log10(
-      breaks = c(1 %o% 10^(-6:6)),
-      labels = scales::trans_format("log10", scales::math_format(10^.x))
-    ) + geom_boxplot(aes(x=productive_templates),  alpha=0, width = .5, size = .2, outlier.color = NA) +
-  theme_classic()  +
-  labs(x="templates", y="") +
-  theme(legend.position = "none") + 
-  theme(axis.text.y = element_text(size = 10, face = "bold")) +  
+(mouse_fig1g <- div_base_mouse +
+  geom_point(aes(x = productive_templates), size = 5, shape = 21, alpha = .7, position = jitter, fill = "gray", color = "black") +
+  scale_x_log10(
+    breaks = c(1 %o% 10^(-6:6)),
+    labels = scales::trans_format("log10", scales::math_format(10^.x))
+  ) + geom_boxplot(aes(x = productive_templates), alpha = 0, width = .5, size = .2, outlier.color = NA) +
+  theme_classic() +
+  labs(x = "templates", y = "") +
+  theme(legend.position = "none") +
+  theme(axis.text.y = element_text(size = 10, face = "bold")) +
   theme(axis.text.x = element_text(size = 8, angle = 0, hjust = 0, face = "bold")))
 
-ggsave(plot=mouse_fig1g ,height=4.5,width=5,dpi=200, 
-       filename=file.path(figures_path, "mouse_fig1g.pdf"), 
-       useDingbats=FALSE)
+ggsave(
+  plot = mouse_fig1g, height = 4.5, width = 5, dpi = 200,
+  filename = file.path(figures_path, "mouse_fig1g.pdf"),
+  useDingbats = FALSE
+)
 
 jitter_mouse <- position_jitter(width = 0.05, height = 0.06)
 
-(fig1f_mouse <- ggplot(data.frame(nclones=sapply(clones_per_pt, n_distinct)) %>% rownames_to_column("indv_label") %>% 
-                   filter(grepl("Recipient", indv_label )),
-                 aes(y=0,x=nclones)) +
-    geom_point(aes(fill=indv_label), size=4, shape=21, alpha = .5, position = jitter_mouse, fill = "gray") +
-    scale_x_log10(limits=c(500, 100000),
-      expand=c(0,0),
-      breaks = c(1 %o% 10^(-6:6)),
-      labels = scales::trans_format("log10", scales::math_format(10^.x))
-    ) + geom_boxplot(orientation = "y", alpha=0, width = .2, size = .3, outlier.color = NA) + 
-    scale_y_continuous(limits = c(-.5,.5)) + 
-    theme_classic() + theme(legend.position = "none", axis.title.x = element_blank(), axis.ticks.x = element_blank(), axis.text.x = element_blank()) + coord_flip())
+(fig1f_mouse <- ggplot(
+  data.frame(nclones = sapply(clones_per_pt, n_distinct)) %>% rownames_to_column("indv_label") %>%
+    filter(grepl("Recipient", indv_label)),
+  aes(y = 0, x = nclones)
+) +
+  geom_point(aes(fill = indv_label), size = 4, shape = 21, alpha = .5, position = jitter_mouse, fill = "gray") +
+  scale_x_log10(
+    limits = c(500, 100000),
+    expand = c(0, 0),
+    breaks = c(1 %o% 10^(-6:6)),
+    labels = scales::trans_format("log10", scales::math_format(10^.x))
+  ) +
+  geom_boxplot(orientation = "y", alpha = 0, width = .2, size = .3, outlier.color = NA) +
+  scale_y_continuous(limits = c(-.5, .5)) +
+  theme_classic() +
+  theme(legend.position = "none", axis.title.x = element_blank(), axis.ticks.x = element_blank(), axis.text.x = element_blank()) +
+  coord_flip())
 
 
 
-ggsave(plot=fig1f_mouse ,height=3,width=2, filename=file.path(figures_path, "fig1f_mouse.pdf"))
-
+ggsave(plot = fig1f_mouse, height = 3, width = 2, filename = file.path(figures_path, "fig1f_mouse.pdf"))
 ```
 
 
