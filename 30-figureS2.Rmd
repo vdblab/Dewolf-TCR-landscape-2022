@@ -7,8 +7,7 @@ editor_options:
 # Supplementary figures
 ## S2
 
-analysis of diversity metrics across clinical variables: these are the plots for supplemental figure 2 looking at diversity metrics across different clinical variables
-
+Analysis of diversity metrics across clinical variables: these are the plots for supplemental figure 2.
 ```{R 30-figureS2-1 }
 if (interactive()) load("./tcr_objects.Rdata")
 S2_figs_dir <- file.path("figures", "S2")
@@ -68,8 +67,6 @@ S2_A <- clonality_graft + slope_graft + plot_layout(guides = "collect")
 S2_A
 
 check_group_stats <- function(df, xcol, ycol) {
-  # require(ggpubr)
-  # require(rstatix)
   thisdf <- df %>%
     rename(
       "x" = xcol,
@@ -87,23 +84,6 @@ check_group_stats <- function(df, xcol, ycol) {
     mutate(p.adj = p.adjust(`Pr(>|t|)`)) %>%
     filter(p.adj <= .05)
 
-  # if (nrow(thisdf) < nrow(df)){
-  #   warning(paste("Rows removed with NAs in column", xcol))
-  # }
-  # these_comparisons <- combn(unique(thisdf[, "x"]), m = 2, simplify = FALSE)
-  #
-  # stat.test <- thisdf %>%
-  #   wilcox_test(y ~ x, comparisons = these_comparisons) %>%
-  #   adjust_pvalue() %>%
-  #   add_significance("p.adj") %>%
-  #   add_y_position()
-
-  # p_ <- ggplot(thisdf, aes(x=as.character(x), y=y, fill = as.character(x))) +
-  #   geom_violin() +
-  #   geom_jitter() +
-  #  stat_pvalue_manual(stat.test, label = "p.adj")+
-  #   labs(x=xcol)
-  # return(list(plot=p_, stats=sig_test))
   if (nrow(sig_test) > 0) {
     stop(paste("significant association between", xcol, "and", ycol, "found!"))
   }
@@ -198,5 +178,4 @@ ggsave(plot = S2_C, height = 5, width = 14, filename = file.path(figures_path, "
 ggsave(plot = S2_age, height = 5, width = 14, filename = file.path(figures_path, "S2D_by_pt_age.pdf"))
 ggsave(plot = S2_donor, height = 5, width = 14, filename = file.path(figures_path, "S2E_by_donor_age.pdf"))
 
-# write.csv(msk_uc_corrs,"JSD_public_comparisons.csv")
 ```

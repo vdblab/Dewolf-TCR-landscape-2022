@@ -51,9 +51,6 @@ make_alluvial_dataset <- function(tcr_data, thistcr_sample_metadata, tissue_meta
   n_distinct(top_clones$rearrangement)
   top_n_data_wide <- top_n_data %>%
     select(rearrangement, tissue, productive_frequency) %>%
-    # dplyr::group_by(rearrangement, tissue) %>%
-    # dplyr::summarise(n = dplyr::n(), .groups = "drop") %>%
-    # dplyr::filter(n > 1L)
     pivot_wider(id_cols = rearrangement, names_from = tissue, values_from = productive_frequency, values_fill = 0) %>%
     column_to_rownames("rearrangement")
 
@@ -65,16 +62,10 @@ make_alluvial_dataset <- function(tcr_data, thistcr_sample_metadata, tissue_meta
     ) %>%
     filter(tissue.y == ref_tissue) %>%
     select(sample1, sample2, tissue.x, tissue.y, JSD)
-  #
-  # top_n_data %>%
-  #   left_join(
-  #     ,
-  #     by=c("sample_name" = "sample1")) %>% select(sample_name, sample2, JSD)
 
   top_10_ascending <- top_n_data_wide %>%
     arrange(desc(get(ref_tissue))) %>%
     data.frame() %>%
-    # mutate(key=row_number())
     mutate(
       key = row_number(),
       true_rank = rank(desc(get(ref_tissue)), ties.method = "min")
@@ -114,7 +105,6 @@ make_alluvial_dataset <- function(tcr_data, thistcr_sample_metadata, tissue_meta
     geom_flow(stat = "alluvium", curve_type = "sigmoid", color = "gray45", size = .3) +
     geom_stratum(alpha = 1) +
     geom_text(aes(y = tissue_total * 1.1, label = thislabel), size = 15) +
-    # consider , color=NA) +
     scale_fill_identity() +
     theme_classic() +
     theme(
@@ -556,26 +546,7 @@ ggsave(plot = p_mouse_human_cumu, height = 4, width = 10, filename = file.path(a
 
 # filtering out samples not included in the alluvials (donor pt A, kidney, heart, and marrow pt D)
 
-summary_data_for_yuval <- tcr_raw %>%
-  filter(sample_name != "PtA_donor_TCRB") %>%
-  filter(sample_name != "PtD_autopsy_marrow_TCRB") %>%
-  filter(sample_name != "PtD_kidney_TCRB") %>%
-  filter(sample_name != "PtD_donor_TCRB") %>%
-  filter(org != "Mouse") %>%
-  group_by(sample_name) %>%
-  arrange(desc(productive_frequency)) %>%
-  mutate(
-    clone_rank = rank(desc(productive_frequency), ties.method = "min"),
-    clone_rank_ave = rank(desc(productive_frequency), ties.method = "average"),
-    cumu_templates = cumsum(templates)
-  ) %>%
-  select(sample_name, productive_templates, productive_frequency, rearrangement, amino_acid, indv_type, gvhd, indv_id, tissue, indv_label, clone_rank) %>%
-  distinct() %>%
-  ungroup()
 
-write.csv(summary_data_for_yuval, "summary_data_for_yuval.csv")
-
-#
 # all_combos <- expand.grid(
 #   sample_name=unique(abundance_summary_data$sample_name),
 #   clone_rank = 1:max(abundance_summary_data$clone_rank))

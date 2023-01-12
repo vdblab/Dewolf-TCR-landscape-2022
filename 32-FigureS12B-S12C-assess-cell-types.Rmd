@@ -7,10 +7,6 @@ editor_options:
 # Assessing Cell Types
 Here we considered <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7855494/> to see which TCRs are associated with MAIT and NKT cell types. 
 
-revision1 <- file.path("figures", "revision1")
-dir.create(revision1, showWarnings = FALSE)
-figures_path <- file.path("figures", "revision1")
-
 
 ```{R 32-assess-cell-types-1 }
 library(tidyverse)

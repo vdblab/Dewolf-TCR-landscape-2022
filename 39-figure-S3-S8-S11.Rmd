@@ -612,13 +612,15 @@ top_mouse_data <- tcr_raw %>%
 
 p_mouse_cumutop10 <- top_mouse_data %>%
   ggplot(aes(x = harvest_day, fill = as.character(harvest_day), y = sum_prod_freq, group = harvest_day)) +
-  geom_boxplot(outlier.colour = NA) +
-  geom_jitter(height = 0, alpha = .4, size = 2) +
+  geom_boxplot() +
+  # geom_jitter(height = 0, alpha = .4, size = 2) +
   scale_x_continuous(breaks = c(0, 7, 14), labels = c("control", "7", "14")) +
   scale_fill_manual(values = c("control" = "#CCD2D0", "14" = "#B6DFE9", "7" = "#172470")) +
   facet_grid(~tissue) +
   labs(x = "", y = "sum productive frequency \n of top 10 clones", fill = "Harvest Day") +
-  theme_bw()
+  theme_bw()+
+    theme(axis.text.x = element_blank())
+
 
 ggsave(p_mouse_cumutop10, filename = "figures/abundance/S8F-mouse-top-abundances.pdf", width = 8, height = 5)
 

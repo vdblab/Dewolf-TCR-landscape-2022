@@ -4,13 +4,14 @@ editor_options:
   chunk_output_type: console
 ---
 ```{r 10-tables-1, include=FALSE}
-knitr::opts_chunk$set(echo = FALSE, fig.width = 10, fig.height = 7)
+knitr::opts_chunk$set(fig.width = 10, fig.height = 7)
 library(tidyverse)
 library(patchwork) # for combining figures
 ```
 
 # Summary Tables
 Supplementary table 4 contains the per-sample summary metrics. 
+
 ```{r 10-tables-2 }
 tcr_objects_path <- "tcr_objects.Rdata"
 load(tcr_objects_path)
@@ -87,7 +88,8 @@ write.csv(tab_sample_summary, row.names = FALSE, file = file.path(tab_dir, "st4.
 ```
 
 ## Table S6 and S12
-Tables S6 and S12 are the human and mouse sample pair correlation metrics (respectively).  
+Tables S6 and S12 are the human and mouse sample pair correlation metrics (respectively).  These are quite long and not printed here
+
 ```{r 10-tables-1-bis}
 tcr_corrs_anno <- tcr_corrs %>%
   left_join(tcr_sample_metadata %>% select(sample_name:species), by = c("sample1" = "sample_name")) %>%

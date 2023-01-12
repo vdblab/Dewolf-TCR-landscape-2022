@@ -5,7 +5,7 @@ editor_options:
 ---
 
 ## S3
-
+This chunk plots the comparison of Morisitta index vs JSD for the human GVHD patients.
 ```{R 33-figureS3-1 }
 library(ggpubr)
 if (interactive()) load("tcr_objects.Rdata")

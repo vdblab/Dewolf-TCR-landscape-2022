@@ -19,9 +19,19 @@ For reproducibility, `renv` was used to lock packages used.  After cloning the r
 
 
 ## Contents
-- `00-preprocess-TCR` describes how to download data from Adaptive and merges the raw files
-- `01-prepare-GTEx` downloads data from GTEx, generates some summary plots, and saves objects relevant for later figures
-- `02-prepare-TCR` generates the objects from the GTEx data and makes TCR tree figures
-- `03-figures` generates heatmaps, trees, and the GTEx/TCR comparison figures
-
-
+- `00-preprocess-TCR.Rmd` describes how to download data from Adaptive, merges the raw files, and parses some of the sample metadata. It creates a file 
+- `10-tables.Rmd` tabulates sample summary table S4 and sample pair statistics for tables S6 (human) and S12 (mouse)
+- `20-exploratory-trees.Rmd` assesses cross sample and cross individual pairwise comparisons of repertoire overlap
+- `21-figure1.Rmd` generates the data summary figures found in Figure 1 and supplementary
+- `22-figure2.Rmd` generates the trees, scatterplots, and heatmaps found in Figure 2
+- `23-figure3-S4-S5.Rmd` generates all the alluvial plots
+- `24-figure4.Rmd` generates all the venn diagrams of clone overlap
+- `25-figure5-S7-VECTRA.Rmd` generates the plots of cell types from the imaging data.  The imaging data is not public, but this is included for analysis transparency
+- `30-figureS2.Rmd` 
+- `32-FigureS12B-S12C-assess-cell-types.Rmd`
+- `33-figureS3.Rmd`
+- `37-figureS12D-abundance.Rmd`
+- `38-figureS4P-tableS5-UC-TCRs.Rmd`
+- `39-figure-S3-S8-S11.Rmd`
+- `41-figureS12A-addressing-questions-of-sampling-depth.Rmd`
+- `index.Rmd` is this document
