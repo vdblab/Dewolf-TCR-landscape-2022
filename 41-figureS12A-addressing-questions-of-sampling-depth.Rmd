@@ -10,7 +10,7 @@ editor_options:
 
 ## References
 - https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4885658/
-- also used here https://www.nature.com/articles/nprot.2018.021?&ref=https://githubhelp.com#:~:text=the%20amount%20of%20unique%[…]d%20lines)%20from%20observed%20UMIs
+- also used here https://www.nature.com/articles/nprot.2018.021
 - https://cran.r-project.org/web/packages/preseqR/index.html
 - http://smithlabresearch.org/software/preseq/
 - https://github.com/smithlabcode/preseqR
@@ -259,3 +259,10 @@ ggsave(combined_fold_increase_plot,
 )
 ```    
 
+
+## Session info
+
+```{r echo=TRUE}
+sessionInfo()
+
+```
