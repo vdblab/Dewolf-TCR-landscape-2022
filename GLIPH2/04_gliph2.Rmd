@@ -9,6 +9,8 @@ output:
     toc_depth: 3
 ---
 
+> Note: we are still uploading a few additional files supporting the GLYPH analysis. If you need early access, please email dewolfs@mskcc.org
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, message = F, warning = F)
 ```
