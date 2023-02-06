@@ -70,49 +70,11 @@ ggsave(
 
 ## GLIPH2 Analysis
 
-Data for GLIPH2 were prepared as follows:
-```{r eval=FALSE}
-fns <- list.files('data/raw_TCR_data/', full.names = T)
-# there are NA in the v gene and J gene
-all <- fns %>% 
-  map(~ read_tsv(., col_types = cols(.default = "c")) %>% 
-        filter(frame_type == 'In') %>% 
-        select(CDR3b = cdr3_amino_acid,
-               v_family,
-               TRBV = v_gene,
-               TRBJ = j_gene,
-               sample_name = sample_name,
-               templates) %>% 
-        mutate(CDR3a = "NA") %>% 
-        mutate(sample_name = str_replace(sample_name, '_TCRB$', '')) %>% 
-        mutate(subject = str_extract(sample_name, '^Pt(\\d)+')) %>% 
-        mutate(condition = str_replace(sample_name, '^Pt(\\d)+_','')) %>% 
-        mutate(`subject:condition` = str_glue('{subject}:{condition}')) %>% 
-        select(-sample_name, -subject, -condition) %>% 
-        mutate(templates = as.numeric(templates))   %>% 
-        mutate(TRBV = if_else(is.na(TRBV), v_family, TRBV)) %>% 
-        group_by(CDR3b, TRBV, TRBJ, CDR3a, `subject:condition`) %>% 
-        summarise(count = sum(templates)) %>% 
-        mutate(TRBV = str_replace(TRBV, 'TCRB.',''),
-               TRBJ = str_replace(TRBJ, 'TCRB.','')) %>% 
-        mutate(TRBV = str_replace(TRBV, '/.+$',''),
-               TRBJ = str_replace(TRBJ, '/.+$','')) %>% 
-        separate(TRBV, into = c('v1','v2'), sep = '-') %>% 
-        separate(TRBJ, into = c('j1','j2'), sep = '-')  %>% 
-        mutate(v1 = str_remove(v1, "^0+"),
-               v2 = str_remove(v2, "^0+"),
-               j1 = str_remove(j1, "^0+"),
-               j2 = str_remove(j2, "^0+")) %>% 
-        mutate(TRBV = if_else(is.na(v1), "NA", as.character(str_glue('TRBV{v1}-{v2}'))),
-               TRBJ = if_else(is.na(j1), "NA", as.character(str_glue('TRBJ{j1}-{j2}'))))  %>%
-        mutate(TRBV = str_replace(TRBV, '-NA','')) %>% 
-        select(-v1, -v2,-j1, -j2) %>% 
-        select(CDR3b, TRBV, TRBJ, CDR3a, `subject:condition`, count)) %>% 
-        bind_rows()
+Data files for GLIPH2 were exported by subsetting the mouse and human samples from the in-frame tcr data.
 
-all %>% filter(grepl("^Pt", sample_name)) %>% 
-  write_tsv('data/human_data_for_gliph2.tsv', col_names = F)
-all %>% filter(!grepl("^Pt", sample_name)) %>% 
-  write_tsv('data/mouse_data_for_gliph2.tsv', col_names = F)
-```
+
+GLIPH2 was run with the parameters specified in `GLIPH2/test_parameter.txt` for human samples, and `GLIPH2/test_parameter_mouse.txt` for the mouse samples. The results were saved to `gliph`.  If you would like access to the raw GLIPH2 output prior to publication, please send an email to <dewolfs@mskcc.org>.
+
+The human GLIPH2 data were processed with `GLIPH2/overlap_score_calculations.py`. Mouse GLIPH2 data were processed similarly with `GLIPH2/overlap_score_calculations_mouse.py`, which includes code for figure S10. 
+
 
