@@ -90,15 +90,17 @@ make_alluvial_dataset <- function(tcr_data, thistcr_sample_metadata, tissue_meta
     group_by(tissue) %>%
     mutate(
       tissue_total = sum(freq),
+      in_top_n = key <= this_topn,
       jsd_label = ifelse(tissue != ref_tissue & row_number() == 1, round(JSD, 2), ""),
       thislabel = ifelse(tissue == ref_tissue & row_number() == 1, "*", "")
-    )
+    ) %>% 
+    left_join(metadata_of_interest %>% select(tissue, total_templates))
 
   p_ <- ggplot(
     plot_data,
     aes(
       x = reorder(tissue_label, anatomic_order), stratum = frequency_nudged, y = frequency_nudged, alluvium = key,
-      fill = ifelse(key %in% 1:this_topn, ref_color, "gray75")
+      fill = ifelse(in_top_n, ref_color, "gray75")
     )
   ) +
     labs(x = "", y = "", fill = "Nucleotide ID", title = "") +
@@ -125,6 +127,45 @@ make_alluvial_dataset <- function(tcr_data, thistcr_sample_metadata, tissue_meta
     plot_data = plot_data,
     p_ = p_
   ))
+}
+get_proptest_and_top_coverage <-  function(plot_data, ref_tissue){
+  # calculate the proportion/binomial test for finding a clone that is in the reference tissue's top 10
+  prop_test_data <- plot_data %>% 
+    mutate(freq_count=round(freq*total_templates),
+           tissue_total_count = round(tissue_total * total_templates))
+  prop_test_data$reference_top_n_freq = prop_test_data %>% filter(tissue==ref_tissue) %>% filter(in_top_n) %>%  pull(freq) %>% sum() 
+  prop_test_data$reference_top_n_sum = prop_test_data %>% filter(tissue==ref_tissue) %>% filter(in_top_n) %>%  pull(freq_count) %>% sum() 
+  prop_test_data$reference_tissue_total = prop_test_data %>% filter(tissue==ref_tissue) %>% slice(1) %>% pull(tissue_total_count) 
+  prop_test_data$ref_tissue <- ref_tissue
+  prop_test_stats <- prop_test_data %>% 
+    group_by( tissue, reference_top_n_sum, reference_tissue_total, tissue_total, tissue_total_count, total_templates) %>% 
+    filter(in_top_n) %>% 
+    summarize(top_n_sum_freq_count = sum(freq_count)) %>% 
+    ungroup()  %>% 
+    rowwise() %>% 
+    mutate(
+      ref_tissue_prop=reference_top_n_sum/reference_tissue_total,
+      prop_test = broom::tidy(
+        binom.test(
+          x = round(top_n_sum_freq_count/tissue_total_count * 100),
+          n =100, 
+          p=ref_tissue_prop)
+      )
+    ) %>%
+    ungroup() %>% 
+    unnest(prop_test)
+  # this calculates, within the top-n-across-all-patient-tissues subset, how much of a tissue is
+  # covered by the top n clones in a reference tissue. Like blood or spleen
+  cov_data <- prop_test_data %>% filter(in_top_n)  %>% 
+    group_by(between_within_groups,  tissue) %>% summarize(top_n_freq_sum = (sum(freq) * 100) / reference_top_n_freq) %>% distinct() %>% 
+    mutate(
+      ref_tissue = ref_tissue
+    )
+  
+  return(list(
+    prop=prop_test_stats, 
+    cov=cov_data)
+  )
 }
 
 
@@ -154,7 +195,50 @@ plots_to_make <- list(
   "Patient G" = c(org = "Human", topn = 10, ref_tissue = "graft_blood", ref_color = "blue", f = "3F")
 )
 
+not_in_ref_df <- map(10:13, .f = function(i) {
+  thing <- plots_to_make[[i]]
+  thistcr_sample_metadata <- tcr_sample_metadata
+  # do any patient-specific filtering here
+  this_reference_data <- tcr_raw %>% 
+    filter(indv_label ==  names(plots_to_make)[i]) %>% 
+    filter(tissue == thing["ref_tissue"]) %>%
+    filter(rank(desc(productive_frequency), ties.method = "min") <= 10)
+  tcr_raw %>% 
+    filter(indv_label ==  names(plots_to_make)[i])  %>%
+    group_by(indv_label,tissue) %>% 
+    filter(rank(desc(productive_frequency), ties.method = "min") <= 10) %>% 
+    filter(rearrangement %in% this_reference_data$rearrangement) %>% 
+    mutate()
+    summarize(sum_freq_not_in_refence = sum(productive_frequency)) 
+}) %>% bind_rows()
 
+expand.grid.unique <- function(x, y, include.equals=FALSE)
+  # https://stackoverflow.com/questions/17171148
+{
+    x <- unique(x)
+    y <- unique(y)
+    g <- function(i)
+    {
+        z <- setdiff(y, x[seq_len(i-include.equals)])
+        if(length(z)) cbind(x[i], z, deparse.level=0)
+    }
+    do.call(rbind, lapply(seq_along(x), g))
+}
+
+thesegroups <- not_in_ref_df %>% left_join(tissue_annotations) %>% filter(!tissue %in% c("graft_blood", "pretx_blood", "mLN", "kidney","heart")) %>% 
+  pull(between_within_groups) %>% unique()
+these_comparisons_df <- expand.grid.unique(thesegroups, thesegroups) %>% as.data.frame()
+these_comparisons <- lapply(1:nrow(these_comparisons_df), function(x){c(these_comparisons_df[x, "V1"], these_comparisons_df[x, "V2"])})
+ggplot(not_in_ref_df %>% left_join(tissue_annotations) %>% filter(!tissue %in% c("graft_blood", "pretx_blood", "mLN", "kidney","heart")), 
+       aes(x=between_within_groups, y=sum_freq_not_in_refence, fill=between_within_groups)) + geom_boxplot(outlier.colour = NA) + geom_jitter() + 
+  theme(axis.text.x = element_text(angle=45, hjust = 1))  + labs(y="frequency of ")
+
+
+not_in_ref_df %>% left_join(tissue_annotations) %>% filter(!tissue %in% c("graft_blood", "pretx_blood", "mLN", "kidney","heart")) %>% 
+  group_by(between_within_groups) %>% 
+  summarize(unnest(broom::tidy(summary(sum_freq_not_in_refence))))
+
+############   alluvial plots
 for (i in seq_along(plots_to_make)) {
   thing <- plots_to_make[[i]]
   thistcr_sample_metadata <- tcr_sample_metadata
@@ -176,18 +260,96 @@ for (i in seq_along(plots_to_make)) {
     ref_tissue = thing["ref_tissue"],
     ref_color = thing["ref_color"],
     tissue_metadata = tissue_annotations,
-    # label_jsd=!grepl("^S", thing["f"]),
     label_jsd = TRUE,
     ref_pt = names(plots_to_make)[i], topn = as.numeric(thing["topn"])
   )
-
-
   ggsave(
     plot = thisdata$p_, height = 5, width = 10, dpi = 200,
     filename = file.path(alluvial_figures_path, paste0(thing["f"], "_", names(plots_to_make)[i], ".pdf")),
     useDingbats = FALSE
   )
 }
+
+############   Coverage calculations
+all_prop_test_data <- data.frame()
+top_n_coverage_data <- data.frame()
+for (tis in c("blood", "spleen", "autopsy_blood")) {
+  for (this_pt in tcr_sample_metadata %>% filter(gvhd == "GvHD") %>% pull(indv_label) %>% unique()) {
+    for (topn in c(10)) {
+      thistcr_sample_metadata <- tcr_sample_metadata
+      # do any patient-specific filtering here
+      if (names(plots_to_make)[i] == "Patient D") {
+        thistcr_sample_metadata <- thistcr_sample_metadata %>%
+          filter(!tissue %in% c("kidney", "heart", "autopsy_marrow"))
+      }
+      # Patient A's donor sample is so diverse it makes the alluvial layers illegible
+      if (names(plots_to_make)[i] == "Patient A") {
+        thistcr_sample_metadata <- thistcr_sample_metadata %>%
+          filter(!tissue %in% c("graft_blood"))
+      }
+      # make sure we have this tissue
+      tmp_pt_metadata <- thistcr_sample_metadata %>% filter(indv_label == this_pt) %>% 
+              filter(tissue == tis)
+      if (nrow(tmp_pt_metadata) == 0) {
+        break
+      }
+      this_org <- tmp_pt_metadata %>% pull(org)
+      thisdata <- make_alluvial_dataset(
+        tcr_raw,
+        thistcr_sample_metadata = thistcr_sample_metadata, ref_org = this_org,
+        ref_tissue = tis,
+        ref_color = "black",
+        tissue_metadata = tissue_annotations,
+        label_jsd = TRUE,
+        ref_pt = this_pt, topn = topn)
+      
+      prop_and_cov_dfs <- get_proptest_and_top_coverage(
+        plot_data = thisdata$plot_data,
+        ref_tissue= tis)
+      
+      if (nrow(all_prop_test_data) == 0){
+        all_prop_test_data <- prop_and_cov_dfs$prop %>% mutate(org=this_org, pt_id=this_pt, ref_tissue=tis)
+      } else{
+        all_prop_test_data <- rbind(all_prop_test_data, prop_and_cov_dfs$prop%>% mutate(org=this_org, pt_id=this_pt, ref_tissue=tis))
+      }
+      
+      if (nrow(top_n_coverage_data) == 0){
+        top_n_coverage_data <- prop_and_cov_dfs$cov  %>% mutate(org=this_org, pt_id=this_pt)
+      } else{
+        top_n_coverage_data <- rbind(top_n_coverage_data, prop_and_cov_dfs$cov  %>% mutate(org=this_org, pt_id=this_pt))
+      }
+    }
+  }
+}
+
+
+
+ggplot(top_n_coverage_data %>% 
+         filter(!tissue %in% c("graft_blood", "pretx_blood", "mLN", "kidney","heart")),
+       aes(x=between_within_groups, y=top_n_freq_sum) ) + 
+  geom_boxplot(outlier.colour = NA) + 
+  geom_jitter()  + 
+  theme(axis.text.x = element_text(angle=45, hjust = 1)) +
+  facet_grid(ref_tissue~org)
+
+comparison_stats <- top_n_coverage_data %>% filter(!tissue %in% c("graft_blood", "pretx_blood", "mLN", "kidney","heart")) %>% 
+  filter(tissue != ref_tissue) %>% 
+  group_by(between_within_groups, org, ref_tissue) %>% 
+  summarize(mean = mean(top_n_freq_sum),
+            median = median(top_n_freq_sum),
+            sd=sd(top_n_freq_sum),
+            unnest(broom::tidy(t.test(top_n_freq_sum, mu=100 )))) %>% 
+  ungroup() %>% 
+   mutate(padj = p.adjust(p.value, "BH")) %>% 
+  select(org, ref_tissue, between_within_groups, median,  mean, sd,  padj)
+write.table(comparison_stats, file = "tables/stx-alluvial_coverage_vs_reference_tissue.csv", sep=",", quote = FALSE)  
+  
+  
+# p_top_blood_clones <- ggplot(all_prop_test_data %>% ungroup() %>% filter(!tissue %in% c("spleen", "mLN", "autopsy_marrow"))  %>% ungroup(), aes(fill=tissue == "autopsy_blood", x=reorder(tissue,desc(top_n_sum_freq_count/total_templates)), y = top_n_sum_freq_count/total_templates)) + geom_bar(stat="identity") + theme(axis.text.x = element_text(angle=45, hjust = 1)) + scale_fill_manual(values = c("FALSE"="grey70", "TRUE"="red"), guide="none") + facet_wrap(~pt, scales = "free")
+# 
+# ggplot(all_prop_test_data  %>% mutate(p.adj = p.adjust(p.value, method = "BH")), aes(x=pt, y=tissue, fill=p.value < .05)) + 
+#   geom_tile() + scale_fill_viridis_d()
+
 
 ptF_alluvial <- make_alluvial_dataset(tcr_raw, ref_org = "Human", ref_pt = "Patient F", ref_tissue = "ascending_colon", thistcr_sample_metadata = tcr_sample_metadata, tissue_metadata = tissue_annotations, topn = 5)
 
@@ -276,7 +438,7 @@ dir.create(figures_path_s5, showWarnings = FALSE)
 
 
 
-tissues_to_completely_exclude <- c("heart", "kidney", "Heart", "Kidney")
+tissues_to_completely_exclude <- c()
 
 cols_to_exclude_from_ranking <- c("rearrangement", "amino_acid")
 

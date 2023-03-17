@@ -91,31 +91,154 @@ tcr_corrs_anno <- tcr_corrs %>%
   left_join(tcr_sample_metadata %>% select(sample_name:species), by = c("sample1" = "sample_name")) %>%
   left_join(tcr_sample_metadata %>% select(sample_name:species), by = c("sample2" = "sample_name"))
 
-pt_comp_df_all <- tcr_corrs_anno %>%
+SI_tissues <- tissue_annotations[tissue_annotations$uc_group %in%  c("Small Intestine"), "tissue"]  
+LI_tissues <- tissue_annotations[tissue_annotations$uc_group %in%  c("Large Intestine"), "tissue"]  
+GI_tissues <- c(SI_tissues, LI_tissues)
+
+pt_comp_df_all_redundant <- tcr_corrs_anno %>%
+  filter(tissue.x != "graft_blood" & tissue.y != "graft_blood") %>%
   filter(indv_label.x == indv_label.y) %>%
-  mutate(A = pmin(tissue.x, tissue.y), B = pmax(tissue.x, tissue.y), value = JSD, pt = indv_label.x, org = org.x, stype = gvhd.x) %>%
-  select(A, B, value, pt, org, stype) %>%
-  distinct() %>%
-  filter(A != B) %>%
+  filter(tissue.x != tissue.y) %>%
+  mutate(pt=indv_label.x, org=org.x, gvhd=gvhd.x, value=JSD) %>% 
+  left_join(tissue_annotations %>% select(tissue, between_within_groups), by = c("tissue.x" = "tissue")) %>% 
+  left_join(tissue_annotations %>% select(tissue, between_within_groups), by = c("tissue.y" = "tissue"))
+
+#buckle up.  We are faced with the problem of how to plot grouped parwise comparisons, without duplicates, but retaining redundant comparisons across groups
+# so, the first thing we need to do is double the data swapping the groupings to ensure that all comparisons are present in each group
+# (see the rbind below)
+# then, group by patient and by the group used for the x axis/facets ("between_within_groups.x"),
+# then do our sorting pmin magic to reorder the A's and Bs 
+# then distinct()-ify to remove the duplicated comparisons.
+# If we didn't do the grouping by pt AND by the grouping variable, we end up with
+# fewer pairs due to the alphabetic ordering of the sorted pairs.
+pt_comp_df_all <- rbind(pt_comp_df_all_redundant, 
+                                  pt_comp_df_all_redundant %>% 
+                                    mutate(tmptmp = between_within_groups.x,
+                                           between_within_groups.x = between_within_groups.y,
+                                           between_within_groups.y = tmptmp) %>% 
+                                    select(-tmptmp)) %>% 
+  group_by(pt, between_within_groups.x) %>% 
+  mutate(A = pmin(tissue.x, tissue.y), B = pmax(tissue.x, tissue.y)) %>%
+  select(A, B, value, between_within_groups.x, between_within_groups.y, pt, org, gvhd)  %>% 
+  distinct() %>% 
+  ungroup() %>% 
+  left_join(tissue_annotations %>% select(-between_within_groups), by = c("A" = "tissue")) %>%
+  left_join(tissue_annotations %>% select(-between_within_groups), by = c("B" = "tissue")) %>%
+  mutate(grp = ifelse(between_within_groups.x == between_within_groups.y, "Within", "Between")) 
+
+# old way -- this retains only a single record of each tissue pairing
+# this still gets used for the within/between simulation below
+pt_comp_df_all_nonredundant <- tcr_corrs_anno %>%
+  filter(indv_label.x == indv_label.y) %>%
+  mutate(A = pmin(tissue.x, tissue.y), B = pmax(tissue.x, tissue.y), value = JSD, pt = indv_label.x, org = org.x, gvhd = gvhd.x) %>%
+  select(A, B, value, pt, org, gvhd)  %>%
   filter(A != "graft_blood" & B != "graft_blood") %>%
   left_join(tissue_annotations, by = c("A" = "tissue")) %>%
   left_join(tissue_annotations, by = c("B" = "tissue")) %>%
-  mutate(grp = ifelse(between_within_groups.x == between_within_groups.y, "Within", "Between"))
+  mutate(grp = ifelse(between_within_groups.x == between_within_groups.y, "Within", "Between")) %>%
+  distinct() %>%
+  filter(A != B)
+
+ggplot(pt_comp_df_all %>% 
+         filter(org== "Human") %>% 
+         filter(gvhd== "GvHD") %>% 
+         mutate(between_within_groups.x = ifelse(between_within_groups.x == "Spleen", "blood", between_within_groups.x)) %>% 
+         filter(A %in% c("autopsy_blood",  "spleen", GI_tissues)) %>% 
+         filter(B %in% c("autopsy_blood",  "spleen", GI_tissues)) %>% 
+         filter(!(grepl("Intestine",  between_within_groups.x) & grp == "Between")), 
+       aes(x = grp, color = grp, group = grp, y = value)) +
+    geom_boxplot(outlier.colour = NA) +
+    geom_point(position = position_jitterdodge(jitter.height = 0, jitter.width = .1)) +
+    labs(x = "System", y = "JSD", color = "Comparisons") +
+    facet_grid(gvhd ~ between_within_groups.x, scales = "free", space = "free_x") +
+    scale_color_manual(values = c("#3949AB", "#64B5F6"), breaks = c("Between", "Within"), labels = c("Between systems", "Within systems")) +
+    theme(legend.position = "bottom") +
+    scale_x_discrete(position = "top") 
+ggplot(pt_comp_df_all %>% filter(alt_grp != "NA") %>% filter(org == "Human")%>% filter(between_within_groups.x != between_within_groups.y), aes(x=alt_grp, y=value)) + geom_boxplot() + geom_point() +
+  facet_wrap(~org) 
+
+# pt_comp_df_all_alternative <- tcr_corrs_anno %>%
+#   filter(indv_label.x == indv_label.y) %>%
+#   filter(tissue.x != tissue.y) %>%
+#   left_join(tissue_annotations, by = c("tissue.x" = "tissue")) %>%
+#   left_join(tissue_annotations, by = c("tissue.y" = "tissue")) %>%
+#   mutate(grp = ifelse(between_within_groups.x == between_within_groups.y, "Within", "Between"))
+# 
+# 
+# ggplot(pt_comp_df_all_alternative %>% filter((org.x =="Mouse" & tissue.x == "spleen") | (org.x == "Human" & tissue.x=="autopsy_blood") ), aes(x=indv_label.x, y=JSD)) + geom_boxplot() + geom_jitter() + facet_wrap(~org.x, scales = "free") + theme(axis.text.x = element_text(angle=45, hjust=1))
+# 
+# ggplot(pt_comp_df_all_alternative %>% 
+#          filter(tissue.x %in% c("blood", "autopsy_blood", "spleen")) %>%
+#          mutate(grp = (org.x =="Mouse" & tissue.x == "spleen") | (org.x == "Human" & tissue.x=="autopsy_blood")  | (org.x =="Mouse" & tissue.y == "spleen") | (org.x == "Human" & tissue.y=="autopsy_blood") ), aes(x=indv_label.x, y=JSD, color=grp)) + geom_boxplot() + geom_jitter() + facet_wrap(~org.x, scales = "free") + theme(axis.text.x = element_text(angle=45, hjust=1))
+# 
+# invalid_tissues = c("graft_blood", "autopsy_marrow", "pretx_blood", )
+# ggplot(pt_comp_df_all_alternative %>% 
+#          filter(org.x == "Human") %>% 
+#          filter(!tissue.x %in% invalid_tissues) %>% 
+#          filter(!tissue.y %in% invalid_tissues) %>% 
+#          mutate(grp =  ifelse((org.x == "Human" & tissue.x=="autopsy_blood")   | (org.x == "Human" & tissue.y=="autopsy_blood"), "Blood", "non-blood" )), aes(x=indv_label.x, y=JSD, color=grp)) + geom_boxplot() + geom_point(position=position_jitterdodge()) + facet_wrap(~org.x, scales = "free") + theme(axis.text.x = element_text(angle=45, hjust=1))
+
+# tissue overlap
+tmp1 <- pt_comp_df_all_alternative %>% 
+  mutate(pct_overlap = overlapping_clones / sizeB) %>% 
+  filter(org.x == "Human") %>% 
+  filter(tissue.x == "autopsy_blood") %>% 
+  filter(!tissue.y %in% invalid_tissues) %>% 
+  ggplot(aes(x=indv_label.x, y=pct_overlap )) + 
+   geom_boxplot() + geom_jitter() + scale_y_continuous(limits=c(0, 1)) + 
+ theme(axis.text.x = element_text(angle=45, hjust=1)) +  labs(title="Human Percent of tissue overlap from blood")
+# JSD
+tmp2 <- pt_comp_df_all_alternative %>% 
+  mutate(pct_overlap = overlapping_clones / sizeB) %>% 
+  filter(org.x == "Human") %>% 
+  filter(tissue.x == "autopsy_blood") %>% 
+  filter(!tissue.y %in% invalid_tissues) %>% 
+  ggplot(aes(x=indv_label.x, y=JSD )) + 
+   geom_boxplot() + geom_jitter() + scale_y_continuous(limits=c(0, 1))  +
+  labs(title="Human JSD from dlood")  + theme(axis.text.x = element_text(angle=45, hjust=1))
+
+
+
+# same, but for mice
+# tissue overlap
+tmp3 <- pt_comp_df_all_alternative %>% 
+  mutate(pct_overlap = overlapping_clones / sizeB) %>% 
+  filter(org.x == "Mouse") %>% 
+  filter(tissue.x == "spleen") %>% 
+  filter(!tissue.y %in% invalid_tissues) %>% 
+  ggplot(aes(x=indv_label.x, y=pct_overlap )) + 
+   geom_boxplot() + geom_jitter() + scale_y_continuous(limits=c(0, 1)) + 
+  labs(title="Mouse Percent of tissue overlap from blood")  + theme(axis.text.x = element_text(angle=45, hjust=1))
+# JSD
+tmp4 <- pt_comp_df_all_alternative %>% 
+  mutate(pct_overlap = overlapping_clones / sizeB) %>% 
+  filter(org.x == "Mouse") %>% 
+  filter(tissue.x == "spleen") %>% 
+  filter(!tissue.y %in% invalid_tissues) %>% 
+  ggplot(aes(x=indv_label.x, y=JSD )) + 
+   geom_boxplot() + geom_jitter() + scale_y_continuous(limits=c(0, 1)) + 
+  labs(title="Mouse JSD from dlood") + theme(axis.text.x = element_text(angle=45, hjust=1))
+
+ggsave(tmp1 +tmp2 + tmp3 + tmp4 + plot_layout(nrow=2), filename = "tmp_reviewer_comment_divergence_from_blood.pdf", width = 16, height = 16)
+
+
+
 
 for (thisorg in c("Mouse", "Human")) {
   if (thisorg == "Mouse") {
     thisdata <- pt_comp_df_all %>%
       filter(between_within_groups.x != "") %>%
       filter(org == thisorg) %>%
-      filter(stype == "GvHD")
+      filter(gvhd == "GvHD")
   } else {
     thisdata <- pt_comp_df_all %>%
       filter(between_within_groups.x != "") %>%
-      filter(org == thisorg)
+      filter(org == thisorg) %>% 
+      select(pt, A, B, grp, between_within_groups.x, between_within_groups.y, gvhd, value)
   }
   # find all the tissues with within-group comparisons
   stat.test <- thisdata %>%
-    group_by(between_within_groups.x, stype) %>%
+    group_by(between_within_groups.x, gvhd) %>%
     filter(n_distinct(grp) > 1) %>%
     rstatix::kruskal_test(value ~ grp) %>%
     adjust_pvalue(method = "BH") %>%
@@ -131,7 +254,7 @@ for (thisorg in c("Mouse", "Human")) {
     geom_boxplot(outlier.colour = NA) +
     geom_point(position = position_jitterdodge(jitter.height = 0, jitter.width = .1)) +
     labs(x = "System", y = "JSD", color = "Comparisons") +
-    facet_grid(stype ~ between_within_groups.x, scales = "free", space = "free_x") +
+    facet_grid(gvhd ~ between_within_groups.x, scales = "free", space = "free_x") +
     scale_color_manual(values = c("#3949AB", "#64B5F6"), breaks = c("Between", "Within"), labels = c("Between systems", "Within systems")) +
     theme(legend.position = "bottom") +
     scale_x_discrete(position = "top") +
@@ -141,14 +264,89 @@ for (thisorg in c("Mouse", "Human")) {
     ) +
     theme(
       axis.ticks.x = element_blank(), axis.text.x = element_blank(),
-    ) +
+    ) 
+
+  ggsave(p_between_within, filename = file.path(boxdir, paste0("between_within_", thisorg, ".pdf")), width = 16, height = 8)
+  ggsave(p_between_within +
     gridExtra::tableGrob(tissue_annotations %>% select(between_within_groups, tissue) %>% distinct() %>% arrange(desc(between_within_groups)),
       theme = gridExtra::ttheme_minimal(base_size = 7),
       rows = NULL
     ) +
-    plot_layout(widths = c(8, 2))
+    plot_layout(widths = c(8, 2)), filename = file.path(boxdir, paste0("between_within_", thisorg, "with_table.pdf")), width = 16, height = 8)
+  
+  # revision 2 figure
+  # Note this doesn't have blood vs spleen 
+  if (thisorg == "Human"){
+    # ffor the human, limit analysis only to those patients with autopsy blood samples
+    these_patients <- tcr_sample_metadata %>% filter(org=="Human" & gvhd=="GvHD" & grepl("autopsy_blood", sample_name)) %>% pull(indv_label)
+    blood_comparisons <- list(
+      c("Blood", "Large Intestine"),
+      c("Blood", "Small Intestine"))
+    spleen_comparisons <- list(
+      c("Spleen", "Large Intestine"),
+      c("Spleen", "Small Intestine"))
+  } else{
+    these_patients = unique(thisdata$pt)
+     blood_comparisons <- list(
+      c("Blood", "Small Intestine"))
+    spleen_comparisons <- list(
+      c("Spleen", "Small Intestine"))
+ }
+  thisdata_subset <- thisdata %>% 
+    filter(pt %in% these_patients) %>% 
+    mutate(newgroup = case_when(
+      (A %in% c("autopsy_blood", "blood") & B %in% GI_tissues  & between_within_groups.x == "blood" ) ~ "Blood",
+      (B %in% c("autopsy_blood", "blood") & A %in% GI_tissues  & between_within_groups.x == "blood" ) ~ "Blood",
+      # (A == "spleen" & B %in% GI_tissues & between_within_groups.x == "Spleen" )  ~ "Spleen",
+      # (B == "spleen" & A %in% GI_tissues & between_within_groups.x == "Spleen")  ~ "Spleen",
+      (A %in%  LI_tissues & grp == "Within")  ~ "Large Intestine",
+      (B %in%  LI_tissues & grp == "Within")  ~ "Large Intestine",
+      (A %in%  SI_tissues & grp == "Within")  ~ "Small Intestine",
+      (B %in%  SI_tissues & grp == "Within")  ~ "Small Intestine",
+      TRUE ~ "Ignore"
+    ) 
+    ) %>% 
+    filter(newgroup != "Ignore") %>% 
+    filter(gvhd == "GvHD")
+  
 
-  ggsave(p_between_within, filename = file.path(boxdir, paste0("between_within_", thisorg, ".pdf")), width = 16, height = 8)
+
+  p_between_within_subset <- ggplot(thisdata_subset, aes(x =newgroup,  y = value)) +
+    geom_boxplot(outlier.colour = NA) +
+    geom_jitter(height = 0, width = .1, color="black") +
+    labs(x = "System", y = "JSD", color = "Comparisons") +
+    theme(legend.position = "bottom") +
+    stat_compare_means(comparisons = blood_comparisons , method = "wilcox.test")
+
+  ggsave(p_between_within_subset, filename = file.path(boxdir, paste0("between_within_", thisorg, "_blood_GI_subset.pdf")), width = 16, height = 8)
+  
+  
+  #######   Spleen
+  thisdata_subset_spleen <- thisdata %>% 
+    mutate(newgroup = case_when(
+      (A == "spleen" & B %in% GI_tissues & between_within_groups.x == "Spleen" )  ~ "Spleen",
+      (B == "spleen" & A %in% GI_tissues & between_within_groups.x == "Spleen")  ~ "Spleen",
+      (A %in%  LI_tissues & grp == "Within")  ~ "Large Intestine",
+      (B %in%  LI_tissues & grp == "Within")  ~ "Large Intestine",
+      (A %in%  SI_tissues & grp == "Within")  ~ "Small Intestine",
+      (B %in%  SI_tissues & grp == "Within")  ~ "Small Intestine",
+      TRUE ~ "Ignore"
+    ) 
+    ) %>% 
+    filter(newgroup != "Ignore") %>% 
+    filter(gvhd == "GvHD")
+  
+
+
+  p_between_within_subset_spleen <- ggplot(thisdata_subset_spleen, aes(x =newgroup,  y = value)) +
+    geom_boxplot(outlier.colour = NA) +
+    geom_jitter(height = 0, width = .1, color="black") +
+    labs(x = "System", y = "JSD", color = "Comparisons") +
+    theme(legend.position = "bottom") +
+    stat_compare_means(comparisons = spleen_comparisons )
+
+  ggsave(p_between_within_subset_spleen, filename = file.path(boxdir, paste0("between_within_", thisorg, "_spleen_GI_subset.pdf")), width = 16, height = 8)
+
 }
 file.copy(
   file.path(boxdir, paste0("between_within_Human.pdf")),
@@ -164,7 +362,7 @@ file.copy(
 Next, we shuffled the classes for the systems with multiple tissues represented in the data (limiting to human samples for simplicity).  The probability weight of the sampling was set to mimic the comparisons at hand. For instance, we have 124 small-intestinal vs non-small-intestine pairs, and 19 within-small-intestine pairs, so a weight ratio or .867:.133.
 
 ```{r 39-figureS11-4 }
-(weights <- pt_comp_df_all %>%
+(weights <- pt_comp_df_all_nonredundant %>%
   filter(org == "Human") %>%
   group_by(plotgroup.x, org) %>%
   filter(n_distinct(grp) > 1) %>%
@@ -181,11 +379,10 @@ between_weight <- weights %>%
 
 The sampling was performed 1000 times, and plotted below.  
 
-> To assess the stability of the comparisons within systems
 
 
 ```{r 39-figureS11-5 }
-tissues_for_comparisons <- pt_comp_df_all %>%
+tissues_for_comparisons <- pt_comp_df_all_nonredundant %>%
   filter(org == "Human") %>%
   filter(between_within_groups.x != "") %>%
   group_by(between_within_groups.x, org) %>%
@@ -197,8 +394,8 @@ reps <- 1000
 
 pt_comp_df_all_shuff <- map(1:reps, .f = function(x) {
   set.seed(x)
-  pt_comp_df_all %>%
-    filter(org == "Human") %>% # stype == "GvHD") %>%
+  pt_comp_df_all_nonredundant %>%
+    filter(org == "Human") %>% # gvhd == "GvHD") %>%
     filter(between_within_groups.x != "") %>%
     filter(between_within_groups.x %in% tissues_for_comparisons) %>%
     group_by(between_within_groups.x, org) %>%
@@ -225,7 +422,7 @@ shuff_summary <- pt_comp_df_all_shuff %>%
   rstatix::kruskal_test(value ~ fauxgrp) %>%
   adjust_pvalue(method = "BH")
 
-stat.test.allhuman <- pt_comp_df_all %>%
+stat.test.allhuman <- pt_comp_df_all_nonredundant %>%
   filter(between_within_groups.x != "") %>%
   filter(org == thisorg) %>%
   group_by(between_within_groups.x) %>%
@@ -276,8 +473,8 @@ for (si in 1:length(sets_of_comparisons)) {
   # name of comparison set
   sname <- names(sets_of_comparisons)[[si]]
 
-  intestinal_comparison_data <- pt_comp_df_all %>%
-    filter(stype == "GvHD") %>%
+  intestinal_comparison_data <- pt_comp_df_all_nonredundant %>%
+    filter(gvhd == "GvHD") %>%
     filter(between_within_groups.x %in% s | between_within_groups.y %in% s) %>%
     mutate(intestinal = ifelse(between_within_groups.x %in% s & between_within_groups.y %in% s, "Within", "Between"))
 
@@ -355,12 +552,12 @@ file.copy(
 # note the lack of the `distinct()` call here; we need all the (redundant) comparisons for this figure
 set.seed(123)
 
-tcr_corrs_anno <- tcr_corrs_anno %>%
+thistcr_corrs_anno <- tcr_corrs_anno %>%
   filter(sample1 != "PtA_autopsy_marrow_TCRB") %>%
   filter(sample2 != "PtA_autopsy_marrow_TCRB")
 
-for (i in unique(tcr_corrs_anno$indv_label.x)) {
-  tmp_p <- ggplot(tcr_corrs_anno %>%
+for (i in unique(thistcr_corrs_anno$indv_label.x)) {
+  tmp_p <- ggplot(thistcr_corrs_anno %>%
     filter(indv_label.x == indv_label.y) %>% filter(indv_label.x == i) %>%
     left_join(tissue_annotations, by = c("tissue.x" = "tissue")) %>%
     filter(tissue.x != tissue.y) %>%
@@ -412,7 +609,7 @@ ggsave(plot = tmp_gvhd, height = 4, width = 5, filename = file.path(figures_path
 
 # mean, median, standard deviation for blood/GVHD comparisons
 data.frame(tmp_gvhd$data %>% group_by(sample1) %>%
-  summarize(sample1,
+  summarize(
     mean_JSD = mean(JSD),
     median_clones_per_patient = median(JSD),
     sd_JSD = sd(JSD),
