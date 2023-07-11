@@ -11,13 +11,15 @@ Here we considered <https://www.ncbi.nlm.nih.gov/pmc/articles/PMC7855494/> to se
 ```{R 32-assess-cell-types-1 }
 library(tidyverse)
 if (interactive()) load("tcr_objects.Rdata")
-
+figures_path = "figures/S12/"
+dir.create(figures_path, showWarnings = FALSE)
 human_mait_NKT <- tcr_raw %>%
   filter(org == "Human") %>%
   mutate(Tcell_type = case_when(v_family %in% c("TCRBV06", "TCRBV20") ~ "MAIT", v_family == "TCRBV25" ~ "NKT", TRUE ~ "Other")) %>%
   group_by(sample_name, tissue, indv_label, Tcell_type) %>%
   summarize(prop = sum(productive_frequency)) %>%
   left_join(tissue_annotations, by = "tissue")
+
 
 human_mait_NKT_plot <- human_mait_NKT %>% ggplot(aes(x = tissue_label_fig1, y = prop, fill = Tcell_type)) +
   scale_fill_manual(values = c("#3949AB", "#64B5F6", "#358856")) +
@@ -29,6 +31,7 @@ human_mait_NKT_plot <- human_mait_NKT %>% ggplot(aes(x = tissue_label_fig1, y = 
 human_mait_NKT_plot
 
 ggsave(plot = human_mait_NKT_plot, height = 8, width = 8, filename = file.path(figures_path, "human_mait_NKT_plot.pdf"))
+write.csv(human_mait_NKT_plot$data %>% ungroup() %>% select(tissue_label_fig1, indv_label, Tcell_type, prop) %>% pivot_wider(names_from =tissue_label_fig1, values_from=prop), file = file.path("tables", "S12_human_mait_NKT_plot.pdf.csv")) 
 
 tcr_raw %>%
   filter(org == "Human") %>%
@@ -66,6 +69,7 @@ mouse_mait_NKT_plot <- mouse_mait_NKT %>%
 mouse_mait_NKT_plot
 
 ggsave(plot = mouse_mait_NKT_plot, height = 8, width = 8, filename = file.path(figures_path, "mouse_mait_NKT_plot.pdf"))
+write.csv(mouse_mait_NKT_plot$data %>% ungroup() %>% select(tissue_label_fig1, indv_label, Tcell_type, prop) %>% pivot_wider(names_from =tissue_label_fig1, values_from=prop), file = file.path("tables", "S12_mouse_mait_NKT_plot.pdf.csv")) 
 
 tcr_raw %>%
   filter(org == "Mouse") %>%
@@ -78,6 +82,8 @@ tcr_raw %>%
   geom_jitter() +
   ggpubr::stat_compare_means(hide.ns = FALSE, ref.group = "blood", label.y = .3 + (.05 * (1:30))) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+
 ```
 
 

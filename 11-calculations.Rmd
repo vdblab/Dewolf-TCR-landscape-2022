@@ -1,0 +1,56 @@
+---
+title: "11-calculations"
+output: html_document
+date: "2023-07-07"
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup-calcs, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+tcr_corrs_anno <- tcr_corrs %>%
+  left_join(tcr_sample_metadata %>% select(sample_name:species), by = c("sample1" = "sample_name")) %>%
+  left_join(tcr_sample_metadata %>% select(sample_name:species), by = c("sample2" = "sample_name"))
+
+
+# summary of JSD dfor pts with pretx-blood
+pts_with_pretx = tcr_sample_metadata %>% filter(grepl("pretx", sample_name)) %>% filter(org=="Human") %>% pull(indv_id)
+tcr_corrs %>%  filter(grepl("^Pt", sample1) & grepl("^Pt", sample2)) %>% mutate(pta =gsub("Pt(.).*", "\\1", sample1), ptb=gsub("Pt(.).*", "\\1", sample2)) %>% filter(grepl("pretx", sample1) | grepl("pretx", sample2)) %>% filter(pta %in% pts_with_pretx & ptb %in% pts_with_pretx) %>% filter(pta ==ptb) %>% filter(!grepl("spleen|donor|autopsy|heart|kidney|mLN", sample1)) %>% filter(!grepl("spleen|donor|autopsy|heart|kidney|mLN", sample2))  %>% filter(sample1 != sample2) %>% select(sample1, sample2, JSD) %>% mutate(s1 = pmin(sample1, sample2), s2=pmax(sample1, sample2)) %>% select(-sample1, -sample2) %>% distinct() %>% summarize(n=n(), median(JSD))
+
+
+## Tcell pools in grafts
+tcr_raw %>% filter(grepl("Tcell", sample_name)) %>% distinct(sample_name)
+
+ tcr_raw %>% filter(grepl("T.*cell", sample_name)) %>% group_by(rearrangement) %>% summarize(in_x_samples = n_distinct(sample_name)) %>% ungroup() %>% mutate(n_clones = n()) %>% group_by(in_x_samples) %>% summarize(n_perc = n()/n_clones[1])
+
+ 
+tcr_raw %>% filter(productive_frequency > 0) %>% filter(grepl("T.*cell", sample_name))  %>% group_by(sample_name) %>% 
+  summarize(n_aa = n_distinct(amino_acid))
+
+tcr_raw %>% filter(productive_frequency > 0) %>% filter(grepl("T.*cell", sample_name)) %>% group_by(amino_acid) %>% summarize(in_x_samples = n_distinct(sample_name)) %>% ungroup() %>%distinct() %>%  mutate(n_aa = n()) %>% group_by(in_x_samples) %>% summarize(n_perc = n()/n_aa[1])
+
+aa_donor_by_sample <- tcr_raw %>% filter(productive_frequency > 0) %>% filter(grepl("T.*cell", sample_name)) %>% group_by(amino_acid) %>% mutate(in_x_samples = n_distinct(sample_name)) %>% ungroup() %>%
+    select(sample_name, amino_acid, in_x_samples) %>% 
+    distinct() %>% 
+  group_by(sample_name) %>% 
+  summarise(
+    n=n(), 
+    singles = sum(in_x_samples == 1), 
+    doubles = sum(in_x_samples == 2), 
+    two_or_more = sum(in_x_samples != 1),
+    triples = sum(in_x_samples ==3) )
+
+aa_donor_by_sample %>% 
+  mutate(across(.cols = -c(n, sample_name), .fns = ~ .x/n , .names = "{.col}_perc")) 
+
+aa_donor_by_sample %>% 
+  summarize(
+    mean_perc_in_three = mean(triples/n) * 100,
+    mean_perc_in_two_or_more = mean(two_or_more/n) * 100
+  )
+
+
+````

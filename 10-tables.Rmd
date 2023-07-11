@@ -18,6 +18,8 @@ load(tcr_objects_path)
 tab_dir <- "tables"
 dir.create(tab_dir, showWarnings = FALSE)
 
+
+
 getslope <- function(vals) {
   # get the slope of the abundance plots a la https://insight.jci.org/articles/view/121256
   vals <- vals[vals$Included == "Yes", ]

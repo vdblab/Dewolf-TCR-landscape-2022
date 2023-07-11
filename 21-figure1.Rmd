@@ -23,6 +23,8 @@ if (interactive()) load("tcr_objects.Rdata")
 figures_path <- file.path("figures", "fig1")
 dir.create(figures_path, showWarnings = FALSE, recursive = TRUE)
 
+
+
 diversity <- read.csv("tables/st4.csv") %>%
   rename(
     sample_name = Sample.name,
@@ -40,7 +42,6 @@ clones_per_pt_no_graft <- lapply(setNames(indvs, indvs), function(x) {
   tcr_raw %>%
     filter(indv_label == x) %>%
     filter(tissue != "graft_blood") %>%
-    filter(tissue == "Tcells") %>%
     filter(productive_frequency > 0) %>%
     pull(rearrangement) %>%
     unique()
@@ -77,6 +78,7 @@ data.frame(nclones = clones_per_pt_yes_graft) %>%
     sd_clones_per_patient = sd(nclones),
   )
 
+
 tcr_raw %>%
   filter(!tissue %in% c("autopsy_blood", "graft_blood", "blood", "Tcells", "pretx_blood", "autopsy_marrow")) %>%
   filter(productive_frequency > 0) %>%
@@ -93,12 +95,14 @@ tcr_raw %>%
     min = min(n_distinct_clones),
     max = max(n_distinct_clones),
   )
+
+
 ```
 
 
 ```{r 21-figure1-1-bis}
 
-human_patient_colors <- c("mediumblue", "navy", "red", "yellow", "green4", "lightskyblue", "saddlebrown", "gray75", "gray45", "gray 85")
+human_patient_colors <- c("mediumblue", "navy", "red", "yellow", "pink", "lightskyblue", "saddlebrown", "gray75", "gray45", "gray 85")
 names(human_patient_colors) <- paste("Patient", LETTERS[1:10])
 
 
@@ -133,7 +137,7 @@ div_base <- ggplot(
   scale_fill_manual(values = human_patient_colors, breaks = names(human_patient_colors), guide = "none"))
 
 ggsave(plot = fig1b, height = 6, width = 5, filename = file.path(figures_path, "fig1b.pdf"))
-
+write.csv(fig1b$data, file = file.path(figures_path, "fig1b.pdf.csv"))
 (fig1c <- div_base +
   geom_point(aes(x = productive_templates, fill = indv_label), size = 6, shape = 21, alpha = .9, position = jitter) +
   theme_classic() +
@@ -299,6 +303,8 @@ jitter_mouse <- position_jitter(width = 0.05, height = 0.06)
 
 
 ggsave(plot = fig1f_mouse, height = 3, width = 2, filename = file.path(figures_path, "fig1f_mouse.pdf"))
+write.csv(fig1f_mouse$data, file = file.path(figures_path, "fig1f_mouse.pdf.csv"))
+
 ```
 
 
