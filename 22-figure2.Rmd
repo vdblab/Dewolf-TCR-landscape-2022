@@ -28,7 +28,36 @@ Scatter <- tcr_raw %>%
   ) %>%
   pivot_wider(names_from = tissue, values_from = productive_frequency, values_fill = .00001)
 
+tcr_raw %>%
+  filter(frame_type == "In") %>%
+##  left_join(tcr_sample_metadata %>% select(sample_name, indv_label)) %>%
+  filter(indv_label == "Patient D") %>%
+  filter(productive_frequency > 0 ) %>% 
+  select(rearrangement, tissue, productive_frequency) %>% 
+  filter(tissue %in% c("duodenum", "descending_colon")) %>% 
+  group_by(rearrangement) %>% 
+  summarize(ntiss=n_distinct(tissue)) %>%
+  ungroup() %>%
+  count(ntiss)
 
+tcr_raw %>%
+  filter(frame_type == "In") %>%
+  filter(productive_frequency > 0 ) %>% 
+  filter(sample_name == "PtD_skin_TCRB") %>%
+  select(rearrangement, tissue, productive_frequency) %>% 
+  summarize(ntiss=n_distinct(rearrangement))
+tcr_raw %>%
+  filter(frame_type == "In") %>%
+  filter(productive_frequency > 0 ) %>% 
+  filter(sample_name == "PtD_descending_colon_TCRB") %>%
+  select(rearrangement, tissue, productive_frequency) %>% 
+  summarize(ntiss=n_distinct(rearrangement))
+tcr_raw %>%
+  filter(frame_type == "In") %>%
+  filter(productive_frequency > 0 ) %>% 
+  filter(sample_name == "PtD_ascending_colon_TCRB") %>%
+  select(rearrangement, tissue, productive_frequency) %>% 
+  summarize(ntiss=n_distinct(rearrangement))
 
 (scatterplot_ascending_descending <-
   ggplot(Scatter, aes(
